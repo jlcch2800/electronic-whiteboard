@@ -1,0 +1,559 @@
+// 系統異動記錄 Client Component
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { format } from 'date-fns'
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
+import { ArrowLeft, History, Search, RefreshCw, Download, Edit, Trash2, Plus, LogIn, LogOut, Eye, AlertTriangle } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
+
+interface ChangeLogClientProps {
+    initialLogs: any[]
+}
+
+export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
+    const router = useRouter()
+    const supabase = createClient()
+    const { toast } = useToast()
+
+    const [logs, setLogs] = useState(initialLogs)
+    const [loading, setLoading] = useState(false)
+    const [searchTerm, setSearchTerm] = useState('')
+    const [startDate, setStartDate] = useState('')
+    const [endDate, setEndDate] = useState('')
+    const [pageSize, setPageSize] = useState<number>(10)
+    const [currentPage, setCurrentPage] = useState(1)
+    const [selected, setSelected] = useState<Set<string>>(new Set())
+
+    const TABLE_NAME_MAP: Record<string, string> = {
+        'vendor_today_work': '廠商今日施工項目',
+        'vendor_today_work_history': '廠商今日施工歷史記錄',
+        'engineering_today_work': '工務今日施工項目',
+        'engineering_work_history': '工務施工歷史記錄',
+        'pending_work': '待處理工作項目',
+        'pending_work_history': '待處理工作歷史記錄',
+        'work_report': '施工回報記錄',
+        'work_reports': '施工回報記錄',
+        'work_report_history': '施工回報歷史記錄',
+        'users': '帳號管理',
+        'system_change_log': '系統異動記錄',
+        'system_execution_log': '系統執行記錄',
+        'work_file': '施工文件',
+    }
+
+    const FIELD_LABELS: Record<string, string> = {
+        id: 'ID', created_at: '建立時間', updated_at: '更新時間', date: '日期',
+        // 廠商今日施工項目 (vendor_today_work)
+        entry_status: '到院或離院', work_date: '施工日期', arrival_time: '到院時間', departure_time: '離院時間',
+        building: '棟別', floor: '樓層', location: '施工地點', vendor_badge_id: '廠商工作證號', head_count: '施工人數',
+        vendor_name: '廠商名稱', vendor_contact: '廠商負責人員姓名', vendor_contact_phone: '廠商負責人員電話',
+        work_content: '施工內容', note: '備註',
+        // 待處理/工務 (pending_work / engineering_today_work)
+        start_date: '施工開始日期', end_date: '施工結束日期', time: '時間', unit: '單位', department: '部門', name: '名稱',
+        engineering_contact: '工務負責人員', // 對應 Image 3 & 4
+        // 施工回報 (work_reports)
+        report_date: '施工回報日期', report_time: '時間', work_location: '施工地點', work_status: '施工狀態',
+        // 帳號與其他
+        user_name: '姓名', user_account: '帳號', user_unit: '使用者單位', role: '使用者群組',
+        company: '公司/單位', status: '狀態', is_active: '是否啟用', email: 'e-mail',
+        password: '密碼', password_hash: '密碼', failed_attempts: '失敗計次', last_failed_at: '最後失敗時間',
+        locked_until: '鎖定解除時間',
+        reset_token_hash: '重設密碼 Token Hash', reset_token_expire: '重設密碼 Token 到期時間',
+        verify_token_hash: '驗證 Token Hash', verify_token_expire: '驗證 Token 到期時間',
+        action_type: '動作類型', modify_table: '異動資料表', modify_record_id: '異動記錄ID',
+        description: '說明', file_url: '文件', image_url: '照片', video_url: '影片', uploader_name: '上傳人員', work_item: '施工項目',
+        content: '內容'
+    }
+
+    // 定義各資料表的欄位顯示順序 (整合排序)
+    const FIELD_ORDER = [
+        'id', 'created_at', 'updated_at',
+        // Vendor Today Work
+        'entry_status', 'work_date', 'arrival_time', 'departure_time',
+        'vendor_name', 'vendor_badge_id', 'vendor_contact', 'vendor_contact_phone',
+        'building', 'floor', 'location', 'head_count',
+        'work_content', 'note',
+        // Work Reports
+        'report_date', 'report_time',
+        // Pending / Engineering
+        'start_date', 'end_date', 'time',
+        // Unit/Dept (After Name in some contexts)
+        'unit', 'department', 'name',
+        // Work Reports Location (After Name)
+        'work_location',
+        // Engineering Contact
+        'engineering_contact',
+        // Work Status
+        'work_status',
+        // User fields
+        'user_name', 'user_account', 'password_hash', 'role', 'email', 'is_active',
+        'failed_attempts', 'last_failed_at', 'locked_until',
+        // Content & Note (End)
+        'work_item', 'uploader_name', 'description', 'file_url', 'image_url', 'video_url',
+        'content'
+    ];
+
+    const getTranslatedTableName = (name: string) => TABLE_NAME_MAP[name] || name
+
+    const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
+
+    // 重新載入資料
+    const fetchLogs = async () => {
+        setLoading(true)
+        let query = supabase
+            .from('system_change_log')
+            .select('*')
+            .order('created_at', { ascending: false })
+
+        // 日期篩選
+        if (startDate) {
+            query = query.gte('date', startDate)
+        }
+        if (endDate) {
+            query = query.lte('date', endDate)
+        }
+
+        const { data } = await query.limit(500)
+        if (data) setLogs(data)
+        setCurrentPage(1); setSelected(new Set()); setLoading(false)
+    }
+
+    // 篩選資料 - 排除 System 使用者
+    const filteredLogs = logs.filter(log => {
+        // 排除 System (依據需求：系統執行記錄只存放 cron job，異動記錄存放使用者操作)
+        if (log.user_name === 'System' || log.user_account === 'System') return false;
+
+        return (
+            log.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.user_account?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.user_unit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            getTranslatedTableName(log.modify_table)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.modify_table?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            log.action_type?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    })
+
+    // 分頁
+    const totalPages = Math.ceil(filteredLogs.length / pageSize)
+    const paginatedLogs = filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+    const toggleSelectAll = () => { selected.size === paginatedLogs.length && paginatedLogs.length > 0 ? setSelected(new Set()) : setSelected(new Set(paginatedLogs.map(i => i.id))) }
+
+    // 匯出 Excel
+    const handleExport = () => {
+        const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
+        if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
+
+        const sheetData = dataToExport.map((r, i) => ({
+            '#': i + 1,
+            'ID': r.id,
+            '建立時間': format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss'),
+            '日期': r.date,
+            '單位': r.user_unit || '',
+            '姓名': r.user_name || '',
+            '帳號': r.user_account || '',
+            '動作類型': r.action_type,
+            '異動資料表': getTranslatedTableName(r.modify_table),
+            '異動記錄ID': r.modify_record_id
+        }))
+
+        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(sheetData)
+        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
+        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `系統異動記錄_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+        toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
+    }
+
+    // 匯出單筆明細
+    const handleExportDetail = (log: any) => {
+        const parseJson = (data: any) => {
+            if (!data) return {}
+            if (typeof data === 'string') { try { return JSON.parse(data) } catch { return {} } }
+            return data
+        }
+
+        const aoa: any[][] = [];
+
+        // 1. 基本資料
+        aoa.push(['【異動記錄基本資料】', '']);
+        aoa.push(['欄位', '值']);
+        aoa.push(['ID', log.id]);
+        aoa.push(['建立時間', format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')]);
+        aoa.push(['發生日期', log.date]);
+        aoa.push(['使用者單位', log.user_unit || '-']);
+        aoa.push(['使用者姓名', log.user_name || '-']);
+        aoa.push(['使用者帳號', log.user_account || '-']);
+        aoa.push(['操作方式', log.action_type]);
+        aoa.push(['異動資料表', getTranslatedTableName(log.modify_table)]);
+        aoa.push(['異動項目的UUID', log.modify_record_id]);
+
+        aoa.push([]);
+
+        // 2. 異動明細
+        const oldData = parseJson(log.old_data);
+        const newData = parseJson(log.new_data);
+        const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]));
+
+        // Sort keys
+        const sortedKeys = allKeys.sort((a, b) => {
+            const indexA = FIELD_ORDER.indexOf(a);
+            const indexB = FIELD_ORDER.indexOf(b);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return a.localeCompare(b);
+        });
+
+        if (sortedKeys.length > 0) {
+            aoa.push(['【異動明細對比】', '', '', '']);
+            aoa.push(['欄位', '變更前', '變更後', '是否異動']);
+
+            sortedKeys.forEach(key => {
+                const oldVal = oldData?.[key];
+                const newVal = newData?.[key];
+                const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal);
+
+                aoa.push([
+                    FIELD_LABELS[key] || key,
+                    oldVal !== undefined ? JSON.stringify(oldVal) : '-',
+                    newVal !== undefined ? JSON.stringify(newVal) : '-',
+                    isChanged ? '是' : ''
+                ]);
+            });
+        }
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+        ws['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 40 }, { wch: 10 }];
+
+        XLSX.utils.book_append_sheet(wb, ws, '異動明細');
+
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `異動明細_${log.id.slice(0, 8)}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+        toast({ title: '匯出成功' })
+    }
+
+    // 動作類型圖示與顏色
+    const getActionBadge = (log: any) => {
+        const actionType = log.action_type
+
+        switch (actionType) {
+            case 'Insert':
+                return <Badge className="bg-green-500 gap-1"><Plus className="w-3 h-3" /> 新增</Badge>
+            case 'Update':
+                return <Badge className="bg-blue-500 gap-1"><Edit className="w-3 h-3" /> 修改</Badge>
+            case 'Delete':
+                return <Badge variant="destructive" className="gap-1"><Trash2 className="w-3 h-3" /> 刪除</Badge>
+            case 'Login':
+                // Check if it's a failed login
+                let isFailure = false
+                try {
+                    const newData = typeof log.new_data === 'string' ? JSON.parse(log.new_data) : log.new_data
+                    if (newData?.status === 'Login Failed' || newData?.status?.includes('Account Locked')) {
+                        isFailure = true
+                    }
+                } catch (e) { }
+
+                if (isFailure) {
+                    return <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" /> 密碼錯誤</Badge>
+                }
+                return <Badge variant="outline" className="border-emerald-500 text-emerald-600 gap-1"><LogIn className="w-3 h-3" /> 登入</Badge>
+            case 'Logout':
+                return <Badge variant="outline" className="border-slate-500 text-slate-600 gap-1"><LogOut className="w-3 h-3" /> 登出</Badge>
+            default:
+                return <Badge variant="secondary">{actionType}</Badge>
+        }
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100">
+            {/* Header */}
+            <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-6 py-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 shrink-0">
+                            <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
+                                <ArrowLeft className="w-5 h-5" />
+                            </Button>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl text-white">
+                                    <History className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-bold text-slate-800">系統異動記錄</h1>
+                                    <p className="text-sm text-slate-500">使用者操作與資料異動記錄</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            {/* 日期篩選 */}
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-36"
+                                    placeholder="開始日期"
+                                />
+                                <span className="text-slate-400">~</span>
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="w-36"
+                                    placeholder="結束日期"
+                                />
+                            </div>
+
+                            {/* 搜尋 */}
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Input
+                                    value={searchTerm}
+                                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+                                    placeholder="搜尋..."
+                                    className="pl-10 w-48"
+                                />
+                            </div>
+
+                            {/* 顯示筆數 */}
+                            <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}>
+                                <SelectTrigger className="w-24">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10 筆</SelectItem>
+                                    <SelectItem value="50">50 筆</SelectItem>
+                                    <SelectItem value="100">100 筆</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            {/* 操作按鈕 */}
+                            <Button variant="outline" onClick={fetchLogs} disabled={loading}>
+                                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                查詢
+                            </Button>
+                            <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700">
+                                <Download className="w-4 h-4 mr-2" /> 匯出
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {/* Table */}
+            <main className="max-w-7xl mx-auto p-6">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
+                >
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-slate-50">
+                                    <TableHead className="w-12"><Checkbox checked={selected.size === paginatedLogs.length && paginatedLogs.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
+                                    <TableHead className="w-12">#</TableHead>
+                                    <TableHead className="text-xs">ID</TableHead>
+                                    <TableHead>建立時間</TableHead>
+                                    <TableHead>日期</TableHead>
+                                    <TableHead>單位</TableHead>
+                                    <TableHead>姓名</TableHead>
+                                    <TableHead>帳號</TableHead>
+                                    <TableHead>動作類型</TableHead>
+                                    <TableHead>異動資料表</TableHead>
+                                    <TableHead>異動記錄ID</TableHead>
+                                    <TableHead>異動內容</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {paginatedLogs.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={12} className="text-center py-10 text-slate-400">
+                                            沒有找到記錄
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    paginatedLogs.map((log, index) => (
+                                        <TableRow key={log.id} className={`hover:bg-slate-50 ${selected.has(log.id) ? 'bg-orange-100' : ''}`}>
+                                            <TableCell><Checkbox checked={selected.has(log.id)} onCheckedChange={() => toggleSelect(log.id)} /></TableCell>
+                                            <TableCell className="text-slate-400 text-sm">
+                                                {(currentPage - 1) * pageSize + index + 1}
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[80px] truncate" title={log.id}>
+                                                {log.id?.slice(0, 8)}...
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">
+                                                {format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}
+                                            </TableCell>
+                                            <TableCell className="font-mono text-sm">
+                                                {log.date}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {log.user_unit || '-'}
+                                            </TableCell>
+                                            <TableCell className="font-bold text-sm">
+                                                {log.user_name || '-'}
+                                            </TableCell>
+                                            <TableCell className="font-mono text-sm">
+                                                {log.user_account || '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {getActionBadge(log)}
+                                            </TableCell>
+                                            <TableCell className="font-mono text-sm">
+                                                {getTranslatedTableName(log.modify_table)}
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[100px] truncate" title={log.modify_record_id}>
+                                                {log.modify_record_id?.slice(0, 8)}...
+                                            </TableCell>
+                                            <TableCell>
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="h-8 text-teal-600 hover:text-teal-700 hover:bg-teal-50">
+                                                            <Eye className="w-4 h-4 mr-1" />
+                                                            明細
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                                        <DialogHeader>
+                                                            <DialogTitle className="flex items-center justify-between pr-8">
+                                                                異動明細
+                                                                <Button size="sm" onClick={() => handleExportDetail(log)} className="bg-green-600 hover:bg-green-700">
+                                                                    <Download className="w-4 h-4 mr-1" />匯出
+                                                                </Button>
+                                                            </DialogTitle>
+                                                            <DialogDescription>
+                                                                異動時間：{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')} | 操作者：{log.user_name}
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+
+                                                        <div className="mt-4 border rounded-lg overflow-hidden">
+                                                            {/* 基本資訊 */}
+                                                            <Table>
+                                                                <TableBody>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">發生日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">使用者單位</TableCell><TableCell>{log.user_unit || '-'}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">使用者姓名</TableCell><TableCell className="font-bold">{log.user_name || '-'}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">使用者帳號</TableCell><TableCell className="font-mono">{log.user_account || '-'}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">操作方式</TableCell><TableCell>{getActionBadge(log)}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">異動資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.modify_table)}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">異動項目的UUID</TableCell><TableCell className="font-mono text-xs">{log.modify_record_id}</TableCell></TableRow>
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+
+                                                        {/* 異動資料對比 */}
+                                                        {(() => {
+                                                            const parseJson = (data: any) => {
+                                                                if (!data) return {}
+                                                                if (typeof data === 'string') { try { return JSON.parse(data) } catch { return {} } }
+                                                                return data
+                                                            }
+                                                            const oldData = parseJson(log.old_data)
+                                                            const newData = parseJson(log.new_data)
+                                                            const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]))
+
+                                                            const sortedKeys = allKeys.sort((a, b) => {
+                                                                const indexA = FIELD_ORDER.indexOf(a);
+                                                                const indexB = FIELD_ORDER.indexOf(b);
+                                                                if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                                                                if (indexA !== -1) return -1;
+                                                                if (indexB !== -1) return 1;
+                                                                return a.localeCompare(b);
+                                                            });
+
+                                                            if (sortedKeys.length === 0) return null;
+
+                                                            return (
+                                                                <div className="mt-4 border rounded-lg overflow-hidden">
+                                                                    <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">異動資料對比</div>
+                                                                    <Table>
+                                                                        <TableHeader>
+                                                                            <TableRow className="bg-slate-50">
+                                                                                <TableHead className="w-32">欄位</TableHead>
+                                                                                <TableHead className="text-green-700 bg-green-50">變更前</TableHead>
+                                                                                <TableHead className="text-red-700 bg-red-50">變更後</TableHead>
+                                                                            </TableRow>
+                                                                        </TableHeader>
+                                                                        <TableBody>
+                                                                            {sortedKeys.map(key => {
+                                                                                const oldVal = oldData?.[key]
+                                                                                const newVal = newData?.[key]
+                                                                                const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal)
+
+                                                                                return (
+                                                                                    <TableRow key={key} className={isChanged ? 'bg-yellow-50' : ''}>
+                                                                                        <TableCell className="font-bold text-slate-600 text-xs">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                        <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50' : ''}`}>
+                                                                                            {oldVal !== undefined ? JSON.stringify(oldVal) : '-'}
+                                                                                        </TableCell>
+                                                                                        <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50' : ''}`}>
+                                                                                            {newVal !== undefined ? JSON.stringify(newVal) : '-'}
+                                                                                        </TableCell>
+                                                                                    </TableRow>
+                                                                                )
+                                                                            })}
+                                                                        </TableBody>
+                                                                    </Table>
+                                                                </div>
+                                                            )
+                                                        })()}
+                                                    </DialogContent>
+                                                </Dialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
+                            <p className="text-sm text-slate-500">
+                                共 {filteredLogs.length} 筆，第 {currentPage} / {totalPages} 頁
+                            </p>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    上一頁
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    下一頁
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </motion.div>
+            </main>
+        </div>
+    )
+}

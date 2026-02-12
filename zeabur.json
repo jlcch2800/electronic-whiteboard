@@ -1,0 +1,8 @@
+// Zeabur deployment config
+{
+    "$schema": "https://json-schema.zeabur.app/schema.json",
+    "build_type": "npm",
+    "build_command": "npm run build",
+    "start_command": "npm run start",
+    "node_version": "18"
+}

@@ -1,0 +1,192 @@
+// Validation Schemas for Forms
+import * as z from 'zod'
+
+// Password Strength Validation (需符合4種規則)
+const passwordSchema = z.string()
+    .min(8, '密碼至少需要8個字元')
+    .refine((val) => {
+        let count = 0
+        if (/[a-z]/.test(val)) count++
+        if (/[A-Z]/.test(val)) count++
+        if (/[0-9]/.test(val)) count++
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(val)) count++
+        return count >= 4
+    }, '密碼需包含：大寫、小寫、數字及特殊符號')
+
+// Login Form
+export const loginSchema = z.object({
+    email: z.string().email('請輸入有效的 Email'),
+    password: z.string().min(1, '請輸入密碼'),
+    recaptchaToken: z.string().optional(),
+})
+export type LoginFormValues = z.infer<typeof loginSchema>
+
+// Register Form
+export const registerSchema = z.object({
+    unit: z.string().min(1, '請輸入單位'),
+    user_name: z.string().min(1, '請輸入姓名'),
+    user_account: z.string().min(1, '請輸入帳號'),
+    password: passwordSchema,
+    confirmPassword: z.string(),
+    email: z.string().email('請輸入有效的 Email'),
+    recaptchaToken: z.string().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: '密碼不一致',
+    path: ['confirmPassword'],
+})
+export type RegisterFormValues = z.infer<typeof registerSchema>
+
+// Forgot Password Form
+export const forgotPasswordSchema = z.object({
+    email: z.string().email('請輸入有效的 Email'),
+    recaptchaToken: z.string().optional(),
+})
+export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
+
+// Vendor Work Form (廠商今日施工)
+// 必填：日期、到院/離院時間、廠商名稱、廠商負責人員、施工內容、負責人電話、棟別、樓層、地點、工作證號、人數
+// 非必填：到院/離院狀態、備註
+export const vendorWorkSchema = z.object({
+    entry_status: z.enum(['arrival', 'departure']),
+    work_date: z.string().min(1, '請選擇日期'),
+    arrival_time: z.string().nullable().optional(),
+    departure_time: z.string().nullable().optional(),
+    building: z.string().nullable().optional(),
+    floor: z.string().nullable().optional(),
+    location: z.string().nullable().optional(),
+    vendor_badge_id: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined) ? null : Number(val),
+        z.number().nullable().optional()
+    ),
+    head_count: z.preprocess(
+        (val) => (val === '' || val === null || val === undefined) ? null : Number(val),
+        z.number().nullable().optional()
+    ),
+    vendor_name: z.string().min(1, '請輸入廠商名稱'),
+    vendor_contact: z.string().min(1, '請輸入廠商負責人員'),
+    vendor_contact_phone: z.string().nullable().optional(),
+    work_content: z.string().min(1, '請輸入施工內容'),
+    note: z.string().nullable().optional(),
+}).superRefine((data, ctx) => {
+    if (data.entry_status === 'arrival') {
+        // 到院時驗證
+        if (!data.arrival_time) {
+            ctx.addIssue({ code: 'custom', message: '請輸入到院時間', path: ['arrival_time'] })
+        }
+        if (!data.building || data.building.trim() === '') {
+            ctx.addIssue({ code: 'custom', message: '請輸入棟別', path: ['building'] })
+        }
+        if (!data.floor || data.floor.trim() === '') {
+            ctx.addIssue({ code: 'custom', message: '請輸入樓層', path: ['floor'] })
+        }
+        if (!data.location || data.location.trim() === '') {
+            ctx.addIssue({ code: 'custom', message: '請輸入施工地點', path: ['location'] })
+        }
+        if (!data.vendor_badge_id) {
+            ctx.addIssue({ code: 'custom', message: '請輸入工作證號', path: ['vendor_badge_id'] })
+        }
+        if (!data.head_count) {
+            ctx.addIssue({ code: 'custom', message: '請輸入施工人數', path: ['head_count'] })
+        }
+        if (!data.vendor_contact_phone || data.vendor_contact_phone.trim() === '') {
+            ctx.addIssue({ code: 'custom', message: '請輸入負責人員電話', path: ['vendor_contact_phone'] })
+        }
+    } else {
+        // 離院時驗證
+        if (!data.departure_time) {
+            ctx.addIssue({ code: 'custom', message: '請輸入離院時間', path: ['departure_time'] })
+        }
+    }
+})
+export type VendorWorkFormValues = z.infer<typeof vendorWorkSchema>
+
+// Engineering Work Form (工務今日施工)
+export const engineeringWorkSchema = z.object({
+    start_date: z.string().min(1, '請選擇開始日期'),
+    end_date: z.string().min(1, '請選擇結束日期'),
+    time: z.string().min(1, '請輸入時間'),
+    vendor_name: z.string().min(1, '請輸入廠商'),
+    unit: z.string().min(1, '請輸入單位'),
+    engineering_contact: z.string().min(1, '請輸入工務負責人員'),
+    work_content: z.string().min(1, '請輸入內容'),
+    note: z.string().nullable().optional(),
+})
+export type EngineeringWorkFormValues = z.infer<typeof engineeringWorkSchema>
+
+// Pending Work Form (待處理工作)
+export const pendingWorkSchema = z.object({
+    start_date: z.string().min(1, '請選擇開始日期'),
+    end_date: z.string().min(1, '請選擇結束日期'),
+    time: z.string().min(1, '請輸入時間'),
+    vendor_name: z.string().min(1, '請輸入廠商'),
+    unit: z.string().min(1, '請輸入單位'),
+    engineering_contact: z.string().min(1, '請輸入工務負責人員'),
+    work_content: z.string().min(1, '請輸入內容'),
+    note: z.string().nullable().optional(),
+})
+export type PendingWorkFormValues = z.infer<typeof pendingWorkSchema>
+
+// Work Report Form (施工回報)
+export const workReportSchema = z.object({
+    report_date: z.string().min(1, '請選擇日期'),
+    report_time: z.string().min(1, '請輸入時間'),
+    vendor_name: z.string().min(1, '請輸入廠商'),
+    work_location: z.string().min(1, '請輸入施工地點'),
+    engineering_contact: z.string().min(1, '請輸入工務負責人員'),
+    work_status: z.enum(['completed', 'incomplete', 'abnormal']),
+    work_content: z.string().min(1, '請輸入工作內容'),
+    note: z.string().optional(),
+})
+export type WorkReportFormValues = z.infer<typeof workReportSchema>
+
+// User Management Form (帳號管理)
+// 注意：密碼驗證在元件中根據 isEdit 狀態動態處理
+export const userManagementSchema = z.object({
+    unit: z.string().min(1, '請輸入單位'),
+    user_name: z.string().min(1, '請輸入姓名'),
+    user_account: z.string().min(1, '請輸入帳號'),
+    password: z.string().optional(), // 密碼：新增必填，修改選填
+    confirmPassword: z.string().optional(), // 確認密碼
+    role: z.enum(['admin', 'staff']),
+    email: z.string().email('請輸入有效的 Email'),
+    is_active: z.boolean(),
+    // Lockout info
+    failed_attempts: z.number().nullable().optional(),
+    last_failed_at: z.string().nullable().optional(),
+    locked_until: z.string().nullable().optional(),
+}).superRefine((data, ctx) => {
+    // 如果有密碼，驗證密碼強度
+    if (data.password && data.password.length > 0) {
+        if (data.password.length < 8) {
+            ctx.addIssue({ code: 'custom', message: '密碼至少需要8個字元', path: ['password'] })
+        } else {
+            let count = 0
+            if (/[a-z]/.test(data.password)) count++
+            if (/[A-Z]/.test(data.password)) count++
+            if (/[0-9]/.test(data.password)) count++
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(data.password)) count++
+            if (count < 4) {
+                ctx.addIssue({ code: 'custom', message: '密碼需包含：大寫、小寫、數字及特殊符號', path: ['password'] })
+            }
+        }
+        // 驗證確認密碼
+        if (data.password !== data.confirmPassword) {
+            ctx.addIssue({ code: 'custom', message: '密碼不一致', path: ['confirmPassword'] })
+        }
+    }
+})
+export type UserManagementFormValues = z.infer<typeof userManagementSchema>
+
+// Work File Form (施工文件)
+export const workFileSchema = z.object({
+    date: z.string().min(1, '請選擇日期'),
+    vendor_name: z.string().optional(),
+    work_item: z.string().optional(),
+    uploader_name: z.string().min(1, '請輸入上傳人員'),
+    description: z.string().optional(),
+    file_url: z.string().optional(),
+    image_url: z.string().optional(),
+    video_url: z.string().optional(),
+    note: z.string().optional(),
+})
+export type WorkFileFormValues = z.infer<typeof workFileSchema>
