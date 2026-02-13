@@ -318,7 +318,7 @@ export default function WhiteboardClient({
                             <DropdownMenuItem onClick={() => router.push('/vendor-work')}>廠商今日施工</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => router.push('/engineering-work')}>工務今日施工</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => router.push('/pending-work')}>待處理工作</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/')}>All</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push('/dashboard')}>All</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
