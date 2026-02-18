@@ -7,7 +7,8 @@ import { format } from 'date-fns'
 import { motion } from 'framer-motion'
 import {
     Users, HardHat, FileClock, ClipboardCheck, History, UserCog, Activity,
-    LogOut, Home, Calendar, ChevronDown, FileText, RefreshCw
+    LogOut, Home, Calendar, ChevronDown, FileText, RefreshCw,
+    ArrowRight, Plus
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -20,10 +21,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
 
-// Cloudinary 圖片 URL
-const COMPANY_LOGO_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1770888486/%E5%85%AC%E5%8F%B8%E5%90%8D%E7%A8%B1_sms2oc.png'
-const WHITEBOARD_TEXT_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1770888437/%E5%B7%A5%E5%8B%99%E5%AE%A4%E9%9B%BB%E5%AD%90%E7%99%BD%E6%9D%BF_%E6%96%87%E5%AD%97_rfypqa.png'
-const HERO_BG_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1770889696/%E5%B7%A5%E5%8B%99%E5%AE%A4%E9%9B%BB%E5%AD%90%E7%99%BD%E6%9D%BF_%E5%BA%95%E5%9C%96_%E8%88%8A%E7%89%88_ckbx9g.png'
+// Cloudinary 背景圖 URL
+const HERO_BG_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1771430467/SCR-20260218-uqvg%E6%8B%B7%E8%B2%9D_kwiqmj.png'
 
 interface HomeClientProps {
     initialCounts: {
@@ -59,6 +58,13 @@ function useCountUp(target: number, duration: number = 1200) {
     return count
 }
 
+// 各卡片的空狀態文案
+const EMPTY_STATE_MESSAGES: Record<string, string> = {
+    blue: '今日暫無廠商施工',
+    amber: '今日暫無工務施工',
+    purple: '目前無待處理事項',
+}
+
 // 統計卡片元件
 function StatCard({
     icon: Icon,
@@ -66,6 +72,7 @@ function StatCard({
     count,
     color,
     href,
+    newHref,
     delay
 }: {
     icon: any
@@ -73,32 +80,69 @@ function StatCard({
     count: number
     color: string
     href: string
+    newHref: string
     delay: number
 }) {
     const router = useRouter()
     const animatedCount = useCountUp(count, 1500)
+    const isEmpty = count === 0
 
-    const colorMap: Record<string, { bg: string; icon: string; border: string; badge: string; hover: string }> = {
+    // 色彩設定：圖標容器使用主題色淺色背景 + 深色 icon
+    const colorMap: Record<string, {
+        bg: string
+        iconBg: string
+        iconColor: string
+        border: string
+        badge: string
+        hover: string
+        topBar: string
+        accent: string
+        countColor: string
+        linkColor: string
+        addBtnBg: string
+        addBtnHover: string
+    }> = {
         blue: {
-            bg: 'from-blue-500/10 to-blue-600/5',
-            icon: 'text-blue-500',
-            border: 'border-blue-200/50',
+            bg: 'from-blue-50 to-white',
+            iconBg: 'bg-blue-100',
+            iconColor: 'text-blue-600',
+            border: 'border-blue-100',
             badge: 'bg-blue-500',
-            hover: 'hover:border-blue-300 hover:shadow-blue-100/50'
+            hover: 'hover:border-blue-300 hover:shadow-blue-200/40',
+            topBar: 'bg-gradient-to-r from-blue-500 to-blue-400',
+            accent: 'text-blue-600',
+            countColor: 'text-blue-600',
+            linkColor: 'text-blue-500 group-hover:text-blue-600',
+            addBtnBg: 'bg-blue-500 hover:bg-blue-600',
+            addBtnHover: 'shadow-blue-500/25',
         },
         amber: {
-            bg: 'from-amber-500/10 to-amber-600/5',
-            icon: 'text-amber-500',
-            border: 'border-amber-200/50',
+            bg: 'from-amber-50 to-white',
+            iconBg: 'bg-amber-100',
+            iconColor: 'text-amber-600',
+            border: 'border-amber-100',
             badge: 'bg-amber-500',
-            hover: 'hover:border-amber-300 hover:shadow-amber-100/50'
+            hover: 'hover:border-amber-300 hover:shadow-amber-200/40',
+            topBar: 'bg-gradient-to-r from-amber-500 to-amber-400',
+            accent: 'text-amber-600',
+            countColor: 'text-amber-600',
+            linkColor: 'text-amber-500 group-hover:text-amber-600',
+            addBtnBg: 'bg-amber-500 hover:bg-amber-600',
+            addBtnHover: 'shadow-amber-500/25',
         },
         purple: {
-            bg: 'from-purple-500/10 to-purple-600/5',
-            icon: 'text-purple-500',
-            border: 'border-purple-200/50',
+            bg: 'from-purple-50 to-white',
+            iconBg: 'bg-purple-100',
+            iconColor: 'text-purple-600',
+            border: 'border-purple-100',
             badge: 'bg-purple-500',
-            hover: 'hover:border-purple-300 hover:shadow-purple-100/50'
+            hover: 'hover:border-purple-300 hover:shadow-purple-200/40',
+            topBar: 'bg-gradient-to-r from-purple-500 to-purple-400',
+            accent: 'text-purple-600',
+            countColor: 'text-purple-600',
+            linkColor: 'text-purple-500 group-hover:text-purple-600',
+            addBtnBg: 'bg-purple-500 hover:bg-purple-600',
+            addBtnHover: 'shadow-purple-500/25',
         }
     }
 
@@ -111,33 +155,62 @@ function StatCard({
             transition={{ delay, duration: 0.6, ease: 'easeOut' }}
             onClick={() => router.push(href)}
             className={`
-                relative cursor-pointer group
+                relative cursor-pointer group overflow-hidden
                 bg-gradient-to-br ${c.bg}
-                backdrop-blur-xl bg-white/80
+                backdrop-blur-xl bg-white/90
                 rounded-2xl border ${c.border} ${c.hover}
-                p-6 shadow-lg hover:shadow-xl
-                transition-all duration-300 hover:-translate-y-1
+                p-6 pt-8 shadow-lg
+                transition-all duration-300 ease-out
+                hover:-translate-y-2 hover:shadow-2xl
+                active:scale-[0.98] active:shadow-lg
             `}
         >
-            {/* 裝飾圓點 */}
-            <div className={`absolute top-4 right-4 w-2.5 h-2.5 rounded-full ${c.badge} animate-pulse`} />
+            {/* 頂部色條 */}
+            <div className={`absolute top-0 left-0 right-0 h-1 ${c.topBar}`} />
 
-            <div className="flex items-center gap-3 mb-4">
-                <div className={`p-2.5 rounded-xl bg-white/80 shadow-sm ${c.icon}`}>
+            {/* 裝飾圓點 */}
+            <div className={`absolute top-5 right-4 w-2 h-2 rounded-full ${c.badge} animate-pulse`} />
+
+            {/* 圖標 + 標題 */}
+            <div className="flex items-center gap-3 mb-5">
+                <div className={`p-3 rounded-xl ${c.iconBg} ${c.iconColor} shadow-sm`}>
                     <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-semibold text-slate-600">{label}</h3>
+                <h3 className="text-base font-semibold text-slate-700">{label}</h3>
             </div>
 
-            <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-black text-slate-800 tabular-nums tracking-tight">
-                    {animatedCount}
-                </span>
-                <span className="text-base font-medium text-slate-400">筆</span>
-            </div>
+            {/* 數字 / 空狀態 */}
+            {isEmpty ? (
+                <div className="mb-1">
+                    <span className="text-4xl font-black text-slate-300 tabular-nums tracking-tight">0</span>
+                    <span className="text-base font-medium text-slate-300 ml-2">筆</span>
+                    <p className="text-sm text-slate-400 mt-2">{EMPTY_STATE_MESSAGES[color]}</p>
+                </div>
+            ) : (
+                <div className="flex items-baseline gap-2 mb-1">
+                    <span className={`text-5xl font-black ${c.countColor} tabular-nums tracking-tight`}>
+                        {animatedCount}
+                    </span>
+                    <span className="text-base font-medium text-slate-400">筆</span>
+                </div>
+            )}
 
-            <div className="mt-3 text-sm text-slate-400 group-hover:text-slate-500 transition-colors">
-                點擊查看詳情 →
+            {/* 底部操作列：查看詳情 + 新增按鈕 */}
+            <div className="mt-3 flex items-center justify-between">
+                <div className={`text-sm font-medium flex items-center gap-1 ${c.linkColor} transition-colors`}>
+                    點擊查看詳情
+                    <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1.5" />
+                </div>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        router.push(newHref)
+                    }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white ${c.addBtnBg} shadow-md ${c.addBtnHover} transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-95`}
+                >
+                    <Plus className="w-3.5 h-3.5" />
+                    新增
+                </button>
             </div>
         </motion.div>
     )
@@ -153,12 +226,12 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
     // 使用 null 初始化避免 SSR/Client hydration mismatch
     const [currentTime, setCurrentTime] = useState<Date | null>(null)
 
-    // 時鐘
+    // 時鐘 — 精簡到分鐘，每 60 秒更新
     useEffect(() => {
         setCurrentTime(new Date())
         const timer = setInterval(() => {
             setCurrentTime(new Date())
-        }, 1000)
+        }, 60000)
         return () => clearInterval(timer)
     }, [])
 
@@ -195,13 +268,13 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {/* 時鐘 */}
+                    {/* 時鐘 — 精簡為 yyyy/MM/dd HH:mm */}
                     <div className="text-base font-medium text-slate-600 tabular-nums" suppressHydrationWarning>
-                        {currentTime ? format(currentTime, 'yyyy/MM/dd HH:mm:ss') : ''}
+                        {currentTime ? format(currentTime, 'yyyy/MM/dd HH:mm') : ''}
                     </div>
 
                     {/* 首頁 */}
-                    <Button variant="ghost" className="gap-2" onClick={() => router.push('/')}>
+                    <Button variant="ghost" className="gap-2 active:scale-95 transition-transform" onClick={() => router.push('/')}>
                         <Home className="w-4 h-4" />
                         首頁
                     </Button>
@@ -209,7 +282,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                     {/* 今日-待處理 Dropdown */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2">
+                            <Button variant="ghost" className="gap-2 active:scale-95 transition-transform">
                                 <Calendar className="w-4 h-4" />
                                 今日-待處理
                                 <ChevronDown className="w-3 h-3" />
@@ -226,7 +299,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                     {/* 施工回報 */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2">
+                            <Button variant="ghost" className="gap-2 active:scale-95 transition-transform">
                                 <ClipboardCheck className="w-4 h-4" />
                                 施工回報
                                 <ChevronDown className="w-3 h-3" />
@@ -245,7 +318,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                     {/* 歷史記錄 */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2">
+                            <Button variant="ghost" className="gap-2 active:scale-95 transition-transform">
                                 <History className="w-4 h-4" />
                                 歷史記錄
                                 <ChevronDown className="w-3 h-3" />
@@ -271,7 +344,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                     {profile?.role === 'admin' && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="gap-2">
+                                <Button variant="ghost" className="gap-2 active:scale-95 transition-transform">
                                     <UserCog className="w-4 h-4" />
                                     系統管理
                                     <ChevronDown className="w-3 h-3" />
@@ -312,84 +385,31 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                                     </Badge>
                                 </div>
                             </div>
-                            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1 text-red-600 border-red-200 hover:bg-red-50">
+                            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1 text-red-600 border-red-200 hover:bg-red-50 active:scale-95 transition-transform">
                                 <LogOut className="w-3 h-3" /> 登出
                             </Button>
                         </div>
                     ) : (
-                        <Button onClick={() => router.push('/login')}>登入</Button>
+                        <Button onClick={() => router.push('/login')} className="active:scale-95 transition-transform">登入</Button>
                     )}
 
-                    <Button variant="outline" size="sm" onClick={refreshCounts}>
+                    <Button variant="outline" size="sm" onClick={refreshCounts} className="active:scale-95 transition-transform">
                         <RefreshCw className="w-4 h-4" />
                     </Button>
                 </div>
             </header>
 
             {/* ===== Hero Section ===== */}
-            <section className="relative overflow-hidden">
-                {/* 背景圖片 */}
+            <section className="relative overflow-hidden" style={{ height: '40vh' }}>
+                {/* 背景圖片 — 完整呈現 */}
                 <div className="absolute inset-0">
                     <img
                         src={HERO_BG_URL}
                         alt="工務室電子白板背景"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover object-top"
                     />
-                    {/* 漸層遮罩 */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/85 via-slate-800/75 to-slate-900/65" />
                     {/* 底部漸層過渡 */}
                     <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-50 to-transparent" />
-                </div>
-
-                {/* Hero 內容 */}
-                <div className="relative z-10 max-w-7xl mx-auto px-6 py-16 md:py-24">
-                    <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
-                        {/* 左側：公司名稱 Logo */}
-                        <motion.div
-                            initial={{ opacity: 0, x: -40 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.8, ease: 'easeOut' }}
-                            className="flex-shrink-0"
-                        >
-                            <img
-                                src={COMPANY_LOGO_URL}
-                                alt="奇美醫療財團法人 佳里奇美醫院"
-                                className="h-20 md:h-28 w-auto drop-shadow-[0_4px_20px_rgba(255,255,255,0.3)]"
-                            />
-                        </motion.div>
-
-                        {/* 分隔線 */}
-                        <motion.div
-                            initial={{ opacity: 0, scaleY: 0 }}
-                            animate={{ opacity: 1, scaleY: 1 }}
-                            transition={{ delay: 0.4, duration: 0.5 }}
-                            className="hidden md:block w-px h-24 bg-gradient-to-b from-transparent via-white/40 to-transparent"
-                        />
-
-                        {/* 右側：工務室電子白板文字 */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 40 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
-                            className="flex-shrink-0"
-                        >
-                            <img
-                                src={WHITEBOARD_TEXT_URL}
-                                alt="工務室電子白板"
-                                className="h-16 md:h-24 w-auto drop-shadow-[0_4px_20px_rgba(255,255,255,0.3)]"
-                            />
-                        </motion.div>
-                    </div>
-
-                    {/* 副標題 */}
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6, duration: 0.6 }}
-                        className="text-center mt-8 text-white/60 text-base md:text-lg tracking-widest font-light"
-                    >
-                        施工管理 ・ 進度追蹤 ・ 即時掌握
-                    </motion.p>
                 </div>
             </section>
 
@@ -402,6 +422,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         count={counts.vendor}
                         color="blue"
                         href="/vendor-work"
+                        newHref="/vendor-work/new"
                         delay={0.3}
                     />
                     <StatCard
@@ -410,6 +431,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         count={counts.engineering}
                         color="amber"
                         href="/engineering-work"
+                        newHref="/engineering-work/new"
                         delay={0.45}
                     />
                     <StatCard
@@ -418,6 +440,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         count={counts.pending}
                         color="purple"
                         href="/pending-work"
+                        newHref="/pending-work/new"
                         delay={0.6}
                     />
                 </div>
