@@ -1,7 +1,7 @@
 // Register Client Component - handles user registration
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 import { createClient } from '@/lib/supabase/client'
 import { registerSchema, type RegisterFormValues } from '@/lib/validations/schemas'
+import { hashPassword } from '@/lib/crypto'
+import { loadRecaptchaScript, executeRecaptcha, verifyRecaptchaToken } from '@/lib/recaptcha'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,7 +60,7 @@ function PasswordStrength({ password }: { password: string }) {
                     />
                 </div>
                 <span className={`text-xs font-medium ${strengthLevel === 'weak' ? 'text-red-600' :
-                        strengthLevel === 'medium' ? 'text-yellow-600' : 'text-green-600'
+                    strengthLevel === 'medium' ? 'text-yellow-600' : 'text-green-600'
                     }`}>
                     {strengthLabels[strengthLevel]}
                 </span>
@@ -108,14 +110,32 @@ export default function RegisterClient() {
 
     const watchPassword = watch('password')
 
+    // 載入 reCAPTCHA v3 Script
+    useEffect(() => {
+        loadRecaptchaScript().catch(console.error)
+    }, [])
+
     const onSubmit = async (data: RegisterFormValues) => {
         setError(null)
 
         try {
-            // 1. Create auth user in Supabase
+            // 0. reCAPTCHA 驗證
+            const recaptchaToken = await executeRecaptcha('register')
+            if (recaptchaToken) {
+                const captchaResult = await verifyRecaptchaToken(recaptchaToken, 'register')
+                if (!captchaResult.success) {
+                    setError('人機驗證失敗，請重試')
+                    return
+                }
+            }
+
+            // 1. SHA-256 + Key-stretching 前端預處理
+            const hashedPassword = await hashPassword(data.password)
+
+            // 2. Create auth user in Supabase
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: data.email,
-                password: data.password,
+                password: hashedPassword,
                 options: {
                     emailRedirectTo: `${window.location.origin}/login`,
                     data: {

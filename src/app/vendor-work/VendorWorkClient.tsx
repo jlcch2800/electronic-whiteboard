@@ -214,24 +214,20 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                 <Plus className="w-4 h-4 mr-1" /> 新增
                             </Button>
 
-                            {isLoggedIn && (
-                                <>
-                                    <Button size="sm" variant="outline" onClick={() => {
-                                        const id = Array.from(selected)[0]
-                                        if (id) router.push(`/vendor-work/${id}/edit`)
-                                    }} disabled={selected.size !== 1}>
-                                        <Edit className="w-4 h-4 mr-1" /> 修改
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                                        onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })}
-                                        disabled={selected.size === 0}>
-                                        <Trash2 className="w-4 h-4 mr-1" /> 刪除
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={exportToExcel}>
-                                        <Download className="w-4 h-4 mr-1" /> 匯出
-                                    </Button>
-                                </>
-                            )}
+                            <Button size="sm" variant="outline" onClick={() => {
+                                const id = Array.from(selected)[0]
+                                if (id) router.push(`/vendor-work/${id}/edit`)
+                            }} disabled={selected.size !== 1}>
+                                <Edit className="w-4 h-4 mr-1" /> 修改
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                                onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })}
+                                disabled={selected.size === 0}>
+                                <Trash2 className="w-4 h-4 mr-1" /> 刪除
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={exportToExcel}>
+                                <Download className="w-4 h-4 mr-1" /> 匯出
+                            </Button>
                             <Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
                                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                             </Button>
@@ -243,14 +239,12 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    {isLoggedIn && (
-                                        <TableHead className="w-12">
-                                            <Checkbox
-                                                checked={selected.size === data.length && data.length > 0}
-                                                onCheckedChange={toggleSelectAll}
-                                            />
-                                        </TableHead>
-                                    )}
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={selected.size === data.length && data.length > 0}
+                                            onCheckedChange={toggleSelectAll}
+                                        />
+                                    </TableHead>
                                     <TableHead className="w-12">#</TableHead>
                                     <TableHead>狀態</TableHead>
                                     <TableHead>日期</TableHead>
@@ -271,21 +265,19 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                             <TableBody>
                                 {data.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={isLoggedIn ? 17 : 16} className="text-center py-8 text-slate-400">
+                                        <TableCell colSpan={17} className="text-center py-8 text-slate-400">
                                             查無資料
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     data.map((v: any, index: number) => (
                                         <TableRow key={v.id} className={`hover:bg-blue-50/50 ${selected.has(v.id) ? 'bg-blue-100' : ''}`}>
-                                            {isLoggedIn && (
-                                                <TableCell>
-                                                    <Checkbox
-                                                        checked={selected.has(v.id)}
-                                                        onCheckedChange={() => toggleSelect(v.id)}
-                                                    />
-                                                </TableCell>
-                                            )}
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={selected.has(v.id)}
+                                                    onCheckedChange={() => toggleSelect(v.id)}
+                                                />
+                                            </TableCell>
                                             <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
                                             <TableCell>
                                                 <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'}>

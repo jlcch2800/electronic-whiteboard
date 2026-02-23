@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { hashPasswordServer } from '@/lib/crypto-server'
 import { format } from 'date-fns'
 
 // Helper to log changes (Updated for password tracking)
@@ -81,10 +82,13 @@ export async function POST(request: NextRequest) {
         // Use Admin client to create user with password
         const supabaseAdmin = createAdminClient()
 
+        // SHA-256 + Key-stretching——與前端 hash 一致
+        const hashedPassword = hashPasswordServer(password)
+
         // Create auth user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email,
-            password,
+            password: hashedPassword,
             email_confirm: true, // Auto-confirm email
             user_metadata: { user_name }
         })
@@ -205,8 +209,10 @@ export async function PUT(request: NextRequest) {
 
         // Update password if provided
         if (password && password.trim() !== '') {
+            // SHA-256 + Key-stretching——與前端 hash 一致
+            const hashedPassword = hashPasswordServer(password)
             const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, {
-                password,
+                password: hashedPassword,
                 email
             })
 

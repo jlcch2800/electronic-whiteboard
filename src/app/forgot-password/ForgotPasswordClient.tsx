@@ -1,7 +1,7 @@
 // Forgot Password Client Component - handles password reset request
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 
 import { createClient } from '@/lib/supabase/client'
 import { forgotPasswordSchema, type ForgotPasswordFormValues } from '@/lib/validations/schemas'
+import { loadRecaptchaScript, executeRecaptcha, verifyRecaptchaToken } from '@/lib/recaptcha'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,10 +30,25 @@ export default function ForgotPasswordClient() {
         }
     })
 
+    // 載入 reCAPTCHA v3 Script
+    useEffect(() => {
+        loadRecaptchaScript().catch(console.error)
+    }, [])
+
     const onSubmit = async (data: ForgotPasswordFormValues) => {
         setError(null)
 
         try {
+            // 0. reCAPTCHA 驗證
+            const recaptchaToken = await executeRecaptcha('forgot_password')
+            if (recaptchaToken) {
+                const captchaResult = await verifyRecaptchaToken(recaptchaToken, 'forgot_password')
+                if (!captchaResult.success) {
+                    setError('人機驗證失敗，請重試')
+                    return
+                }
+            }
+
             const { error: resetError } = await supabase.auth.resetPasswordForEmail(data.email, {
                 redirectTo: `${window.location.origin}/reset-password`,
             })

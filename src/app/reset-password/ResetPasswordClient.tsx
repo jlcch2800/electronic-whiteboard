@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import * as z from 'zod'
 
 import { createClient } from '@/lib/supabase/client'
+import { hashPassword } from '@/lib/crypto'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -81,7 +82,7 @@ function PasswordStrength({ password }: { password: string }) {
                     />
                 </div>
                 <span className={`text-xs font-medium ${strengthLevel === 'weak' ? 'text-red-600' :
-                        strengthLevel === 'medium' ? 'text-yellow-600' : 'text-green-600'
+                    strengthLevel === 'medium' ? 'text-yellow-600' : 'text-green-600'
                     }`}>
                     {strengthLabels[strengthLevel]}
                 </span>
@@ -142,8 +143,11 @@ export default function ResetPasswordClient() {
         setError(null)
 
         try {
+            // SHA-256 + Key-stretching 前端預處理
+            const hashedPassword = await hashPassword(data.password)
+
             const { error: updateError } = await supabase.auth.updateUser({
-                password: data.password
+                password: hashedPassword
             })
 
             if (updateError) {

@@ -463,25 +463,20 @@ export default function WhiteboardClient({
                             <Button size="sm" onClick={() => router.push('/vendor-work/new')} className="bg-green-600 hover:bg-green-700">
                                 <Plus className="w-4 h-4 mr-1" /> 新增
                             </Button>
-                            {/* 登入後才顯示的按鈕 */}
-                            {isLoggedIn && (
-                                <>
-                                    <Button size="sm" variant="outline" onClick={() => {
-                                        const id = Array.from(vendorSelected)[0]
-                                        if (id) router.push(`/vendor-work/${id}/edit`)
-                                    }} disabled={vendorSelected.size !== 1}>
-                                        <Edit className="w-4 h-4 mr-1" /> 修改
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                                        onClick={() => setDeleteDialog({ open: true, type: 'vendor', ids: Array.from(vendorSelected) })}
-                                        disabled={vendorSelected.size === 0}>
-                                        <Trash2 className="w-4 h-4 mr-1" /> 刪除
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => exportToExcel('vendor')}>
-                                        <Download className="w-4 h-4 mr-1" /> 匯出
-                                    </Button>
-                                </>
-                            )}
+                            <Button size="sm" variant="outline" onClick={() => {
+                                const id = Array.from(vendorSelected)[0]
+                                if (id) router.push(`/vendor-work/${id}/edit`)
+                            }} disabled={vendorSelected.size !== 1}>
+                                <Edit className="w-4 h-4 mr-1" /> 修改
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                                onClick={() => setDeleteDialog({ open: true, type: 'vendor', ids: Array.from(vendorSelected) })}
+                                disabled={vendorSelected.size === 0}>
+                                <Trash2 className="w-4 h-4 mr-1" /> 刪除
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => exportToExcel('vendor')}>
+                                <Download className="w-4 h-4 mr-1" /> 匯出
+                            </Button>
                             <Badge variant="outline">{vendors.length} 筆</Badge>
                         </div>
                     </div>
@@ -490,14 +485,12 @@ export default function WhiteboardClient({
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    {isLoggedIn && (
-                                        <TableHead className="w-12">
-                                            <Checkbox
-                                                checked={vendorSelected.size === vendors.length && vendors.length > 0}
-                                                onCheckedChange={() => toggleSelectAll(vendors, vendorSelected, setVendorSelected)}
-                                            />
-                                        </TableHead>
-                                    )}
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={vendorSelected.size === vendors.length && vendors.length > 0}
+                                            onCheckedChange={() => toggleSelectAll(vendors, vendorSelected, setVendorSelected)}
+                                        />
+                                    </TableHead>
                                     <TableHead className="w-12">#</TableHead>
                                     <TableHead>狀態</TableHead>
                                     <TableHead>日期</TableHead>
@@ -518,21 +511,19 @@ export default function WhiteboardClient({
                             <TableBody>
                                 {vendors.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={isLoggedIn ? 17 : 16} className="text-center py-8 text-slate-400">
+                                        <TableCell colSpan={17} className="text-center py-8 text-slate-400">
                                             查無資料
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     vendors.map((v: any, index: number) => (
                                         <TableRow key={v.id} className={`hover:bg-blue-50/50 ${vendorSelected.has(v.id) ? 'bg-blue-100' : ''}`}>
-                                            {isLoggedIn && (
-                                                <TableCell>
-                                                    <Checkbox
-                                                        checked={vendorSelected.has(v.id)}
-                                                        onCheckedChange={() => toggleSelect(v.id, vendorSelected, setVendorSelected)}
-                                                    />
-                                                </TableCell>
-                                            )}
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={vendorSelected.has(v.id)}
+                                                    onCheckedChange={() => toggleSelect(v.id, vendorSelected, setVendorSelected)}
+                                                />
+                                            </TableCell>
                                             <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
                                             <TableCell>
                                                 <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'}>
@@ -597,24 +588,20 @@ export default function WhiteboardClient({
                             <Button size="sm" onClick={() => router.push('/engineering-work/new')} className="bg-amber-600 hover:bg-amber-700">
                                 <Plus className="w-4 h-4 mr-1" /> 新增
                             </Button>
-                            {isLoggedIn && (
-                                <>
-                                    <Button size="sm" variant="outline" onClick={() => {
-                                        const id = Array.from(engSelected)[0]
-                                        if (id) router.push(`/engineering-work/${id}/edit`)
-                                    }} disabled={engSelected.size !== 1}>
-                                        <Edit className="w-4 h-4 mr-1" /> 修改
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                                        onClick={() => setDeleteDialog({ open: true, type: 'engineering', ids: Array.from(engSelected) })}
-                                        disabled={engSelected.size === 0}>
-                                        <Trash2 className="w-4 h-4 mr-1" /> 刪除
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => exportToExcel('engineering')}>
-                                        <Download className="w-4 h-4 mr-1" /> 匯出
-                                    </Button>
-                                </>
-                            )}
+                            <Button size="sm" variant="outline" onClick={() => {
+                                const id = Array.from(engSelected)[0]
+                                if (id) router.push(`/engineering-work/${id}/edit`)
+                            }} disabled={engSelected.size !== 1}>
+                                <Edit className="w-4 h-4 mr-1" /> 修改
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                                onClick={() => setDeleteDialog({ open: true, type: 'engineering', ids: Array.from(engSelected) })}
+                                disabled={engSelected.size === 0}>
+                                <Trash2 className="w-4 h-4 mr-1" /> 刪除
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => exportToExcel('engineering')}>
+                                <Download className="w-4 h-4 mr-1" /> 匯出
+                            </Button>
                             <Badge variant="outline">{engineering.length} 筆</Badge>
                         </div>
                     </div>
@@ -623,14 +610,12 @@ export default function WhiteboardClient({
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    {isLoggedIn && (
-                                        <TableHead className="w-12">
-                                            <Checkbox
-                                                checked={engSelected.size === engineering.length && engineering.length > 0}
-                                                onCheckedChange={() => toggleSelectAll(engineering, engSelected, setEngSelected)}
-                                            />
-                                        </TableHead>
-                                    )}
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={engSelected.size === engineering.length && engineering.length > 0}
+                                            onCheckedChange={() => toggleSelectAll(engineering, engSelected, setEngSelected)}
+                                        />
+                                    </TableHead>
                                     <TableHead className="w-12">#</TableHead>
                                     <TableHead>開始日期</TableHead>
                                     <TableHead>結束日期</TableHead>
@@ -645,21 +630,19 @@ export default function WhiteboardClient({
                             <TableBody>
                                 {engineering.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={isLoggedIn ? 11 : 10} className="text-center py-8 text-slate-400">
+                                        <TableCell colSpan={11} className="text-center py-8 text-slate-400">
                                             查無資料
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     engineering.map((e: any, index: number) => (
                                         <TableRow key={e.id} className={`hover:bg-amber-50/50 ${engSelected.has(e.id) ? 'bg-amber-100' : ''}`}>
-                                            {isLoggedIn && (
-                                                <TableCell>
-                                                    <Checkbox
-                                                        checked={engSelected.has(e.id)}
-                                                        onCheckedChange={() => toggleSelect(e.id, engSelected, setEngSelected)}
-                                                    />
-                                                </TableCell>
-                                            )}
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={engSelected.has(e.id)}
+                                                    onCheckedChange={() => toggleSelect(e.id, engSelected, setEngSelected)}
+                                                />
+                                            </TableCell>
                                             <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
                                             <TableCell className="font-mono">{e.start_date}</TableCell>
                                             <TableCell className="font-mono">{e.end_date}</TableCell>
@@ -714,24 +697,20 @@ export default function WhiteboardClient({
                             <Button size="sm" onClick={() => router.push('/pending-work/new')} className="bg-purple-600 hover:bg-purple-700">
                                 <Plus className="w-4 h-4 mr-1" /> 新增
                             </Button>
-                            {isLoggedIn && (
-                                <>
-                                    <Button size="sm" variant="outline" onClick={() => {
-                                        const id = Array.from(pendingSelected)[0]
-                                        if (id) router.push(`/pending-work/${id}/edit`)
-                                    }} disabled={pendingSelected.size !== 1}>
-                                        <Edit className="w-4 h-4 mr-1" /> 修改
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                                        onClick={() => setDeleteDialog({ open: true, type: 'pending', ids: Array.from(pendingSelected) })}
-                                        disabled={pendingSelected.size === 0}>
-                                        <Trash2 className="w-4 h-4 mr-1" /> 刪除
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => exportToExcel('pending')}>
-                                        <Download className="w-4 h-4 mr-1" /> 匯出
-                                    </Button>
-                                </>
-                            )}
+                            <Button size="sm" variant="outline" onClick={() => {
+                                const id = Array.from(pendingSelected)[0]
+                                if (id) router.push(`/pending-work/${id}/edit`)
+                            }} disabled={pendingSelected.size !== 1}>
+                                <Edit className="w-4 h-4 mr-1" /> 修改
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                                onClick={() => setDeleteDialog({ open: true, type: 'pending', ids: Array.from(pendingSelected) })}
+                                disabled={pendingSelected.size === 0}>
+                                <Trash2 className="w-4 h-4 mr-1" /> 刪除
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => exportToExcel('pending')}>
+                                <Download className="w-4 h-4 mr-1" /> 匯出
+                            </Button>
                             <Badge variant="outline">{pendingWork.length} 筆</Badge>
                         </div>
                     </div>
@@ -740,14 +719,12 @@ export default function WhiteboardClient({
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    {isLoggedIn && (
-                                        <TableHead className="w-12">
-                                            <Checkbox
-                                                checked={pendingSelected.size === pendingWork.length && pendingWork.length > 0}
-                                                onCheckedChange={() => toggleSelectAll(pendingWork, pendingSelected, setPendingSelected)}
-                                            />
-                                        </TableHead>
-                                    )}
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={pendingSelected.size === pendingWork.length && pendingWork.length > 0}
+                                            onCheckedChange={() => toggleSelectAll(pendingWork, pendingSelected, setPendingSelected)}
+                                        />
+                                    </TableHead>
                                     <TableHead className="w-12">#</TableHead>
                                     <TableHead>開始日期</TableHead>
                                     <TableHead>結束日期</TableHead>
@@ -762,21 +739,19 @@ export default function WhiteboardClient({
                             <TableBody>
                                 {pendingWork.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={isLoggedIn ? 11 : 10} className="text-center py-8 text-slate-400">
+                                        <TableCell colSpan={11} className="text-center py-8 text-slate-400">
                                             查無資料
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     pendingWork.map((p: any, index: number) => (
                                         <TableRow key={p.id} className={`hover:bg-purple-50/50 ${pendingSelected.has(p.id) ? 'bg-purple-100' : ''}`}>
-                                            {isLoggedIn && (
-                                                <TableCell>
-                                                    <Checkbox
-                                                        checked={pendingSelected.has(p.id)}
-                                                        onCheckedChange={() => toggleSelect(p.id, pendingSelected, setPendingSelected)}
-                                                    />
-                                                </TableCell>
-                                            )}
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={pendingSelected.has(p.id)}
+                                                    onCheckedChange={() => toggleSelect(p.id, pendingSelected, setPendingSelected)}
+                                                />
+                                            </TableCell>
                                             <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
                                             <TableCell className="font-mono">{p.start_date}</TableCell>
                                             <TableCell className="font-mono">{p.end_date}</TableCell>

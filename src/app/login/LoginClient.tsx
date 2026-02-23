@@ -1,7 +1,7 @@
 // Login Client Component - handles useSearchParams which requires Suspense
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -12,6 +12,8 @@ import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { loginSchema, type LoginFormValues } from '@/lib/validations/schemas'
 import { checkUserLockStatus, handleLoginSuccess, handleLoginFailure } from '@/actions/auth'
+import { hashPassword } from '@/lib/crypto'
+import { loadRecaptchaScript, executeRecaptcha, verifyRecaptchaToken } from '@/lib/recaptcha'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,6 +37,11 @@ export default function LoginClient() {
         }
     })
 
+    // 載入 reCAPTCHA v3 Script
+    useEffect(() => {
+        loadRecaptchaScript().catch(console.error)
+    }, [])
+
     const handleEmailBlur = async (email: string) => {
         if (!email) return
         try {
@@ -53,6 +60,16 @@ export default function LoginClient() {
         setIsLockedOut(false)
 
         try {
+            // 0. reCAPTCHA 驗證
+            const recaptchaToken = await executeRecaptcha('login')
+            if (recaptchaToken) {
+                const captchaResult = await verifyRecaptchaToken(recaptchaToken, 'login')
+                if (!captchaResult.success) {
+                    setError('人機驗證失敗，請重試')
+                    return
+                }
+            }
+
             // 1. Check if user is locked BEFORE trying to sign in
             const lockStatus = await checkUserLockStatus(data.email)
             if (lockStatus.isLocked) {
@@ -61,16 +78,37 @@ export default function LoginClient() {
                 return
             }
 
-            // 2. Attempt Sign In
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            // 2. SHA-256 + Key-stretching 前端預處理
+            const hashedPassword = await hashPassword(data.password)
+
+            // 3. 嘗試用 hash 後的密碼登入
+            let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: data.email,
-                password: data.password,
+                password: hashedPassword,
             })
 
-            // 3. Handle Result
+            // 4. Fallback 遷移：hash 登入失敗，嘗試明文登入
+            //    若明文成功，自動將密碼更新為 hash 版本
+            if (authError?.message?.includes('Invalid login credentials')) {
+                const { data: fallbackData, error: fallbackError } = await supabase.auth.signInWithPassword({
+                    email: data.email,
+                    password: data.password,
+                })
+
+                if (!fallbackError && fallbackData.user) {
+                    // 明文登入成功 → 自動遷移密碼為 hash 版本
+                    await supabase.auth.updateUser({ password: hashedPassword })
+                    authData = fallbackData
+                    authError = null
+                } else {
+                    // 兩者都失敗 → 真正的密碼錯誤
+                    authError = fallbackError || authError
+                }
+            }
+
+            // 5. Handle Result
             if (authError) {
                 if (authError.message.includes('Invalid login credentials')) {
-                    // Log failure and check for new lock status
                     const result = await handleLoginFailure(data.email)
                     if (result?.isLocked) {
                         setError('帳號或密碼錯誤次數過多，目前無法輸入')
@@ -86,8 +124,8 @@ export default function LoginClient() {
                 return
             }
 
-            // 4. Handle Success
-            if (authData.user) {
+            // 6. Handle Success
+            if (authData?.user) {
                 await handleLoginSuccess(authData.user.id, data.email)
             }
 

@@ -22,7 +22,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 
 // Cloudinary 背景圖 URL
-const HERO_BG_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1771430467/SCR-20260218-uqvg%E6%8B%B7%E8%B2%9D_kwiqmj.png'
+const HERO_BG_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1771733639/SCR-20260222-kxyc-_dzo3aj.png'
 
 interface HomeClientProps {
     initialCounts: {

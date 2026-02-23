@@ -4,6 +4,8 @@ import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { Agentation } from "agentation";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GlobalErrorHandler } from "@/components/GlobalErrorHandler";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -29,11 +31,14 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <body className={`${inter.variable} ${notoSansTC.variable} font-sans antialiased`}>
-        <AuthProvider>
-          {children}
-          <Toaster />
-          <Agentation />
-        </AuthProvider>
+        <ErrorBoundary source="RootLayout">
+          <AuthProvider>
+            {children}
+            <Toaster />
+            <Agentation />
+            <GlobalErrorHandler />
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

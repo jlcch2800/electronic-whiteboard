@@ -1,7 +1,7 @@
 // Validation Schemas for Forms
 import * as z from 'zod'
 
-// Password Strength Validation (需符合4種規則)
+// Password Strength Validation (需符合至少3種規則)
 const passwordSchema = z.string()
     .min(8, '密碼至少需要8個字元')
     .refine((val) => {
@@ -10,8 +10,8 @@ const passwordSchema = z.string()
         if (/[A-Z]/.test(val)) count++
         if (/[0-9]/.test(val)) count++
         if (/[!@#$%^&*(),.?":{}|<>]/.test(val)) count++
-        return count >= 4
-    }, '密碼需包含：大寫、小寫、數字及特殊符號')
+        return count >= 3
+    }, '密碼需符合至少 3 項條件：大寫、小寫、數字、特殊符號')
 
 // Login Form
 export const loginSchema = z.object({
@@ -165,8 +165,8 @@ export const userManagementSchema = z.object({
             if (/[A-Z]/.test(data.password)) count++
             if (/[0-9]/.test(data.password)) count++
             if (/[!@#$%^&*(),.?":{}|<>]/.test(data.password)) count++
-            if (count < 4) {
-                ctx.addIssue({ code: 'custom', message: '密碼需包含：大寫、小寫、數字及特殊符號', path: ['password'] })
+            if (count < 3) {
+                ctx.addIssue({ code: 'custom', message: '密碼需符合至少 3 項條件：大寫、小寫、數字、特殊符號', path: ['password'] })
             }
         }
         // 驗證確認密碼

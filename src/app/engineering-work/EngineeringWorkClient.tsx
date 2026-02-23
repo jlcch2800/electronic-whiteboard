@@ -208,24 +208,20 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                 <Plus className="w-4 h-4 mr-1" /> 新增
                             </Button>
 
-                            {isLoggedIn && (
-                                <>
-                                    <Button size="sm" variant="outline" onClick={() => {
-                                        const id = Array.from(selected)[0]
-                                        if (id) router.push(`/engineering-work/${id}/edit`)
-                                    }} disabled={selected.size !== 1}>
-                                        <Edit className="w-4 h-4 mr-1" /> 修改
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                                        onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })}
-                                        disabled={selected.size === 0}>
-                                        <Trash2 className="w-4 h-4 mr-1" /> 刪除
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={exportToExcel}>
-                                        <Download className="w-4 h-4 mr-1" /> 匯出
-                                    </Button>
-                                </>
-                            )}
+                            <Button size="sm" variant="outline" onClick={() => {
+                                const id = Array.from(selected)[0]
+                                if (id) router.push(`/engineering-work/${id}/edit`)
+                            }} disabled={selected.size !== 1}>
+                                <Edit className="w-4 h-4 mr-1" /> 修改
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
+                                onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })}
+                                disabled={selected.size === 0}>
+                                <Trash2 className="w-4 h-4 mr-1" /> 刪除
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={exportToExcel}>
+                                <Download className="w-4 h-4 mr-1" /> 匯出
+                            </Button>
                             <Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
                                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                             </Button>
@@ -237,14 +233,12 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    {isLoggedIn && (
-                                        <TableHead className="w-12">
-                                            <Checkbox
-                                                checked={selected.size === data.length && data.length > 0}
-                                                onCheckedChange={toggleSelectAll}
-                                            />
-                                        </TableHead>
-                                    )}
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={selected.size === data.length && data.length > 0}
+                                            onCheckedChange={toggleSelectAll}
+                                        />
+                                    </TableHead>
                                     <TableHead className="w-12">#</TableHead>
                                     <TableHead>開始日期</TableHead>
                                     <TableHead>結束日期</TableHead>
@@ -259,21 +253,19 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                             <TableBody>
                                 {data.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={isLoggedIn ? 11 : 10} className="text-center py-8 text-slate-400">
+                                        <TableCell colSpan={11} className="text-center py-8 text-slate-400">
                                             查無資料
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     data.map((e: any, index: number) => (
                                         <TableRow key={e.id} className={`hover:bg-amber-50/50 ${selected.has(e.id) ? 'bg-amber-100' : ''}`}>
-                                            {isLoggedIn && (
-                                                <TableCell>
-                                                    <Checkbox
-                                                        checked={selected.has(e.id)}
-                                                        onCheckedChange={() => toggleSelect(e.id)}
-                                                    />
-                                                </TableCell>
-                                            )}
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={selected.has(e.id)}
+                                                    onCheckedChange={() => toggleSelect(e.id)}
+                                                />
+                                            </TableCell>
                                             <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
                                             <TableCell className="font-mono">{e.start_date}</TableCell>
                                             <TableCell className="font-mono">{e.end_date}</TableCell>
