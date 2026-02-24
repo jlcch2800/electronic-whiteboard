@@ -9,7 +9,7 @@ import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
     Users, HardHat, FileClock,
-    Plus, Search, Edit, Trash2, Download
+    Plus, Search, Edit, Trash2, Download, MoreHorizontal, Copy
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -25,8 +25,16 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
 import { useToast } from '@/hooks/use-toast'
 import Navbar from '@/components/Navbar'
+import { useTableData } from '@/hooks/useTableData'
+import { DataTablePagination } from '@/components/DataTablePagination'
+import { EmptyState } from '@/components/EmptyState'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
 interface WhiteboardClientProps {
     initialVendors: any[]
@@ -48,6 +56,11 @@ export default function WhiteboardClient({
     const [engineering, setEngineering] = useState(initialEngineering)
     const [pendingWork, setPendingWork] = useState(initialPending)
     const [loading, setLoading] = useState(false)
+
+    // 表格狀態 Hook
+    const vendorTable = useTableData(vendors, 'work_date')
+    const engTable = useTableData(engineering, 'start_date')
+    const pendingTable = useTableData(pendingWork, 'start_date')
 
     // 選取狀態
     const [vendorSelected, setVendorSelected] = useState<Set<string>>(new Set())
@@ -282,117 +295,102 @@ export default function WhiteboardClient({
                             <Users className="w-5 h-5 text-blue-500" />
                             廠商今日施工項目
                         </h2>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="date"
-                                value={vendorSearch.start}
-                                onChange={(e) => setVendorSearch(s => ({ ...s, start: e.target.value }))}
-                                className="w-36"
-                            />
-                            <Input
-                                type="date"
-                                value={vendorSearch.end}
-                                onChange={(e) => setVendorSearch(s => ({ ...s, end: e.target.value }))}
-                                className="w-36"
-                            />
-                            <Input
-                                placeholder="搜尋關鍵字..."
-                                value={vendorSearch.keyword}
-                                onChange={(e) => setVendorSearch(s => ({ ...s, keyword: e.target.value }))}
-                                className="w-40"
-                            />
-                            <Button size="sm" onClick={searchVendor}>
-                                <Search className="w-4 h-4 mr-1" /> 搜尋
-                            </Button>
-                            <Button size="sm" onClick={() => router.push('/vendor-work/new')} className="bg-green-600 hover:bg-green-700">
-                                <Plus className="w-4 h-4 mr-1" /> 新增
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => {
-                                const id = Array.from(vendorSelected)[0]
-                                if (id) router.push(`/vendor-work/${id}/edit`)
-                            }} disabled={vendorSelected.size !== 1}>
-                                <Edit className="w-4 h-4 mr-1" /> 修改
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => setDeleteDialog({ open: true, type: 'vendor', ids: Array.from(vendorSelected) })}
-                                disabled={vendorSelected.size === 0}>
-                                <Trash2 className="w-4 h-4 mr-1" /> 刪除
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => exportToExcel('vendor')}>
-                                <Download className="w-4 h-4 mr-1" /> 匯出
-                            </Button>
-                            <Badge variant="outline">{vendors.length} 筆</Badge>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-2 mr-auto">
+                                <Input type="date" value={vendorSearch.start} onChange={(e) => setVendorSearch(s => ({ ...s, start: e.target.value }))} className="w-36 h-9" />
+                                <span className="text-slate-400">-</span>
+                                <Input type="date" value={vendorSearch.end} onChange={(e) => setVendorSearch(s => ({ ...s, end: e.target.value }))} className="w-36 h-9" />
+                                <Input placeholder="搜尋關鍵字..." value={vendorSearch.keyword} onChange={(e) => setVendorSearch(s => ({ ...s, keyword: e.target.value }))} className="w-48 h-9" />
+                                <Button size="sm" onClick={searchVendor} variant="secondary" className="h-9">
+                                    <Search className="w-4 h-4 mr-1" /> 搜尋
+                                </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" className="h-9" onClick={() => {
+                                    const id = Array.from(vendorSelected)[0]
+                                    if (id) router.push(`/vendor-work/${id}/edit`)
+                                }} disabled={vendorSelected.size !== 1}>
+                                    <Edit className="w-4 h-4 mr-1" /> 修改
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-9 text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-50"
+                                    onClick={() => setDeleteDialog({ open: true, type: 'vendor', ids: Array.from(vendorSelected) })}
+                                    disabled={vendorSelected.size === 0}>
+                                    <Trash2 className="w-4 h-4 mr-1" /> 刪除 {vendorSelected.size > 0 && `(${vendorSelected.size})`}
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-9" onClick={() => exportToExcel('vendor')}>
+                                    <Download className="w-4 h-4 mr-1" /> 匯出
+                                </Button>
+                                <Button size="sm" className="h-9 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => router.push('/vendor-work/new')}>
+                                    <Plus className="w-4 h-4 mr-1" /> 新增
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={vendorSelected.size === vendors.length && vendors.length > 0}
-                                            onCheckedChange={() => toggleSelectAll(vendors, vendorSelected, setVendorSelected)}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-12">#</TableHead>
-                                    <TableHead>狀態</TableHead>
-                                    <TableHead>日期</TableHead>
-                                    <TableHead>到院時間</TableHead>
-                                    <TableHead>離院時間</TableHead>
-                                    <TableHead>廠商名稱</TableHead>
-                                    <TableHead>廠商工作證號</TableHead>
-                                    <TableHead>廠商負責人員姓名</TableHead>
-                                    <TableHead>廠商負責人員電話</TableHead>
-                                    <TableHead>棟別</TableHead>
-                                    <TableHead>樓層</TableHead>
-                                    <TableHead>施工地點</TableHead>
-                                    <TableHead>施工人數</TableHead>
-                                    <TableHead>施工內容</TableHead>
-                                    <TableHead>備註</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {vendors.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={17} className="text-center py-8 text-slate-400">
-                                            查無資料
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    vendors.map((v: any, index: number) => (
-                                        <TableRow key={v.id} className={`hover:bg-blue-50/50 ${vendorSelected.has(v.id) ? 'bg-blue-100' : ''}`}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={vendorSelected.has(v.id)}
-                                                    onCheckedChange={() => toggleSelect(v.id, vendorSelected, setVendorSelected)}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'}>
-                                                    {v.entry_status === 'arrival' ? '到院' : '離院'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="font-mono">{v.work_date}</TableCell>
-                                            <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-mono">{v.departure_time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-bold">{v.vendor_name}</TableCell>
-                                            <TableCell>{v.vendor_badge_id || '-'}</TableCell>
-                                            <TableCell>{v.vendor_contact}</TableCell>
-                                            <TableCell>{v.vendor_contact_phone || '-'}</TableCell>
-                                            <TableCell>{v.building || '-'}</TableCell>
-                                            <TableCell>{v.floor || '-'}</TableCell>
-                                            <TableCell>{v.location || '-'}</TableCell>
-                                            <TableCell>{v.head_count || '-'}</TableCell>
-                                            <TableCell className="max-w-xs truncate" title={v.work_content}>{v.work_content}</TableCell>
-                                            <TableCell className="text-slate-400 text-xs">{v.note || '-'}</TableCell>
+                    {vendors.length === 0 ? (
+                        <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-slate-50/50">
+                                        <TableRow>
+                                            <TableHead className="w-12 sticky left-0 bg-slate-50/50 z-10">
+                                                <Checkbox checked={vendorSelected.size === vendorTable.paginatedData.length && vendorTable.paginatedData.length > 0} onCheckedChange={() => toggleSelectAll(vendorTable.paginatedData, vendorSelected, setVendorSelected)} />
+                                            </TableHead>
+                                            <TableHead className="w-12">#</TableHead>
+                                            <SortableTableHead label="狀態" sortKey="entry_status" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <SortableTableHead label="日期" sortKey="work_date" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <SortableTableHead label="到院時間" sortKey="arrival_time" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <SortableTableHead label="離院時間" sortKey="departure_time" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <SortableTableHead label="廠商名稱" sortKey="vendor_name" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <SortableTableHead label="工作證號" sortKey="vendor_badge_id" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <SortableTableHead label="負責人" sortKey="vendor_contact" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <TableHead>棟別/樓層</TableHead>
+                                            <TableHead>施工地點</TableHead>
+                                            <TableHead>人數</TableHead>
+                                            <TableHead>施工內容</TableHead>
+
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {vendorTable.paginatedData.map((v: any, index: number) => {
+                                            const actualIndex = (vendorTable.page - 1) * vendorTable.perPage + index + 1
+                                            return (
+                                                <TableRow key={v.id} className={`hover:bg-blue-50/50 transition-colors ${vendorSelected.has(v.id) ? 'bg-blue-50' : ''}`}>
+                                                    <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-blue-50/50">
+                                                        <Checkbox checked={vendorSelected.has(v.id)} onCheckedChange={() => toggleSelect(v.id, vendorSelected, setVendorSelected)} />
+                                                    </TableCell>
+                                                    <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
+                                                    <TableCell><Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-[var(--primary)]' : ''}>{v.entry_status === 'arrival' ? '到院' : '離院'}</Badge></TableCell>
+                                                    <TableCell className="font-mono">{v.work_date}</TableCell>
+                                                    <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-mono">{v.departure_time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-bold text-[var(--primary)]">{v.vendor_name}</TableCell>
+                                                    <TableCell>{v.vendor_badge_id || '-'}</TableCell>
+                                                    <TableCell>{v.vendor_contact}</TableCell>
+                                                    <TableCell>{v.building || '-'} / {v.floor || '-'}</TableCell>
+                                                    <TableCell>{v.location || '-'}</TableCell>
+                                                    <TableCell>{v.head_count || '-'}</TableCell>
+                                                    <TableCell className="max-w-[200px] truncate" title={v.work_content}>{v.work_content}</TableCell>
+
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <div className="p-4 border-t border-slate-100">
+                                <DataTablePagination
+
+                                    currentPage={vendorTable.page} totalPages={vendorTable.totalPages}
+                                    totalItems={vendorTable.totalItems} itemsPerPage={vendorTable.perPage}
+                                    onPageChange={vendorTable.setPage} onItemsPerPageChange={vendorTable.setPerPage}
+                                    selectedCount={vendorSelected.size}
+                                />
+                            </div>
+                        </>
+                    )}
                 </motion.section>
 
                 {/* Engineering Work Table */}
@@ -407,101 +405,95 @@ export default function WhiteboardClient({
                             <HardHat className="w-5 h-5 text-amber-500" />
                             工務今日工作項目
                         </h2>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="date"
-                                value={engSearch.start}
-                                onChange={(e) => setEngSearch(s => ({ ...s, start: e.target.value }))}
-                                className="w-36"
-                            />
-                            <Input
-                                type="date"
-                                value={engSearch.end}
-                                onChange={(e) => setEngSearch(s => ({ ...s, end: e.target.value }))}
-                                className="w-36"
-                            />
-                            <Input
-                                placeholder="搜尋關鍵字..."
-                                value={engSearch.keyword}
-                                onChange={(e) => setEngSearch(s => ({ ...s, keyword: e.target.value }))}
-                                className="w-40"
-                            />
-                            <Button size="sm" onClick={searchEngineering}>
-                                <Search className="w-4 h-4 mr-1" /> 搜尋
-                            </Button>
-                            <Button size="sm" onClick={() => router.push('/engineering-work/new')} className="bg-amber-600 hover:bg-amber-700">
-                                <Plus className="w-4 h-4 mr-1" /> 新增
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => {
-                                const id = Array.from(engSelected)[0]
-                                if (id) router.push(`/engineering-work/${id}/edit`)
-                            }} disabled={engSelected.size !== 1}>
-                                <Edit className="w-4 h-4 mr-1" /> 修改
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => setDeleteDialog({ open: true, type: 'engineering', ids: Array.from(engSelected) })}
-                                disabled={engSelected.size === 0}>
-                                <Trash2 className="w-4 h-4 mr-1" /> 刪除
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => exportToExcel('engineering')}>
-                                <Download className="w-4 h-4 mr-1" /> 匯出
-                            </Button>
-                            <Badge variant="outline">{engineering.length} 筆</Badge>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-2 mr-auto">
+                                <Input type="date" value={engSearch.start} onChange={(e) => setEngSearch(s => ({ ...s, start: e.target.value }))} className="w-36 h-9" />
+                                <span className="text-slate-400">-</span>
+                                <Input type="date" value={engSearch.end} onChange={(e) => setEngSearch(s => ({ ...s, end: e.target.value }))} className="w-36 h-9" />
+                                <Input placeholder="搜尋關鍵字..." value={engSearch.keyword} onChange={(e) => setEngSearch(s => ({ ...s, keyword: e.target.value }))} className="w-48 h-9" />
+                                <Button size="sm" onClick={searchEngineering} variant="secondary" className="h-9">
+                                    <Search className="w-4 h-4 mr-1" /> 搜尋
+                                </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" className="h-9" onClick={() => {
+                                    const id = Array.from(engSelected)[0]
+                                    if (id) router.push(`/engineering-work/${id}/edit`)
+                                }} disabled={engSelected.size !== 1}>
+                                    <Edit className="w-4 h-4 mr-1" /> 修改
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-9 text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-50"
+                                    onClick={() => setDeleteDialog({ open: true, type: 'engineering', ids: Array.from(engSelected) })}
+                                    disabled={engSelected.size === 0}>
+                                    <Trash2 className="w-4 h-4 mr-1" /> 刪除 {engSelected.size > 0 && `(${engSelected.size})`}
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-9" onClick={() => exportToExcel('engineering')}>
+                                    <Download className="w-4 h-4 mr-1" /> 匯出
+                                </Button>
+                                <Button size="sm" className="h-9 bg-amber-600 hover:bg-amber-700 text-white" onClick={() => router.push('/engineering-work/new')}>
+                                    <Plus className="w-4 h-4 mr-1" /> 新增
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={engSelected.size === engineering.length && engineering.length > 0}
-                                            onCheckedChange={() => toggleSelectAll(engineering, engSelected, setEngSelected)}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-12">#</TableHead>
-                                    <TableHead>開始日期</TableHead>
-                                    <TableHead>結束日期</TableHead>
-                                    <TableHead>時間</TableHead>
-                                    <TableHead>廠商</TableHead>
-                                    <TableHead>單位</TableHead>
-                                    <TableHead>負責人</TableHead>
-                                    <TableHead>內容</TableHead>
-                                    <TableHead>備註</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {engineering.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={11} className="text-center py-8 text-slate-400">
-                                            查無資料
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    engineering.map((e: any, index: number) => (
-                                        <TableRow key={e.id} className={`hover:bg-amber-50/50 ${engSelected.has(e.id) ? 'bg-amber-100' : ''}`}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={engSelected.has(e.id)}
-                                                    onCheckedChange={() => toggleSelect(e.id, engSelected, setEngSelected)}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
-                                            <TableCell className="font-mono">{e.start_date}</TableCell>
-                                            <TableCell className="font-mono">{e.end_date}</TableCell>
-                                            <TableCell className="font-mono">{e.time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-bold">{e.vendor_name}</TableCell>
-                                            <TableCell><Badge variant="outline">{e.unit}</Badge></TableCell>
-                                            <TableCell>{e.engineering_contact}</TableCell>
-                                            <TableCell className="max-w-xs truncate" title={e.work_content}>{e.work_content}</TableCell>
-                                            <TableCell className="text-slate-400 text-xs">{e.note || '-'}</TableCell>
+                    {engineering.length === 0 ? (
+                        <EmptyState icon={HardHat} title="今日暫無工務施工" description="目前沒有安排任何工務施工項目，您可以點擊右上方新增。" />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-slate-50/50">
+                                        <TableRow>
+                                            <TableHead className="w-12 sticky left-0 bg-slate-50/50 z-10">
+                                                <Checkbox checked={engSelected.size === engTable.paginatedData.length && engTable.paginatedData.length > 0} onCheckedChange={() => toggleSelectAll(engTable.paginatedData, engSelected, setEngSelected)} />
+                                            </TableHead>
+                                            <TableHead className="w-12">#</TableHead>
+                                            <SortableTableHead label="開始日期" sortKey="start_date" currentSort={engTable.sort} onSort={engTable.handleSort} />
+                                            <SortableTableHead label="結束日期" sortKey="end_date" currentSort={engTable.sort} onSort={engTable.handleSort} />
+                                            <SortableTableHead label="時間" sortKey="time" currentSort={engTable.sort} onSort={engTable.handleSort} />
+                                            <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={engTable.sort} onSort={engTable.handleSort} />
+                                            <SortableTableHead label="單位" sortKey="unit" currentSort={engTable.sort} onSort={engTable.handleSort} />
+                                            <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={engTable.sort} onSort={engTable.handleSort} />
+                                            <TableHead>內容</TableHead>
+                                            <TableHead>備註</TableHead>
+
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {engTable.paginatedData.map((e: any, index: number) => {
+                                            const actualIndex = (engTable.page - 1) * engTable.perPage + index + 1
+                                            return (
+                                                <TableRow key={e.id} className={`hover:bg-amber-50/50 transition-colors ${engSelected.has(e.id) ? 'bg-amber-50' : ''}`}>
+                                                    <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-amber-50/50">
+                                                        <Checkbox checked={engSelected.has(e.id)} onCheckedChange={() => toggleSelect(e.id, engSelected, setEngSelected)} />
+                                                    </TableCell>
+                                                    <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
+                                                    <TableCell className="font-mono">{e.start_date}</TableCell>
+                                                    <TableCell className="font-mono">{e.end_date}</TableCell>
+                                                    <TableCell className="font-mono">{e.time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-bold text-amber-600">{e.vendor_name}</TableCell>
+                                                    <TableCell><Badge variant="outline" className="bg-amber-50 text-amber-700 hover:bg-amber-100">{e.unit}</Badge></TableCell>
+                                                    <TableCell>{e.engineering_contact}</TableCell>
+                                                    <TableCell className="max-w-[200px] truncate" title={e.work_content}>{e.work_content}</TableCell>
+                                                    <TableCell className="text-slate-400 text-xs">{e.note || '-'}</TableCell>
+
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <div className="p-4 border-t border-slate-100">
+                                <DataTablePagination
+                                    currentPage={engTable.page} totalPages={engTable.totalPages}
+                                    totalItems={engTable.totalItems} itemsPerPage={engTable.perPage}
+                                    onPageChange={engTable.setPage} onItemsPerPageChange={engTable.setPerPage}
+                                    selectedCount={engSelected.size}
+                                />
+                            </div>
+                        </>
+                    )}
                 </motion.section>
 
                 {/* Pending Work Table */}
@@ -516,101 +508,95 @@ export default function WhiteboardClient({
                             <FileClock className="w-5 h-5 text-purple-500" />
                             待處理工作項目
                         </h2>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="date"
-                                value={pendingSearch.start}
-                                onChange={(e) => setPendingSearch(s => ({ ...s, start: e.target.value }))}
-                                className="w-36"
-                            />
-                            <Input
-                                type="date"
-                                value={pendingSearch.end}
-                                onChange={(e) => setPendingSearch(s => ({ ...s, end: e.target.value }))}
-                                className="w-36"
-                            />
-                            <Input
-                                placeholder="搜尋關鍵字..."
-                                value={pendingSearch.keyword}
-                                onChange={(e) => setPendingSearch(s => ({ ...s, keyword: e.target.value }))}
-                                className="w-40"
-                            />
-                            <Button size="sm" onClick={searchPending}>
-                                <Search className="w-4 h-4 mr-1" /> 搜尋
-                            </Button>
-                            <Button size="sm" onClick={() => router.push('/pending-work/new')} className="bg-purple-600 hover:bg-purple-700">
-                                <Plus className="w-4 h-4 mr-1" /> 新增
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => {
-                                const id = Array.from(pendingSelected)[0]
-                                if (id) router.push(`/pending-work/${id}/edit`)
-                            }} disabled={pendingSelected.size !== 1}>
-                                <Edit className="w-4 h-4 mr-1" /> 修改
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => setDeleteDialog({ open: true, type: 'pending', ids: Array.from(pendingSelected) })}
-                                disabled={pendingSelected.size === 0}>
-                                <Trash2 className="w-4 h-4 mr-1" /> 刪除
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => exportToExcel('pending')}>
-                                <Download className="w-4 h-4 mr-1" /> 匯出
-                            </Button>
-                            <Badge variant="outline">{pendingWork.length} 筆</Badge>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-2 mr-auto">
+                                <Input type="date" value={pendingSearch.start} onChange={(e) => setPendingSearch(s => ({ ...s, start: e.target.value }))} className="w-36 h-9" />
+                                <span className="text-slate-400">-</span>
+                                <Input type="date" value={pendingSearch.end} onChange={(e) => setPendingSearch(s => ({ ...s, end: e.target.value }))} className="w-36 h-9" />
+                                <Input placeholder="搜尋關鍵字..." value={pendingSearch.keyword} onChange={(e) => setPendingSearch(s => ({ ...s, keyword: e.target.value }))} className="w-48 h-9" />
+                                <Button size="sm" onClick={searchPending} variant="secondary" className="h-9">
+                                    <Search className="w-4 h-4 mr-1" /> 搜尋
+                                </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" className="h-9" onClick={() => {
+                                    const id = Array.from(pendingSelected)[0]
+                                    if (id) router.push(`/pending-work/${id}/edit`)
+                                }} disabled={pendingSelected.size !== 1}>
+                                    <Edit className="w-4 h-4 mr-1" /> 修改
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-9 text-red-600 border-red-200 hover:bg-red-50 disabled:opacity-50"
+                                    onClick={() => setDeleteDialog({ open: true, type: 'pending', ids: Array.from(pendingSelected) })}
+                                    disabled={pendingSelected.size === 0}>
+                                    <Trash2 className="w-4 h-4 mr-1" /> 刪除 {pendingSelected.size > 0 && `(${pendingSelected.size})`}
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-9" onClick={() => exportToExcel('pending')}>
+                                    <Download className="w-4 h-4 mr-1" /> 匯出
+                                </Button>
+                                <Button size="sm" className="h-9 bg-purple-600 hover:bg-purple-700 text-white" onClick={() => router.push('/pending-work/new')}>
+                                    <Plus className="w-4 h-4 mr-1" /> 新增
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={pendingSelected.size === pendingWork.length && pendingWork.length > 0}
-                                            onCheckedChange={() => toggleSelectAll(pendingWork, pendingSelected, setPendingSelected)}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-12">#</TableHead>
-                                    <TableHead>開始日期</TableHead>
-                                    <TableHead>結束日期</TableHead>
-                                    <TableHead>時間</TableHead>
-                                    <TableHead>廠商</TableHead>
-                                    <TableHead>單位</TableHead>
-                                    <TableHead>負責人</TableHead>
-                                    <TableHead>內容</TableHead>
-                                    <TableHead>備註</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {pendingWork.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={11} className="text-center py-8 text-slate-400">
-                                            查無資料
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    pendingWork.map((p: any, index: number) => (
-                                        <TableRow key={p.id} className={`hover:bg-purple-50/50 ${pendingSelected.has(p.id) ? 'bg-purple-100' : ''}`}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={pendingSelected.has(p.id)}
-                                                    onCheckedChange={() => toggleSelect(p.id, pendingSelected, setPendingSelected)}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
-                                            <TableCell className="font-mono">{p.start_date}</TableCell>
-                                            <TableCell className="font-mono">{p.end_date}</TableCell>
-                                            <TableCell className="font-mono">{p.time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-bold">{p.vendor_name}</TableCell>
-                                            <TableCell><Badge variant="outline">{p.unit}</Badge></TableCell>
-                                            <TableCell>{p.engineering_contact}</TableCell>
-                                            <TableCell className="max-w-xs truncate" title={p.work_content}>{p.work_content}</TableCell>
-                                            <TableCell className="text-slate-400 text-xs">{p.note || '-'}</TableCell>
+                    {pendingWork.length === 0 ? (
+                        <EmptyState icon={FileClock} title="目前無待處理項目" description="沒有需要追蹤的待處理任務，點擊右上方即可新增。" />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-slate-50/50">
+                                        <TableRow>
+                                            <TableHead className="w-12 sticky left-0 bg-slate-50/50 z-10">
+                                                <Checkbox checked={pendingSelected.size === pendingTable.paginatedData.length && pendingTable.paginatedData.length > 0} onCheckedChange={() => toggleSelectAll(pendingTable.paginatedData, pendingSelected, setPendingSelected)} />
+                                            </TableHead>
+                                            <TableHead className="w-12">#</TableHead>
+                                            <SortableTableHead label="開始日期" sortKey="start_date" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="結束日期" sortKey="end_date" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="時間" sortKey="time" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="單位" sortKey="unit" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <TableHead>內容</TableHead>
+                                            <TableHead>備註</TableHead>
+
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingTable.paginatedData.map((p: any, index: number) => {
+                                            const actualIndex = (pendingTable.page - 1) * pendingTable.perPage + index + 1
+                                            return (
+                                                <TableRow key={p.id} className={`hover:bg-purple-50/50 transition-colors ${pendingSelected.has(p.id) ? 'bg-purple-50' : ''}`}>
+                                                    <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-purple-50/50">
+                                                        <Checkbox checked={pendingSelected.has(p.id)} onCheckedChange={() => toggleSelect(p.id, pendingSelected, setPendingSelected)} />
+                                                    </TableCell>
+                                                    <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
+                                                    <TableCell className="font-mono">{p.start_date}</TableCell>
+                                                    <TableCell className="font-mono">{p.end_date}</TableCell>
+                                                    <TableCell className="font-mono">{p.time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-bold text-purple-700">{p.vendor_name}</TableCell>
+                                                    <TableCell><Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-100">{p.unit}</Badge></TableCell>
+                                                    <TableCell>{p.engineering_contact}</TableCell>
+                                                    <TableCell className="max-w-[200px] truncate" title={p.work_content}>{p.work_content}</TableCell>
+                                                    <TableCell className="text-slate-400 text-xs">{p.note || '-'}</TableCell>
+
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <div className="p-4 border-t border-slate-100">
+                                <DataTablePagination
+                                    currentPage={pendingTable.page} totalPages={pendingTable.totalPages}
+                                    totalItems={pendingTable.totalItems} itemsPerPage={pendingTable.perPage}
+                                    onPageChange={pendingTable.setPage} onItemsPerPageChange={pendingTable.setPerPage}
+                                    selectedCount={pendingSelected.size}
+                                />
+                            </div>
+                        </>
+                    )}
                 </motion.section>
             </main>
 

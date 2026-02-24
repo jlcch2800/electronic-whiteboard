@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DataTablePagination } from '@/components/DataTablePagination'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
@@ -297,7 +297,6 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2"><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36" /><span className="text-slate-400">~</span><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36" /></div>
                             <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="搜尋..." className="pl-10 w-48" /></div>
-                            <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1) }}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="10">10 筆</SelectItem><SelectItem value="50">50 筆</SelectItem><SelectItem value="100">100 筆</SelectItem></SelectContent></Select>
                             <Button variant="outline" onClick={fetchLogs} disabled={loading}><RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />查詢</Button>
                             <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700"><Download className="w-4 h-4 mr-2" /> 匯出</Button>
                         </div>
@@ -462,12 +461,20 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                             </TableBody>
                         </Table>
                     </div>
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
-                            <p className="text-sm text-slate-500">共 {filteredLogs.length} 筆，第 {currentPage} / {totalPages} 頁</p>
-                            <div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>上一頁</Button><Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>下一頁</Button></div>
-                        </div>
-                    )}
+                    <div className="p-4 border-t border-slate-100">
+                        <DataTablePagination
+                            currentPage={currentPage}
+                            totalPages={totalPages || 1}
+                            totalItems={filteredLogs.length}
+                            itemsPerPage={pageSize}
+                            onPageChange={setCurrentPage}
+                            onItemsPerPageChange={(size) => {
+                                setPageSize(size)
+                                setCurrentPage(1)
+                            }}
+                            selectedCount={selected.size}
+                        />
+                    </div>
                 </motion.div>
             </main>
         </div>

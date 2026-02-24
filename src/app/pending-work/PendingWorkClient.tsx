@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
-    FileClock, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw
+    FileClock, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw, MoreHorizontal
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -23,7 +23,15 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
 import { useToast } from '@/hooks/use-toast'
+import { DataTablePagination } from '@/components/DataTablePagination'
+import { EmptyState } from '@/components/EmptyState'
+import { useTableData } from '@/hooks/useTableData'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
 interface PendingWorkClientProps {
     initialData: any[]
@@ -153,6 +161,8 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
 
+    const tableData = useTableData(data, 'start_date')
+
     return (
         <div className="min-h-screen bg-slate-100 flex flex-col">
             {/* Header */}
@@ -225,7 +235,6 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                             <Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
                                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                             </Button>
-                            <Badge variant="outline">{data.length} 筆</Badge>
                         </div>
                     </div>
 
@@ -240,25 +249,30 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                         />
                                     </TableHead>
                                     <TableHead className="w-12">#</TableHead>
-                                    <TableHead>開始日期</TableHead>
-                                    <TableHead>結束日期</TableHead>
-                                    <TableHead>時間</TableHead>
-                                    <TableHead>廠商</TableHead>
+                                    <SortableTableHead label="開始日期" sortKey="start_date" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                    <SortableTableHead label="結束日期" sortKey="end_date" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                    <SortableTableHead label="時間" sortKey="time" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                    <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={tableData.sort} onSort={tableData.handleSort} />
                                     <TableHead>單位</TableHead>
                                     <TableHead>負責人</TableHead>
                                     <TableHead>內容</TableHead>
                                     <TableHead>備註</TableHead>
+
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {data.length === 0 ? (
+                                {tableData.paginatedData.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={11} className="text-center py-8 text-slate-400">
-                                            查無資料
+                                            <EmptyState
+                                                icon={Search}
+                                                title="查無待處理工作"
+                                                description="目前沒有符合條件的待處理工作資料。"
+                                            />
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    data.map((p: any, index: number) => (
+                                    tableData.paginatedData.map((p: any, index: number) => (
                                         <TableRow key={p.id} className={`hover:bg-purple-50/50 ${selected.has(p.id) ? 'bg-purple-100' : ''}`}>
                                             <TableCell>
                                                 <Checkbox
@@ -266,7 +280,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                                     onCheckedChange={() => toggleSelect(p.id)}
                                                 />
                                             </TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
+                                            <TableCell className="text-slate-400 text-sm">{(tableData.page - 1) * tableData.perPage + index + 1}</TableCell>
                                             <TableCell className="font-mono">{p.start_date}</TableCell>
                                             <TableCell className="font-mono">{p.end_date}</TableCell>
                                             <TableCell className="font-mono">{p.time?.slice(0, 5) || '-'}</TableCell>
@@ -275,11 +289,21 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                             <TableCell>{p.engineering_contact}</TableCell>
                                             <TableCell className="max-w-xs truncate" title={p.work_content}>{p.work_content}</TableCell>
                                             <TableCell className="text-slate-400 text-xs">{p.note || '-'}</TableCell>
+
                                         </TableRow>
                                     ))
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+
+                    <div className="p-4 border-t border-slate-100">
+                        <DataTablePagination
+                            currentPage={tableData.page} totalPages={tableData.totalPages}
+                            totalItems={tableData.totalItems} itemsPerPage={tableData.perPage}
+                            onPageChange={tableData.setPage} onItemsPerPageChange={tableData.setPerPage}
+                            selectedCount={selected.size}
+                        />
                     </div>
                 </motion.section>
             </main>

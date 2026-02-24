@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DataTablePagination } from '@/components/DataTablePagination'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -38,6 +39,8 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     const [showForm, setShowForm] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [editingUser, setEditingUser] = useState<any | null>(null)
+    const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(10)
 
     const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<UserManagementFormValues>({
         resolver: zodResolver(userManagementSchema),
@@ -150,6 +153,9 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
             user.unit?.toLowerCase().includes(term)
     })
 
+    const totalPages = Math.ceil(filteredUsers.length / pageSize)
+    const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize)
+
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Header */}
@@ -227,14 +233,14 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredUsers.length === 0 ? (
+                                {paginatedUsers.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={17} className="text-center py-10 text-slate-400">
                                             沒有找到使用者
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredUsers.map((user) => (
+                                    paginatedUsers.map((user) => (
                                         <TableRow
                                             key={user.id}
                                             className={`cursor-pointer transition-colors ${selectedId === user.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
@@ -294,6 +300,20 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+                    <div className="p-4 border-t border-slate-100">
+                        <DataTablePagination
+                            currentPage={page}
+                            totalPages={totalPages || 1}
+                            totalItems={filteredUsers.length}
+                            itemsPerPage={pageSize}
+                            onPageChange={setPage}
+                            onItemsPerPageChange={(size) => {
+                                setPageSize(size)
+                                setPage(1)
+                            }}
+                            selectedCount={selectedId ? 1 : 0}
+                        />
                     </div>
                 </motion.div>
             </main>

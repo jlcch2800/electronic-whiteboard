@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DataTablePagination } from '@/components/DataTablePagination'
 import { useToast } from '@/hooks/use-toast'
 
 interface PendingHistoryRecord {
@@ -94,8 +94,6 @@ export default function PendingHistoryClient() {
                             <Button onClick={handleSearch} disabled={loading}><Search className="w-4 h-4 mr-1" />搜尋</Button>
                             <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
                             <div className="flex-1" />
-                            <div className="flex items-center gap-2"><Label className="text-xs text-slate-500">每頁顯示</Label><Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1) }}><SelectTrigger className="w-20"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="10">10</SelectItem><SelectItem value="50">50</SelectItem><SelectItem value="100">100</SelectItem></SelectContent></Select></div>
-                            <Badge variant="outline" className="text-sm">共 {totalCount} 筆</Badge>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -121,13 +119,20 @@ export default function PendingHistoryClient() {
                             </TableBody>
                         </Table>
                     </div>
-                    {totalPages > 1 && (
-                        <div className="p-4 border-t border-slate-100 flex justify-center items-center gap-2">
-                            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="w-4 h-4" /></Button>
-                            <span className="text-sm text-slate-600 min-w-24 text-center">第 {page} / {totalPages} 頁</span>
-                            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}><ChevronRight className="w-4 h-4" /></Button>
-                        </div>
-                    )}
+                    <div className="p-4 border-t border-slate-100">
+                        <DataTablePagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            totalItems={totalCount}
+                            itemsPerPage={pageSize}
+                            onPageChange={setPage}
+                            onItemsPerPageChange={(size) => {
+                                setPageSize(size)
+                                setPage(1)
+                            }}
+                            selectedCount={selected.size}
+                        />
+                    </div>
                 </motion.div>
             </main>
         </div>
