@@ -1,20 +1,18 @@
-// Whiteboard Client Component
+// Whiteboard Client Component — Dashboard（三表合一）
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { format, subDays, addDays } from 'date-fns'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
-    Users, HardHat, FileClock, ClipboardCheck, History, UserCog, Activity,
-    LogOut, BookOpen, RefreshCw, Plus, Search, ChevronDown, Edit, Trash2, FileText, Download, Calendar, Home
+    Users, HardHat, FileClock,
+    Plus, Search, Edit, Trash2, Download
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
-import { handleLogout as serverHandleLogout } from '@/actions/auth'
 import { useAppStore } from '@/stores/useAppStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,13 +22,11 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
 import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
+import Navbar from '@/components/Navbar'
 
 interface WhiteboardClientProps {
     initialVendors: any[]
@@ -46,22 +42,12 @@ export default function WhiteboardClient({
     const router = useRouter()
     const supabase = createClient()
     const { toast } = useToast()
-    const { profile, isLoading: authLoading, logout: storeLogout } = useAppStore()
+    const { profile } = useAppStore()
 
     const [vendors, setVendors] = useState(initialVendors)
     const [engineering, setEngineering] = useState(initialEngineering)
     const [pendingWork, setPendingWork] = useState(initialPending)
     const [loading, setLoading] = useState(false)
-
-    // Clock state
-    const [currentTime, setCurrentTime] = useState(new Date())
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date())
-        }, 1000)
-        return () => clearInterval(timer)
-    }, [])
 
     // 選取狀態
     const [vendorSelected, setVendorSelected] = useState<Set<string>>(new Set())
@@ -84,14 +70,7 @@ export default function WhiteboardClient({
     // 是否已登入
     const isLoggedIn = !!profile
 
-    const handleLogout = async () => {
-        if (profile?.id) {
-            await serverHandleLogout(profile.id)
-        }
-        await supabase.auth.signOut()
-        storeLogout()
-        router.push('/login')
-    }
+
 
     const refreshAll = async () => {
         setLoading(true)
@@ -286,144 +265,9 @@ export default function WhiteboardClient({
     }
 
     return (
-        <div className="min-h-screen bg-slate-100 flex flex-col">
-            {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-xl font-black text-slate-800">🏥 工務室電子白板</h1>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {/* Clock */}
-                    <div className="text-sm font-medium text-slate-600 tabular-nums">
-                        {format(currentTime, 'yyyy/MM/dd HH:mm:ss')}
-                    </div>
-
-                    {/* Home Link */}
-                    <Button variant="ghost" className="gap-2" onClick={() => router.push('/')}>
-                        <Home className="w-4 h-4" />
-                        首頁
-                    </Button>
-
-                    {/* 今日-待處理 Dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2">
-                                <Calendar className="w-4 h-4" />
-                                今日-待處理
-                                <ChevronDown className="w-3 h-3" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => router.push('/vendor-work')}>廠商今日施工</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/engineering-work')}>工務今日施工</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/pending-work')}>待處理工作</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/dashboard')}>All</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Work Report & File Menu */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2">
-                                <ClipboardCheck className="w-4 h-4" />
-                                施工回報
-                                <ChevronDown className="w-3 h-3" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => router.push('/work-report')}>
-                                <ClipboardCheck className="w-4 h-4 mr-2" /> 施工回報
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/work-file')}>
-                                <FileText className="w-4 h-4 mr-2" /> 施工文件
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* History Menu */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2">
-                                <History className="w-4 h-4" />
-                                歷史記錄
-                                <ChevronDown className="w-3 h-3" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => router.push('/history/vendor')}>
-                                <Users className="w-4 h-4 mr-2" /> 廠商施工歷史
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/history/engineering')}>
-                                <HardHat className="w-4 h-4 mr-2" /> 工務施工歷史
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/history/pending')}>
-                                <FileClock className="w-4 h-4 mr-2" /> 待處理工作歷史
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/history/report')}>
-                                <ClipboardCheck className="w-4 h-4 mr-2" /> 施工回報歷史
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Admin - only show for admin users */}
-                    {profile?.role === 'admin' && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="gap-2">
-                                    <UserCog className="w-4 h-4" />
-                                    系統管理
-                                    <ChevronDown className="w-3 h-3" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => router.push('/admin/users')}>
-                                    <UserCog className="w-4 h-4 mr-2" /> 帳號管理
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push('/admin/change-log')}>
-                                    <Activity className="w-4 h-4 mr-2" /> 系統異動記錄
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push('/admin/execution-log')}>
-                                    <Activity className="w-4 h-4 mr-2" /> 系統執行記錄
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-
-                    <div className="h-6 w-px bg-slate-200" />
-
-                    {/* User Info */}
-                    {authLoading ? (
-                        <div className="flex items-center gap-3">
-                            <div className="animate-pulse">
-                                <div className="h-3 w-16 bg-slate-200 rounded mb-1"></div>
-                                <div className="h-4 w-24 bg-slate-200 rounded"></div>
-                            </div>
-                        </div>
-                    ) : profile ? (
-                        <div className="flex items-center gap-3">
-                            <div className="text-right">
-                                <div className="text-xs text-slate-400">當前使用者</div>
-                                <div className="text-sm font-bold text-slate-700 flex items-center gap-1">
-                                    {profile.user_name}
-                                    <Badge variant={profile.role === 'admin' ? 'destructive' : 'secondary'} className="text-[10px]">
-                                        {profile.role}
-                                    </Badge>
-                                </div>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1 text-red-600 border-red-200 hover:bg-red-50">
-                                <LogOut className="w-3 h-3" /> 登出
-                            </Button>
-                        </div>
-                    ) : (
-                        <Button onClick={() => router.push('/login')}>登入</Button>
-                    )}
-
-                    <Button variant="outline" size="sm" onClick={refreshAll} disabled={loading}>
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
-                </div>
-            </header>
+        <div className="min-h-screen bg-background flex flex-col">
+            {/* ===== 共用導覽列 ===== */}
+            <Navbar onRefresh={refreshAll} loading={loading} />
 
             {/* Main Content */}
             <main className="flex-1 p-6 space-y-6 overflow-auto">

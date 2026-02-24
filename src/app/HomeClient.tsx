@@ -3,23 +3,14 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
 import { motion } from 'framer-motion'
 import {
-    Users, HardHat, FileClock, ClipboardCheck, History, UserCog, Activity,
-    LogOut, Home, Calendar, ChevronDown, FileText, RefreshCw,
+    Users, HardHat, FileClock,
     ArrowRight, Plus
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
-import { handleLogout as serverHandleLogout } from '@/actions/auth'
-import { useAppStore } from '@/stores/useAppStore'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { useToast } from '@/hooks/use-toast'
+import Navbar from '@/components/Navbar'
 
 // Cloudinary 背景圖 URL
 const HERO_BG_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1771733639/SCR-20260222-kxyc-_dzo3aj.png'
@@ -109,7 +100,7 @@ function StatCard({
             border: 'border-blue-100',
             badge: 'bg-blue-500',
             hover: 'hover:border-blue-300 hover:shadow-blue-200/40',
-            topBar: 'bg-gradient-to-r from-blue-500 to-blue-400',
+            topBar: 'bg-gradient-to-r from-blue-600 to-blue-400',
             accent: 'text-blue-600',
             countColor: 'text-blue-600',
             linkColor: 'text-blue-500 group-hover:text-blue-600',
@@ -217,32 +208,8 @@ function StatCard({
 }
 
 export default function HomeClient({ initialCounts }: HomeClientProps) {
-    const router = useRouter()
     const supabase = createClient()
-    const { toast } = useToast()
-    const { profile, isLoading: authLoading, logout: storeLogout } = useAppStore()
-
     const [counts, setCounts] = useState(initialCounts)
-    // 使用 null 初始化避免 SSR/Client hydration mismatch
-    const [currentTime, setCurrentTime] = useState<Date | null>(null)
-
-    // 時鐘 — 精簡到分鐘，每 60 秒更新
-    useEffect(() => {
-        setCurrentTime(new Date())
-        const timer = setInterval(() => {
-            setCurrentTime(new Date())
-        }, 60000)
-        return () => clearInterval(timer)
-    }, [])
-
-    const handleLogout = async () => {
-        if (profile?.id) {
-            await serverHandleLogout(profile.id)
-        }
-        await supabase.auth.signOut()
-        storeLogout()
-        router.push('/login')
-    }
 
     // 重新整理統計數據
     const refreshCounts = async () => {
@@ -260,144 +227,9 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
-            {/* ===== 導覽列 ===== */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-2xl font-black text-slate-800">🏥 工務室電子白板</h1>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {/* 時鐘 — 精簡為 yyyy/MM/dd HH:mm */}
-                    <div className="text-base font-medium text-slate-600 tabular-nums" suppressHydrationWarning>
-                        {currentTime ? format(currentTime, 'yyyy/MM/dd HH:mm') : ''}
-                    </div>
-
-                    {/* 首頁 */}
-                    <Button variant="ghost" className="gap-2 active:scale-95 transition-transform" onClick={() => router.push('/')}>
-                        <Home className="w-4 h-4" />
-                        首頁
-                    </Button>
-
-                    {/* 今日-待處理 Dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2 active:scale-95 transition-transform">
-                                <Calendar className="w-4 h-4" />
-                                今日-待處理
-                                <ChevronDown className="w-3 h-3" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => router.push('/vendor-work')}>廠商今日施工</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/engineering-work')}>工務今日施工</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/pending-work')}>待處理工作</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/dashboard')}>All</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* 施工回報 */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2 active:scale-95 transition-transform">
-                                <ClipboardCheck className="w-4 h-4" />
-                                施工回報
-                                <ChevronDown className="w-3 h-3" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => router.push('/work-report')}>
-                                <ClipboardCheck className="w-4 h-4 mr-2" /> 施工回報
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/work-file')}>
-                                <FileText className="w-4 h-4 mr-2" /> 施工文件
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* 歷史記錄 */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="gap-2 active:scale-95 transition-transform">
-                                <History className="w-4 h-4" />
-                                歷史記錄
-                                <ChevronDown className="w-3 h-3" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => router.push('/history/vendor')}>
-                                <Users className="w-4 h-4 mr-2" /> 廠商施工歷史
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/history/engineering')}>
-                                <HardHat className="w-4 h-4 mr-2" /> 工務施工歷史
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/history/pending')}>
-                                <FileClock className="w-4 h-4 mr-2" /> 待處理工作歷史
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push('/history/report')}>
-                                <ClipboardCheck className="w-4 h-4 mr-2" /> 施工回報歷史
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* 系統管理 */}
-                    {profile?.role === 'admin' && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="gap-2 active:scale-95 transition-transform">
-                                    <UserCog className="w-4 h-4" />
-                                    系統管理
-                                    <ChevronDown className="w-3 h-3" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onClick={() => router.push('/admin/users')}>
-                                    <UserCog className="w-4 h-4 mr-2" /> 帳號管理
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push('/admin/change-log')}>
-                                    <Activity className="w-4 h-4 mr-2" /> 系統異動記錄
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push('/admin/execution-log')}>
-                                    <Activity className="w-4 h-4 mr-2" /> 系統執行記錄
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
-
-                    <div className="h-6 w-px bg-slate-200" />
-
-                    {/* 使用者資訊 */}
-                    {authLoading ? (
-                        <div className="flex items-center gap-3">
-                            <div className="animate-pulse">
-                                <div className="h-3 w-16 bg-slate-200 rounded mb-1"></div>
-                                <div className="h-4 w-24 bg-slate-200 rounded"></div>
-                            </div>
-                        </div>
-                    ) : profile ? (
-                        <div className="flex items-center gap-3">
-                            <div className="text-right">
-                                <div className="text-xs text-slate-400">當前使用者</div>
-                                <div className="text-sm font-bold text-slate-700 flex items-center gap-1">
-                                    {profile.user_name}
-                                    <Badge variant={profile.role === 'admin' ? 'destructive' : 'secondary'} className="text-[10px]">
-                                        {profile.role}
-                                    </Badge>
-                                </div>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1 text-red-600 border-red-200 hover:bg-red-50 active:scale-95 transition-transform">
-                                <LogOut className="w-3 h-3" /> 登出
-                            </Button>
-                        </div>
-                    ) : (
-                        <Button onClick={() => router.push('/login')} className="active:scale-95 transition-transform">登入</Button>
-                    )}
-
-                    <Button variant="outline" size="sm" onClick={refreshCounts} className="active:scale-95 transition-transform">
-                        <RefreshCw className="w-4 h-4" />
-                    </Button>
-                </div>
-            </header>
+        <div className="min-h-screen bg-background flex flex-col">
+            {/* ===== 共用導覽列 ===== */}
+            <Navbar onRefresh={refreshCounts} />
 
             {/* ===== Hero Section ===== */}
             <section className="relative overflow-hidden" style={{ height: '40vh' }}>
@@ -409,7 +241,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         className="w-full h-full object-cover object-top"
                     />
                     {/* 底部漸層過渡 */}
-                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-50 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
                 </div>
             </section>
 
@@ -453,7 +285,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                 transition={{ delay: 1, duration: 0.8 }}
                 className="max-w-5xl mx-auto px-6 py-10 w-full"
             >
-                <div className="text-center text-sm text-slate-400 space-y-1">
+                <div className="text-center text-sm text-muted-foreground space-y-1">
                     <p>佳里奇美醫院 工務室電子白板管理系統</p>
                     <p>Chi Mei Hospital, Chiali — Engineering Division Dashboard</p>
                 </div>
