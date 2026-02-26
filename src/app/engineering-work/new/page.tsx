@@ -1,29 +1,50 @@
 // Engineering Work Form - New Entry
 'use client'
 
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { format } from 'date-fns'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Loader2, CheckCircle } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { engineeringWorkSchema, type EngineeringWorkFormValues } from '@/lib/validations/schemas'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
+
+import FormField from '@/components/forms/FormField'
+import FormHeader from '@/components/forms/FormHeader'
+import BackButton from '@/components/forms/BackButton'
+import SubmitButton from '@/components/forms/SubmitButton'
+import ConfirmDialog from '@/components/forms/ConfirmDialog'
+
+const FIELD_LABELS: Record<string, string> = {
+    start_date: '開始日期',
+    end_date: '結束日期',
+    time: '時間',
+    vendor_name: '廠商',
+    unit: '單位',
+    engineering_contact: '工務負責人員',
+    work_content: '內容',
+    note: '備註',
+}
 
 export default function EngineeringWorkNewPage() {
     const router = useRouter()
     const supabase = createClient()
     const { toast } = useToast()
 
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<EngineeringWorkFormValues>({
+    const [isSuccess, setIsSuccess] = useState(false)
+    const [showConfirm, setShowConfirm] = useState(false)
+    const [pendingData, setPendingData] = useState<EngineeringWorkFormValues | null>(null)
+    const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
+
+    const { register, handleSubmit, trigger, getValues, formState: { errors, isSubmitting } } = useForm<EngineeringWorkFormValues>({
         resolver: zodResolver(engineeringWorkSchema),
+        mode: 'onBlur',
         defaultValues: {
             start_date: format(new Date(), 'yyyy-MM-dd'),
             end_date: format(new Date(), 'yyyy-MM-dd'),
@@ -31,13 +52,34 @@ export default function EngineeringWorkNewPage() {
         }
     })
 
-    const onSubmit = async (data: EngineeringWorkFormValues) => {
-        try {
-            const { error } = await supabase.from('engineering_today_work').insert(data)
-            if (error) throw error
+    const handleFieldBlur = useCallback((fieldName: string) => {
+        setTouchedFields(prev => ({ ...prev, [fieldName]: true }))
+        trigger(fieldName as any)
+    }, [trigger])
 
+    const totalSteps = 3
+    const getFilledSteps = () => {
+        const v = getValues()
+        let step = 1
+        if (v.start_date && v.end_date && v.time) step = 2
+        if (step >= 2 && v.vendor_name && v.unit && v.engineering_contact) step = 3
+        return Math.min(step, totalSteps)
+    }
+
+    const onPreSubmit = (data: EngineeringWorkFormValues) => {
+        setPendingData(data)
+        setShowConfirm(true)
+    }
+
+    const onConfirmSubmit = async () => {
+        if (!pendingData) return
+        setShowConfirm(false)
+        try {
+            const { error } = await supabase.from('engineering_today_work').insert(pendingData)
+            if (error) throw error
+            setIsSuccess(true)
             toast({ title: '新增成功', description: '工務今日施工項目已新增' })
-            router.push('/')
+            setTimeout(() => router.push('/'), 1500)
         } catch (error: any) {
             toast({ title: '新增失敗', description: error.message, variant: 'destructive' })
         }
@@ -45,84 +87,74 @@ export default function EngineeringWorkNewPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 to-slate-100">
-            <header className="sticky top-0 z-10 bg-amber-500 text-white px-6 py-4 shadow-lg">
-                <div className="flex items-center gap-4 max-w-3xl mx-auto">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="text-white hover:bg-amber-600">
-                        <ArrowLeft className="w-5 h-5" />
-                    </Button>
-                    <h1 className="text-lg font-bold">工務今日施工項目 - 新增</h1>
-                </div>
-            </header>
+            <FormHeader title="工務今日施工項目 - 新增" currentStep={getFilledSteps()} totalSteps={totalSteps} themeColor="bg-amber-500">
+                <BackButton />
+            </FormHeader>
 
             <main className="max-w-3xl mx-auto p-6">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    <form onSubmit={handleSubmit(onPreSubmit)} className="space-y-6">
+                        {/* 施工日期 */}
                         <Card>
                             <CardHeader><CardTitle className="text-base">施工日期</CardTitle></CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>開始日期 <span className="text-red-500">*</span></Label>
-                                        <Input type="date" {...register('start_date')} />
-                                        {errors.start_date && <p className="text-red-500 text-xs">{errors.start_date.message}</p>}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>結束日期 <span className="text-red-500">*</span></Label>
-                                        <Input type="date" {...register('end_date')} />
-                                        {errors.end_date && <p className="text-red-500 text-xs">{errors.end_date.message}</p>}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>時間 <span className="text-red-500">*</span></Label>
-                                        <Input type="time" {...register('time')} />
-                                        {errors.time && <p className="text-red-500 text-xs">{errors.time.message}</p>}
-                                    </div>
+                                    <FormField label="開始日期" required error={errors.start_date?.message} touched={touchedFields.start_date}>
+                                        <Input type="date" {...register('start_date')} onBlur={() => handleFieldBlur('start_date')} />
+                                    </FormField>
+                                    <FormField label="結束日期" required error={errors.end_date?.message} touched={touchedFields.end_date}>
+                                        <Input type="date" {...register('end_date')} onBlur={() => handleFieldBlur('end_date')} />
+                                    </FormField>
+                                    <FormField label="時間" required error={errors.time?.message} touched={touchedFields.time}>
+                                        <Input type="time" {...register('time')} onBlur={() => handleFieldBlur('time')} />
+                                    </FormField>
                                 </div>
                             </CardContent>
                         </Card>
 
+                        {/* 負責資訊 */}
                         <Card>
                             <CardHeader><CardTitle className="text-base">負責資訊</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>廠商 <span className="text-red-500">*</span></Label>
-                                    <Input {...register('vendor_name')} placeholder="請輸入廠商名稱" />
-                                    {errors.vendor_name && <p className="text-red-500 text-xs">{errors.vendor_name.message}</p>}
-                                </div>
+                                <FormField label="廠商" required error={errors.vendor_name?.message} touched={touchedFields.vendor_name}>
+                                    <Input {...register('vendor_name')} placeholder="請輸入廠商名稱" onBlur={() => handleFieldBlur('vendor_name')} />
+                                </FormField>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>單位 <span className="text-red-500">*</span></Label>
-                                        <Input {...register('unit')} />
-                                        {errors.unit && <p className="text-red-500 text-xs">{errors.unit.message}</p>}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>工務負責人員 <span className="text-red-500">*</span></Label>
-                                        <Input {...register('engineering_contact')} />
-                                        {errors.engineering_contact && <p className="text-red-500 text-xs">{errors.engineering_contact.message}</p>}
-                                    </div>
+                                    <FormField label="單位" required error={errors.unit?.message} touched={touchedFields.unit}>
+                                        <Input {...register('unit')} onBlur={() => handleFieldBlur('unit')} />
+                                    </FormField>
+                                    <FormField label="工務負責人員" required error={errors.engineering_contact?.message} touched={touchedFields.engineering_contact}>
+                                        <Input {...register('engineering_contact')} onBlur={() => handleFieldBlur('engineering_contact')} />
+                                    </FormField>
                                 </div>
                             </CardContent>
                         </Card>
 
+                        {/* 內容 */}
                         <Card>
                             <CardContent className="pt-6 space-y-4">
-                                <div className="space-y-2">
-                                    <Label>內容 <span className="text-red-500">*</span></Label>
-                                    <Textarea {...register('work_content')} rows={4} placeholder="請填寫詳細內容" />
-                                    {errors.work_content && <p className="text-red-500 text-xs">{errors.work_content.message}</p>}
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>備註</Label>
-                                    <Input {...register('note')} placeholder="選填" />
-                                </div>
+                                <FormField label="內容" required error={errors.work_content?.message} touched={touchedFields.work_content}>
+                                    <Textarea {...register('work_content')} rows={4} placeholder="請填寫詳細內容" onBlur={() => handleFieldBlur('work_content')} />
+                                </FormField>
+                                <FormField label="備註" error={errors.note?.message} touched={touchedFields.note}>
+                                    <Input {...register('note')} placeholder="選填" onBlur={() => handleFieldBlur('note')} />
+                                </FormField>
                             </CardContent>
                         </Card>
 
-                        <Button type="submit" disabled={isSubmitting} className="w-full py-6 text-lg font-bold bg-amber-500 hover:bg-amber-600 shadow-lg">
-                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle className="w-5 h-5 mr-2" />提交資料</>}
-                        </Button>
+                        <SubmitButton isSubmitting={isSubmitting} isSuccess={isSuccess} label="提交資料" className="bg-amber-500 hover:bg-amber-600" />
                     </form>
                 </motion.div>
             </main>
+
+            <ConfirmDialog
+                open={showConfirm}
+                onConfirm={onConfirmSubmit}
+                onCancel={() => setShowConfirm(false)}
+                title="確認提交工務施工項目"
+                data={pendingData || {}}
+                fieldLabels={FIELD_LABELS}
+            />
         </div>
     )
 }
