@@ -9,8 +9,9 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import {
     HardHat, ArrowLeft, Search, ChevronLeft, ChevronRight,
-    RefreshCw, Download
+    RefreshCw, Download, Filter
 } from 'lucide-react'
+import { MobileTableCard } from '@/components/MobileTableCard'
 
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -49,6 +50,7 @@ export default function EngineeringHistoryClient() {
     // 選取狀態
     const [selected, setSelected] = useState<Set<string>>(new Set())
 
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
     const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'))
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [keyword, setKeyword] = useState('')
@@ -190,61 +192,31 @@ export default function EngineeringHistoryClient() {
                 >
                     <div className="p-4 border-b border-slate-100">
                         <div className="flex flex-wrap items-end gap-4">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-slate-500">開始日期</Label>
-                                <Input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-40"
-                                />
+                            <div className="flex w-full md:hidden justify-between items-center mb-2">
+                                <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
+                                    <Filter className="w-4 h-4 mr-2" />
+                                    {isFiltersOpen ? '隱藏篩選' : '顯示篩選'}
+                                </Button>
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-slate-500">結束日期</Label>
-                                <Input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-40"
-                                />
+                            <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">關鍵字搜尋</Label><Input type="text" placeholder="廠商、單位、施工內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-60" /></div>
+                                <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-slate-500">關鍵字搜尋</Label>
-                                <Input
-                                    type="text"
-                                    placeholder="廠商、單位、施工內容..."
-                                    value={keyword}
-                                    onChange={(e) => setKeyword(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    className="w-60"
-                                />
+                            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                                <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                <Badge variant="outline">{totalCount} 筆</Badge>
                             </div>
-                            <Button onClick={handleSearch} disabled={loading}>
-                                <Search className="w-4 h-4 mr-1" />
-                                搜尋
-                            </Button>
-                            <Button variant="outline" onClick={handleExport}>
-                                <Download className="w-4 h-4 mr-1" />
-                                匯出
-                            </Button>
-
-                            <div className="flex-1" />
-
                         </div>
                     </div>
 
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="hidden md:table">
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={selected.size === data.length && data.length > 0}
-                                            onCheckedChange={toggleSelectAll}
-                                        />
-                                    </TableHead>
+                                    <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                     <TableHead className="w-12">#</TableHead>
-                                    <TableHead className="text-xs">ID</TableHead>
                                     <TableHead>建立時間</TableHead>
                                     <TableHead>開始日期</TableHead>
                                     <TableHead>結束日期</TableHead>
@@ -258,28 +230,14 @@ export default function EngineeringHistoryClient() {
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={12} className="text-center py-8">
-                                            <RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" />
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableRow><TableCell colSpan={11} className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></TableCell></TableRow>
                                 ) : data.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={12} className="text-center py-8 text-slate-400">
-                                            查無資料
-                                        </TableCell>
-                                    </TableRow>
+                                    <TableRow><TableCell colSpan={11} className="text-center py-8 text-slate-400">查無資料</TableCell></TableRow>
                                 ) : (
                                     data.map((row, index) => (
                                         <TableRow key={row.id} className={`hover:bg-amber-50/50 ${selected.has(row.id) ? 'bg-amber-100' : ''}`}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={selected.has(row.id)}
-                                                    onCheckedChange={() => toggleSelect(row.id)}
-                                                />
-                                            </TableCell>
+                                            <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
                                             <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[80px] truncate" title={row.id}>{row.id?.slice(0, 8)}...</TableCell>
                                             <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">{row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-'}</TableCell>
                                             <TableCell className="font-mono">{row.start_date}</TableCell>
                                             <TableCell className="font-mono">{row.end_date}</TableCell>
@@ -287,17 +245,46 @@ export default function EngineeringHistoryClient() {
                                             <TableCell className="font-bold">{row.vendor_name}</TableCell>
                                             <TableCell><Badge variant="outline">{row.unit}</Badge></TableCell>
                                             <TableCell>{row.engineering_contact}</TableCell>
-                                            <TableCell className="max-w-xs truncate" title={row.work_content}>
-                                                {row.work_content}
-                                            </TableCell>
-                                            <TableCell className="text-slate-400 text-xs max-w-32 truncate" title={row.note || ''}>
-                                                {row.note || '-'}
-                                            </TableCell>
+                                            <TableCell className="max-w-xs truncate" title={row.work_content}>{row.work_content}</TableCell>
+                                            <TableCell className="text-slate-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
                                         </TableRow>
                                     ))
                                 )}
                             </TableBody>
                         </Table>
+
+                        {/* 手機版卡片列表 */}
+                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                            {loading ? (
+                                <div className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
+                            ) : data.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">查無資料</div>
+                            ) : (
+                                data.map((row: EngineeringHistoryRecord) => (
+                                    <MobileTableCard
+                                        key={row.id}
+                                        id={row.id}
+                                        title={row.vendor_name}
+                                        subtitle={row.engineering_contact}
+                                        status={{
+                                            label: row.unit,
+                                            variant: 'outline' as const,
+                                            className: 'bg-amber-50 text-amber-700 border-amber-200'
+                                        }}
+                                        date={row.start_date}
+                                        endDate={row.end_date}
+                                        time={row.time?.slice(0, 5) || '-'}
+                                        isSelected={selected.has(row.id)}
+                                        onSelect={() => toggleSelect(row.id)}
+                                        details={[
+                                            { label: '建立時間', value: row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-' },
+                                            { label: '施工內容', value: row.work_content },
+                                            { label: '備註', value: row.note },
+                                        ]}
+                                    />
+                                ))
+                            )}
+                        </div>
                     </div>
 
                     <div className="p-4 border-t border-slate-100">
