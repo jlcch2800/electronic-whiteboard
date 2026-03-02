@@ -7,7 +7,8 @@ import { format, subDays } from 'date-fns'
 import { motion } from 'framer-motion'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
-import { FileText, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, ExternalLink, Video, Download } from 'lucide-react'
+import { FileText, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, ExternalLink, Video, Download, Filter } from 'lucide-react'
+import { MobileTableCard } from '@/components/MobileTableCard'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,7 @@ export default function WorkFileClient() {
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
     const totalPages = Math.ceil(totalCount / pageSize)
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
     const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
@@ -111,18 +113,29 @@ export default function WorkFileClient() {
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-slate-200">
                     <div className="p-4 border-b border-slate-100">
                         <div className="flex flex-wrap items-end gap-4">
-                            <div className="space-y-1"><Label className="text-xs text-slate-500">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" /></div>
-                            <div className="space-y-1"><Label className="text-xs text-slate-500">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" /></div>
-                            <div className="space-y-1"><Label className="text-xs text-slate-500">關鍵字搜尋</Label><Input type="text" placeholder="廠商、項目、上傳人..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-52" /></div>
-                            <Button onClick={handleSearch} disabled={loading}><Search className="w-4 h-4 mr-1" />搜尋</Button>
-                            <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
-                            <Button size="sm" variant="outline" onClick={() => { const id = Array.from(selected)[0]; if (id) router.push(`/work-file/${id}/edit`) }} disabled={selected.size !== 1}><Pencil className="w-4 h-4 mr-1" />修改</Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setDeleteDialogOpen(true)} disabled={selected.size === 0}><Trash2 className="w-4 h-4 mr-1" />刪除</Button>
-                            <div className="flex-1" />
+                            {/* 手機版篩選切換 */}
+                            <div className="flex w-full md:hidden justify-between items-center mb-2">
+                                <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
+                                    <Filter className="w-4 h-4 mr-2" />
+                                    {isFiltersOpen ? '隱藏篩選' : '顯示篩選'}
+                                </Button>
+                            </div>
+                            <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">關鍵字搜尋</Label><Input type="text" placeholder="廠商、項目、上傳人..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-52" /></div>
+                                <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                                <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                <Button size="sm" variant="outline" onClick={() => { const id = Array.from(selected)[0]; if (id) router.push(`/work-file/${id}/edit`) }} disabled={selected.size !== 1}><Pencil className="w-4 h-4 mr-1" />修改</Button>
+                                <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setDeleteDialogOpen(true)} disabled={selected.size === 0}><Trash2 className="w-4 h-4 mr-1" />刪除</Button>
+                                <Badge variant="outline">{totalCount} 筆</Badge>
+                            </div>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="hidden md:table">
                             <TableHeader><TableRow>
                                 <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                 <TableHead className="w-12">#</TableHead><TableHead>日期</TableHead><TableHead>廠商</TableHead><TableHead>施工項目</TableHead><TableHead>上傳人員</TableHead><TableHead>說明</TableHead><TableHead>文件</TableHead><TableHead>照片</TableHead><TableHead>影片</TableHead><TableHead>備註</TableHead>
@@ -144,6 +157,41 @@ export default function WorkFileClient() {
                                         ))}
                             </TableBody>
                         </Table>
+
+                        {/* 手機版卡片列表 */}
+                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                            {loading ? (
+                                <div className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
+                            ) : data.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">查無資料</div>
+                            ) : (
+                                data.map((row: WorkFileRecord) => (
+                                    <MobileTableCard
+                                        key={row.id}
+                                        id={row.id}
+                                        title={row.vendor_name || '未指定廠商'}
+                                        subtitle={row.uploader_name}
+                                        status={{
+                                            label: '文件',
+                                            variant: 'outline' as const,
+                                            className: 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100'
+                                        }}
+                                        date={row.date}
+                                        isSelected={selected.has(row.id)}
+                                        onSelect={() => toggleSelect(row.id)}
+                                        onClick={() => router.push(`/work-file/${row.id}/edit`)}
+                                        details={[
+                                            { label: '施工項目', value: row.work_item },
+                                            { label: '說明', value: row.description },
+                                            { label: '文件', value: row.file_url ? <a href={row.file_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline" onClick={(e) => e.stopPropagation()}>查看文件</a> : null },
+                                            { label: '照片', value: row.image_url ? <a href={row.image_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline" onClick={(e) => e.stopPropagation()}>查看照片</a> : null },
+                                            { label: '影片', value: row.video_url ? <a href={row.video_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline" onClick={(e) => e.stopPropagation()}>查看影片</a> : null },
+                                            { label: '備註', value: row.note },
+                                        ]}
+                                    />
+                                ))
+                            )}
+                        </div>
                     </div>
                     <div className="p-4 border-t border-slate-100">
                         <DataTablePagination

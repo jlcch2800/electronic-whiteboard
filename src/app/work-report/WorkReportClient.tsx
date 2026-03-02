@@ -7,7 +7,8 @@ import { format, subDays } from 'date-fns'
 import { motion } from 'framer-motion'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
-import { ClipboardCheck, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, Download } from 'lucide-react'
+import { ClipboardCheck, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, Download, Filter } from 'lucide-react'
+import { MobileTableCard } from '@/components/MobileTableCard'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,7 @@ export default function WorkReportClient() {
     const [loading, setLoading] = useState(true)
     const [totalCount, setTotalCount] = useState(0)
     const [selected, setSelected] = useState<Set<string>>(new Set())
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
     const [startDate, setStartDate] = useState(format(subDays(new Date(), 7), 'yyyy-MM-dd'))
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [keyword, setKeyword] = useState('')
@@ -117,19 +119,30 @@ export default function WorkReportClient() {
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-slate-200">
                     <div className="p-4 border-b border-slate-100">
                         <div className="flex flex-wrap items-end gap-4">
-                            <div className="space-y-1"><Label className="text-xs text-slate-500">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" /></div>
-                            <div className="space-y-1"><Label className="text-xs text-slate-500">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" /></div>
-                            <div className="space-y-1"><Label className="text-xs text-slate-500">狀態</Label><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部</SelectItem><SelectItem value="completed">完成</SelectItem><SelectItem value="incomplete">未完成</SelectItem><SelectItem value="abnormal">異常</SelectItem></SelectContent></Select></div>
-                            <div className="space-y-1"><Label className="text-xs text-slate-500">關鍵字搜尋</Label><Input type="text" placeholder="廠商、地點、內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-52" /></div>
-                            <Button onClick={handleSearch} disabled={loading}><Search className="w-4 h-4 mr-1" />搜尋</Button>
-                            <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
-                            <Button size="sm" variant="outline" onClick={() => { const id = Array.from(selected)[0]; if (id) router.push(`/work-report/${id}/edit`) }} disabled={selected.size !== 1}><Pencil className="w-4 h-4 mr-1" />修改</Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setDeleteDialogOpen(true)} disabled={selected.size === 0}><Trash2 className="w-4 h-4 mr-1" />刪除</Button>
-                            <div className="flex-1" />
+                            {/* 手機版篩選切換 */}
+                            <div className="flex w-full md:hidden justify-between items-center mb-2">
+                                <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
+                                    <Filter className="w-4 h-4 mr-2" />
+                                    {isFiltersOpen ? '隱藏篩選' : '顯示篩選'}
+                                </Button>
+                            </div>
+                            <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">狀態</Label><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部</SelectItem><SelectItem value="completed">完成</SelectItem><SelectItem value="incomplete">未完成</SelectItem><SelectItem value="abnormal">異常</SelectItem></SelectContent></Select></div>
+                                <div className="space-y-1"><Label className="text-xs text-slate-500">關鍵字搜尋</Label><Input type="text" placeholder="廠商、地點、內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-52" /></div>
+                                <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                                <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                <Button size="sm" variant="outline" onClick={() => { const id = Array.from(selected)[0]; if (id) router.push(`/work-report/${id}/edit`) }} disabled={selected.size !== 1}><Pencil className="w-4 h-4 mr-1" />修改</Button>
+                                <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setDeleteDialogOpen(true)} disabled={selected.size === 0}><Trash2 className="w-4 h-4 mr-1" />刪除</Button>
+                                <Badge variant="outline">{totalCount} 筆</Badge>
+                            </div>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="hidden md:table">
                             <TableHeader><TableRow>
                                 <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                 <TableHead className="w-12">#</TableHead><TableHead>日期</TableHead><TableHead>時間</TableHead><TableHead>廠商</TableHead><TableHead>地點</TableHead><TableHead>負責人</TableHead><TableHead>狀態</TableHead><TableHead>施工內容</TableHead><TableHead>備註</TableHead>
@@ -149,6 +162,38 @@ export default function WorkReportClient() {
                                         ))}
                             </TableBody>
                         </Table>
+
+                        {/* 手機版卡片列表 */}
+                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                            {loading ? (
+                                <div className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
+                            ) : data.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">查無資料</div>
+                            ) : (
+                                data.map((row: WorkReportRecord) => (
+                                    <MobileTableCard
+                                        key={row.id}
+                                        id={row.id}
+                                        title={row.vendor_name}
+                                        subtitle={row.engineering_contact}
+                                        status={{
+                                            label: statusLabels[row.work_status]?.text || row.work_status,
+                                            variant: statusLabels[row.work_status]?.variant || 'secondary',
+                                        }}
+                                        date={row.report_date}
+                                        time={row.report_time?.slice(0, 5) || '-'}
+                                        isSelected={selected.has(row.id)}
+                                        onSelect={() => toggleSelect(row.id)}
+                                        onClick={() => router.push(`/work-report/${row.id}/edit`)}
+                                        details={[
+                                            { label: '地點', value: row.work_location },
+                                            { label: '施工內容', value: row.work_content },
+                                            { label: '備註', value: row.note },
+                                        ]}
+                                    />
+                                ))
+                            )}
+                        </div>
                     </div>
                     <div className="p-4 border-t border-slate-100">
                         <DataTablePagination
