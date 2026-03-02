@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function EngineeringWorkPage() {
     const supabase = await createClient()
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
 
     const { data } = await supabase
         .from('engineering_today_work')

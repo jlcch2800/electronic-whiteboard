@@ -64,7 +64,8 @@ function StatCard({
     color,
     href,
     newHref,
-    delay
+    delay,
+    className
 }: {
     icon: any
     label: string
@@ -73,6 +74,7 @@ function StatCard({
     href: string
     newHref: string
     delay: number
+    className?: string
 }) {
     const router = useRouter()
     const animatedCount = useCountUp(count, 1500)
@@ -154,6 +156,7 @@ function StatCard({
                 transition-all duration-300 ease-out
                 hover:-translate-y-2 hover:shadow-2xl
                 active:scale-[0.98] active:shadow-lg
+                ${className || ''}
             `}
         >
             {/* 頂部色條 */}
@@ -213,7 +216,8 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
 
     // 重新整理統計數據
     const refreshCounts = async () => {
-        const today = new Date().toISOString().split('T')[0]
+        // 使用台灣時區取得今天日期
+        const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
         const [v, e, p] = await Promise.all([
             supabase.from('vendor_today_work').select('*', { count: 'exact', head: true }).eq('work_date', today),
             supabase.from('engineering_today_work').select('*', { count: 'exact', head: true }).lte('start_date', today).gte('end_date', today),
@@ -225,6 +229,11 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
             pending: p.count ?? 0,
         })
     }
+
+    // 每次進入首頁時自動重新查詢最新數據，避免 Router Cache 導致舊數據
+    useEffect(() => {
+        refreshCounts()
+    }, [])
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -247,7 +256,8 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
 
             {/* ===== 統計卡片區 ===== */}
             <section className="max-w-5xl mx-auto px-6 -mt-6 relative z-20 w-full">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Statistics Cards - 改為垂直堆疊 (Vertical stacking on mobile) */}
+                <div className="flex flex-col md:grid md:grid-cols-3 gap-6 pb-2 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
                     <StatCard
                         icon={Users}
                         label="廠商今日施工項目"
@@ -256,6 +266,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         href="/vendor-work"
                         newHref="/vendor-work/new"
                         delay={0.3}
+                        className="w-[85vw] shrink-0 snap-center md:w-auto"
                     />
                     <StatCard
                         icon={HardHat}
@@ -265,6 +276,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         href="/engineering-work"
                         newHref="/engineering-work/new"
                         delay={0.45}
+                        className="w-[85vw] shrink-0 snap-center md:w-auto"
                     />
                     <StatCard
                         icon={FileClock}
@@ -274,6 +286,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         href="/pending-work"
                         newHref="/pending-work/new"
                         delay={0.6}
+                        className="w-[85vw] shrink-0 snap-center md:w-auto"
                     />
                 </div>
             </section>

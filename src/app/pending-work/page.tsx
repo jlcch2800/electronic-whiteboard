@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function PendingWorkPage() {
     const supabase = await createClient()
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
     const sixMonthsLater = format(addMonths(new Date(), 6), 'yyyy-MM-dd')
 
     const { data } = await supabase

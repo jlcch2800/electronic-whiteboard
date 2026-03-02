@@ -10,7 +10,7 @@ export default async function DashboardPage() {
     const supabase = await createClient()
 
     // Fetch initial data for the whiteboard (today's data)
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
     // 待處理工作項目預設顯示當日起六個月內
     const sixMonthsLater = format(addMonths(new Date(), 6), 'yyyy-MM-dd')
 

@@ -97,7 +97,7 @@ export default function PendingWorkNewPage() {
                         <Card>
                             <CardHeader><CardTitle className="text-base">施工日期</CardTitle></CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <FormField label="開始日期" required error={errors.start_date?.message} touched={touchedFields.start_date}>
                                         <Input type="date" {...register('start_date')} onBlur={() => handleFieldBlur('start_date')} />
                                     </FormField>
@@ -117,7 +117,7 @@ export default function PendingWorkNewPage() {
                                 <FormField label="廠商" required error={errors.vendor_name?.message} touched={touchedFields.vendor_name}>
                                     <Input {...register('vendor_name')} placeholder="請輸入廠商名稱" onBlur={() => handleFieldBlur('vendor_name')} />
                                 </FormField>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="單位" required error={errors.unit?.message} touched={touchedFields.unit}>
                                         <Input {...register('unit')} onBlur={() => handleFieldBlur('unit')} />
                                     </FormField>

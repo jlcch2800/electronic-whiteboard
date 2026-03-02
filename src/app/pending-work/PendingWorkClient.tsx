@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
-    FileClock, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw, MoreHorizontal
+    FileClock, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw, MoreHorizontal, Filter
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -32,6 +32,7 @@ import { DataTablePagination } from '@/components/DataTablePagination'
 import { EmptyState } from '@/components/EmptyState'
 import { useTableData } from '@/hooks/useTableData'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
+import { MobileTableCard } from '@/components/MobileTableCard'
 
 interface PendingWorkClientProps {
     initialData: any[]
@@ -54,6 +55,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
         end: format(addDays(new Date(), 180), 'yyyy-MM-dd'),
         keyword: ''
     })
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
     // Delete dialog
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, ids: string[] }>({
@@ -188,32 +190,41 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                     className="bg-white rounded-2xl shadow-sm border border-slate-200"
                 >
                     <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="date"
-                                value={search.start}
-                                onChange={(e) => setSearch(s => ({ ...s, start: e.target.value }))}
-                                className="w-36"
-                            />
-                            <span className="text-slate-400">~</span>
-                            <Input
-                                type="date"
-                                value={search.end}
-                                onChange={(e) => setSearch(s => ({ ...s, end: e.target.value }))}
-                                className="w-36"
-                            />
-                            <Input
-                                placeholder="搜尋關鍵字..."
-                                value={search.keyword}
-                                onChange={(e) => setSearch(s => ({ ...s, keyword: e.target.value }))}
-                                className="w-40"
-                            />
-                            <Button size="sm" onClick={handleSearch} disabled={loading}>
-                                <Search className="w-4 h-4 mr-1" /> 搜尋
-                            </Button>
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+                            <div className="flex w-full md:hidden justify-between items-center mb-2">
+                                <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
+                                    <Filter className="w-4 h-4 mr-2" />
+                                    {isFiltersOpen ? '隱藏篩選' : '顯示篩選'}
+                                </Button>
+                            </div>
+
+                            <div className={`flex-col md:flex-row items-stretch md:items-center gap-2 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
+                                <Input
+                                    type="date"
+                                    value={search.start}
+                                    onChange={(e) => setSearch(s => ({ ...s, start: e.target.value }))}
+                                    className="w-full md:w-36"
+                                />
+                                <span className="text-slate-400 hidden md:inline">~</span>
+                                <Input
+                                    type="date"
+                                    value={search.end}
+                                    onChange={(e) => setSearch(s => ({ ...s, end: e.target.value }))}
+                                    className="w-full md:w-36"
+                                />
+                                <Input
+                                    placeholder="搜尋關鍵字..."
+                                    value={search.keyword}
+                                    onChange={(e) => setSearch(s => ({ ...s, keyword: e.target.value }))}
+                                    className="w-full md:w-40"
+                                />
+                                <Button size="sm" onClick={handleSearch} disabled={loading} className="w-full md:w-auto">
+                                    <Search className="w-4 h-4 mr-1" /> 搜尋
+                                </Button>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                             <Button size="sm" onClick={() => router.push('/pending-work/new')} className="bg-purple-600 hover:bg-purple-700">
                                 <Plus className="w-4 h-4 mr-1" /> 新增
                             </Button>
@@ -239,7 +250,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                     </div>
 
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="hidden md:table">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-12">
@@ -272,29 +283,72 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    tableData.paginatedData.map((p: any, index: number) => (
-                                        <TableRow key={p.id} className={`hover:bg-purple-50/50 ${selected.has(p.id) ? 'bg-purple-100' : ''}`}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={selected.has(p.id)}
-                                                    onCheckedChange={() => toggleSelect(p.id)}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{(tableData.page - 1) * tableData.perPage + index + 1}</TableCell>
-                                            <TableCell className="font-mono">{p.start_date}</TableCell>
-                                            <TableCell className="font-mono">{p.end_date}</TableCell>
-                                            <TableCell className="font-mono">{p.time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-bold">{p.vendor_name}</TableCell>
-                                            <TableCell><Badge variant="outline">{p.unit}</Badge></TableCell>
-                                            <TableCell>{p.engineering_contact}</TableCell>
-                                            <TableCell className="max-w-xs truncate" title={p.work_content}>{p.work_content}</TableCell>
-                                            <TableCell className="text-slate-400 text-xs">{p.note || '-'}</TableCell>
-
-                                        </TableRow>
-                                    ))
+                                    tableData.paginatedData.map((e: any, index: number) => {
+                                        const actualIndex = (tableData.page - 1) * tableData.perPage + index + 1
+                                        return (
+                                            <TableRow key={e.id} className={`hover:bg-purple-50/50 transition-colors ${selected.has(e.id) ? 'bg-purple-50' : ''}`}>
+                                                <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-purple-50/50">
+                                                    <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
+                                                </TableCell>
+                                                <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
+                                                <TableCell className="font-mono">{e.start_date}</TableCell>
+                                                <TableCell className="font-mono">{e.end_date}</TableCell>
+                                                <TableCell className="font-mono">{e.time?.slice(0, 5) || '-'}</TableCell>
+                                                <TableCell className="font-bold">{e.vendor_name}</TableCell>
+                                                <TableCell><Badge variant="outline">{e.unit}</Badge></TableCell>
+                                                <TableCell>{e.engineering_contact}</TableCell>
+                                                <TableCell className="max-w-xs truncate" title={e.work_content}>{e.work_content}</TableCell>
+                                                <TableCell className="text-slate-400 text-xs">{e.note || '-'}</TableCell>
+                                            </TableRow>
+                                        )
+                                    })
                                 )}
                             </TableBody>
                         </Table>
+
+                        {/* 手機版卡片列表 */}
+                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                            {tableData.paginatedData.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">
+                                    查無待處理工作
+                                </div>
+                            ) : (
+                                tableData.paginatedData.map((e: any) => (
+                                    <MobileTableCard
+                                        key={e.id}
+                                        id={e.id}
+                                        title={e.vendor_name}
+                                        subtitle={e.engineering_contact || '無負責人'}
+                                        status={e.status === '待處理' ? {
+                                            label: '待處理',
+                                            variant: 'outline',
+                                            className: 'bg-purple-50 text-purple-700 border-purple-200'
+                                        } : e.status === '進行中' ? {
+                                            label: '進行中',
+                                            variant: 'outline',
+                                            className: 'bg-blue-50 text-blue-700 border-blue-200'
+                                        } : {
+                                            label: e.status || '待處理',
+                                            variant: 'outline',
+                                            className: 'bg-green-50 text-green-700 border-green-200'
+                                        }}
+                                        date={e.start_date}
+                                        endDate={e.end_date}
+                                        time={e.time?.slice(0, 5) || '-'}
+                                        isSelected={selected.has(e.id)}
+                                        onSelect={() => toggleSelect(e.id)}
+                                        onClick={() => router.push(`/pending-work/${e.id}/edit`)}
+                                        details={[
+                                            { label: "廠商", value: e.vendor_name },
+                                            { label: "單位", value: e.unit },
+                                            { label: "負責人", value: e.engineering_contact },
+                                            { label: "內容", value: e.work_content },
+                                            { label: "備註", value: e.note }
+                                        ]}
+                                    />
+                                ))
+                            )}
+                        </div>
                     </div>
 
                     <div className="p-4 border-t border-slate-100">

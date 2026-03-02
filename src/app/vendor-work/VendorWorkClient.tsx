@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
-    Users, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw
+    Users, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw, Filter
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -24,6 +24,7 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
+import { MobileTableCard } from '@/components/MobileTableCard'
 
 interface VendorWorkClientProps {
     initialData: any[]
@@ -46,6 +47,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
         end: format(new Date(), 'yyyy-MM-dd'),
         keyword: ''
     })
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
     // Delete dialog
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, ids: string[] }>({
@@ -184,32 +186,41 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                     className="bg-white rounded-2xl shadow-sm border border-slate-200"
                 >
                     <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="date"
-                                value={search.start}
-                                onChange={(e) => setSearch(s => ({ ...s, start: e.target.value }))}
-                                className="w-36"
-                            />
-                            <span className="text-slate-400">~</span>
-                            <Input
-                                type="date"
-                                value={search.end}
-                                onChange={(e) => setSearch(s => ({ ...s, end: e.target.value }))}
-                                className="w-36"
-                            />
-                            <Input
-                                placeholder="搜尋關鍵字..."
-                                value={search.keyword}
-                                onChange={(e) => setSearch(s => ({ ...s, keyword: e.target.value }))}
-                                className="w-40"
-                            />
-                            <Button size="sm" onClick={handleSearch} disabled={loading}>
-                                <Search className="w-4 h-4 mr-1" /> 搜尋
-                            </Button>
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+                            <div className="flex w-full md:hidden justify-between items-center mb-2">
+                                <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
+                                    <Filter className="w-4 h-4 mr-2" />
+                                    {isFiltersOpen ? '隱藏篩選' : '顯示篩選'}
+                                </Button>
+                            </div>
+
+                            <div className={`flex-col md:flex-row items-stretch md:items-center gap-2 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
+                                <Input
+                                    type="date"
+                                    value={search.start}
+                                    onChange={(e) => setSearch(s => ({ ...s, start: e.target.value }))}
+                                    className="w-full md:w-36"
+                                />
+                                <span className="text-slate-400 hidden md:inline">~</span>
+                                <Input
+                                    type="date"
+                                    value={search.end}
+                                    onChange={(e) => setSearch(s => ({ ...s, end: e.target.value }))}
+                                    className="w-full md:w-36"
+                                />
+                                <Input
+                                    placeholder="搜尋關鍵字..."
+                                    value={search.keyword}
+                                    onChange={(e) => setSearch(s => ({ ...s, keyword: e.target.value }))}
+                                    className="w-full md:w-40"
+                                />
+                                <Button size="sm" onClick={handleSearch} disabled={loading} className="w-full md:w-auto">
+                                    <Search className="w-4 h-4 mr-1" /> 搜尋
+                                </Button>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                             <Button size="sm" onClick={() => router.push('/vendor-work/new')} className="bg-green-600 hover:bg-green-700">
                                 <Plus className="w-4 h-4 mr-1" /> 新增
                             </Button>
@@ -236,7 +247,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                     </div>
 
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="hidden md:table">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-12">
@@ -270,38 +281,78 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    data.map((v: any, index: number) => (
-                                        <TableRow key={v.id} className={`hover:bg-blue-50/50 ${selected.has(v.id) ? 'bg-blue-100' : ''}`}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={selected.has(v.id)}
-                                                    onCheckedChange={() => toggleSelect(v.id)}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'}>
-                                                    {v.entry_status === 'arrival' ? '到院' : '離院'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="font-mono">{v.work_date}</TableCell>
-                                            <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-mono">{v.departure_time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-bold">{v.vendor_name}</TableCell>
-                                            <TableCell>{v.vendor_badge_id || '-'}</TableCell>
-                                            <TableCell>{v.vendor_contact}</TableCell>
-                                            <TableCell>{v.vendor_contact_phone || '-'}</TableCell>
-                                            <TableCell>{v.building || '-'}</TableCell>
-                                            <TableCell>{v.floor || '-'}</TableCell>
-                                            <TableCell>{v.location || '-'}</TableCell>
-                                            <TableCell>{v.head_count || '-'}</TableCell>
-                                            <TableCell className="max-w-xs truncate" title={v.work_content}>{v.work_content}</TableCell>
-                                            <TableCell className="text-slate-400 text-xs">{v.note || '-'}</TableCell>
-                                        </TableRow>
-                                    ))
+                                    data.map((v: any, index: number) => {
+                                        const actualIndex = index + 1
+                                        return (
+                                            <TableRow key={v.id} className={`hover:bg-blue-50/50 transition-colors ${selected.has(v.id) ? 'bg-blue-50' : ''}`}>
+                                                <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-blue-50/50">
+                                                    <Checkbox checked={selected.has(v.id)} onCheckedChange={() => toggleSelect(v.id)} />
+                                                </TableCell>
+                                                <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}>
+                                                        {v.entry_status === 'arrival' ? '到院' : '離院'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="font-mono">{v.work_date}</TableCell>
+                                                <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
+                                                <TableCell className="font-mono">{v.departure_time?.slice(0, 5) || '-'}</TableCell>
+                                                <TableCell className="font-bold text-blue-600">{v.vendor_name}</TableCell>
+                                                <TableCell>{v.vendor_badge_id || '-'}</TableCell>
+                                                <TableCell>{v.vendor_contact}</TableCell>
+                                                <TableCell className="font-mono">{v.vendor_contact_phone || '-'}</TableCell>
+                                                <TableCell>{v.building || '-'}</TableCell>
+                                                <TableCell>{v.floor || '-'}</TableCell>
+                                                <TableCell className="max-w-[150px] truncate" title={v.location}>{v.location}</TableCell>
+                                                <TableCell>{v.head_count || '-'}</TableCell>
+                                                <TableCell className="max-w-[200px] truncate" title={v.work_content}>{v.work_content}</TableCell>
+                                                <TableCell className="max-w-[150px] truncate" title={v.note}>{v.note || '-'}</TableCell>
+                                            </TableRow>
+                                        )
+                                    })
                                 )}
                             </TableBody>
                         </Table>
+
+                        {/* 手機版卡片列表 */}
+                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                            {data.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">
+                                    查無資料
+                                </div>
+                            ) : (
+                                data.map((v: any) => (
+                                    <MobileTableCard
+                                        key={v.id}
+                                        id={v.id}
+                                        title={v.vendor_name}
+                                        subtitle={v.vendor_contact}
+                                        status={{
+                                            label: '廠商',
+                                            variant: 'outline',
+                                            className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                        }}
+                                        date={v.work_date}
+                                        time={v.time?.slice(0, 5) || '-'}
+                                        isSelected={selected.has(v.id)}
+                                        onSelect={() => toggleSelect(v.id)}
+                                        onClick={() => router.push(`/vendor-work/${v.id}/edit`)}
+                                        details={[
+                                            { label: "狀態", value: v.entry_status === 'arrival' ? '到院' : '離院' },
+                                            { label: "工作證號", value: v.vendor_badge_id },
+                                            { label: "聯絡人", value: v.vendor_contact },
+                                            { label: "聯絡電話", value: v.vendor_contact_phone },
+                                            { label: "棟別", value: v.building },
+                                            { label: "樓層", value: v.floor },
+                                            { label: "地點", value: v.location },
+                                            { label: "人數", value: v.head_count },
+                                            { label: "內容", value: v.work_content },
+                                            { label: "備註", value: v.note }
+                                        ]}
+                                    />
+                                ))
+                            )}
+                        </div>
                     </div>
                 </motion.section>
             </main>

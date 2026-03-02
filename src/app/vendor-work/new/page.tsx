@@ -166,7 +166,7 @@ export default function VendorWorkNewPage() {
                         {/* 日期時間 */}
                         <Card>
                             <CardContent className="pt-6">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="日期" required error={errors.work_date?.message} touched={touchedFields.work_date}>
                                         <Input type="date" {...register('work_date')} onBlur={() => handleFieldBlur('work_date')} />
                                     </FormField>
@@ -195,7 +195,7 @@ export default function VendorWorkNewPage() {
                                 <FormField label="廠商名稱" required error={errors.vendor_name?.message} touched={touchedFields.vendor_name}>
                                     <Input {...register('vendor_name')} placeholder="請輸入廠商名稱" onBlur={() => handleFieldBlur('vendor_name')} />
                                 </FormField>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="廠商負責人員" required error={errors.vendor_contact?.message} touched={touchedFields.vendor_contact}>
                                         <Input {...register('vendor_contact')} onBlur={() => handleFieldBlur('vendor_contact')} />
                                     </FormField>
@@ -219,7 +219,7 @@ export default function VendorWorkNewPage() {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <FormField label="棟別" required error={errors.building?.message} touched={touchedFields.building}>
                                                 <Input {...register('building')} onBlur={() => handleFieldBlur('building')} />
                                             </FormField>
@@ -230,7 +230,7 @@ export default function VendorWorkNewPage() {
                                                 <Input type="number" {...register('vendor_badge_id')} onBlur={() => handleFieldBlur('vendor_badge_id')} />
                                             </FormField>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <FormField label="施工地點" required error={errors.location?.message} touched={touchedFields.location}>
                                                 <Input {...register('location')} onBlur={() => handleFieldBlur('location')} />
                                             </FormField>

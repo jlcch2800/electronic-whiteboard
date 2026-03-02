@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
   const supabase = await createClient()
-  const today = new Date().toISOString().split('T')[0]
+  // 使用台灣時區取得今天日期，避免 UTC 時差導致查錯日期
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
 
   // 查詢三張表的 count（使用 head: true 只取筆數，不取資料）
   const [vendorCount, engineeringCount, pendingCount] = await Promise.all([
@@ -26,6 +27,7 @@ export default async function HomePage() {
       .lte('start_date', today)
       .gte('end_date', today),
   ])
+
 
   return (
     <HomeClient

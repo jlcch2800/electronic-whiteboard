@@ -74,7 +74,7 @@ export default function EngineeringEditClient({ initialData }: { initialData: an
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                     <form onSubmit={handleSubmit(onPreSubmit)} className="space-y-6">
                         <Card>
-                            <CardContent className="pt-6 grid grid-cols-2 gap-4">
+                            <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField label="開始日期" required error={errors.start_date?.message} touched={touchedFields.start_date}>
                                     <Input type="date" {...register('start_date')} onBlur={() => handleFieldBlur('start_date')} />
                                 </FormField>
@@ -87,7 +87,7 @@ export default function EngineeringEditClient({ initialData }: { initialData: an
                         <Card>
                             <CardHeader><CardTitle className="text-base">工作資訊</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="時間" required error={errors.time?.message} touched={touchedFields.time}>
                                         <Input type="time" {...register('time')} onBlur={() => handleFieldBlur('time')} />
                                     </FormField>
@@ -95,7 +95,7 @@ export default function EngineeringEditClient({ initialData }: { initialData: an
                                         <Input {...register('unit')} onBlur={() => handleFieldBlur('unit')} />
                                     </FormField>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="廠商" required error={errors.vendor_name?.message} touched={touchedFields.vendor_name}>
                                         <Input {...register('vendor_name')} onBlur={() => handleFieldBlur('vendor_name')} />
                                     </FormField>
