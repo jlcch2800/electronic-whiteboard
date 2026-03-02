@@ -7,7 +7,8 @@ import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
-import { ArrowLeft, FileText, Search, RefreshCw, Download, AlertCircle, Info, AlertTriangle, Eye } from 'lucide-react'
+import { ArrowLeft, FileText, Search, RefreshCw, Download, AlertCircle, Info, AlertTriangle, Eye, Filter } from 'lucide-react'
+import { MobileTableCard } from '@/components/MobileTableCard'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
     const [pageSize, setPageSize] = useState<number>(10)
     const [currentPage, setCurrentPage] = useState(1)
     const [selected, setSelected] = useState<Set<string>>(new Set())
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
     const TABLE_NAME_MAP: Record<string, string> = {
         'vendor_today_work': '廠商今日施工項目',
@@ -285,20 +287,27 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100">
             <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 shrink-0">
-                            <Button variant="ghost" size="icon" onClick={() => router.push('/')}><ArrowLeft className="w-5 h-5" /></Button>
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl text-white"><FileText className="w-6 h-6" /></div>
-                                <div><h1 className="text-xl font-bold text-slate-800">系統執行記錄</h1><p className="text-sm text-slate-500">排程執行與系統運作記錄</p></div>
+                <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4 shrink-0">
+                                <Button variant="ghost" size="icon" onClick={() => router.push('/')}><ArrowLeft className="w-5 h-5" /></Button>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl text-white"><FileText className="w-6 h-6" /></div>
+                                    <div><h1 className="text-xl font-bold text-slate-800">系統執行記錄</h1><p className="text-sm text-slate-500 hidden md:block">排程執行與系統運作記錄</p></div>
+                                </div>
                             </div>
+                            <Button variant="outline" size="sm" className="md:hidden" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
+                                <Filter className="w-4 h-4 mr-1" />{isFiltersOpen ? '隱藏' : '篩選'}
+                            </Button>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2"><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36" /><span className="text-slate-400">~</span><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36" /></div>
-                            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="搜尋..." className="pl-10 w-48" /></div>
-                            <Button variant="outline" onClick={fetchLogs} disabled={loading}><RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />查詢</Button>
-                            <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700"><Download className="w-4 h-4 mr-2" /> 匯出</Button>
+                        <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
+                            <div className="flex items-center gap-2"><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-36" /><span className="text-slate-400">~</span><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-36" /></div>
+                            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="搜尋..." className="pl-10 w-full md:w-48" /></div>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" onClick={fetchLogs} disabled={loading} className="flex-1 md:flex-none"><RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />查詢</Button>
+                                <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none"><Download className="w-4 h-4 mr-2" /> 匯出</Button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -306,18 +315,17 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
             <main className="max-w-7xl mx-auto p-6">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="hidden md:table">
                             <TableHeader><TableRow className="bg-slate-50">
                                 <TableHead className="w-12"><Checkbox checked={selected.size === paginatedLogs.length && paginatedLogs.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
-                                <TableHead className="w-12">#</TableHead><TableHead className="text-xs">ID</TableHead><TableHead>建立時間</TableHead><TableHead>日期</TableHead><TableHead>資料表</TableHead><TableHead>記錄等級</TableHead><TableHead>訊息</TableHead><TableHead>明細</TableHead>
+                                <TableHead className="w-12">#</TableHead><TableHead>建立時間</TableHead><TableHead>日期</TableHead><TableHead>資料表</TableHead><TableHead>記錄等級</TableHead><TableHead>訊息</TableHead><TableHead>明細</TableHead>
                             </TableRow></TableHeader>
                             <TableBody>
-                                {paginatedLogs.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-10 text-slate-400">沒有找到記錄</TableCell></TableRow>
+                                {paginatedLogs.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center py-10 text-slate-400">沒有找到記錄</TableCell></TableRow>
                                     : paginatedLogs.map((log, index) => (
                                         <TableRow key={log.id} className={`hover:bg-slate-50 ${selected.has(log.id) ? 'bg-indigo-100' : ''}`}>
                                             <TableCell><Checkbox checked={selected.has(log.id)} onCheckedChange={() => toggleSelect(log.id)} /></TableCell>
                                             <TableCell className="text-slate-400 text-sm">{(currentPage - 1) * pageSize + index + 1}</TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[80px] truncate" title={log.id}>{log.id?.slice(0, 8)}...</TableCell>
                                             <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell>
                                             <TableCell className="font-mono text-sm">{log.date}</TableCell>
                                             <TableCell className="font-mono text-sm">{getTranslatedTableName(log.table_name)}</TableCell>
@@ -460,6 +468,140 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                     ))}
                             </TableBody>
                         </Table>
+
+                        {/* 手機版卡片列表 */}
+                        <div className="md:hidden mt-4 space-y-3 px-2 pb-4">
+                            {paginatedLogs.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400">沒有找到記錄</div>
+                            ) : (
+                                paginatedLogs.map((log, index) => (
+                                    <MobileTableCard
+                                        key={log.id}
+                                        id={log.id}
+                                        title={`#${(currentPage - 1) * pageSize + index + 1} ${getTranslatedTableName(log.table_name)}`}
+                                        subtitle={translateMessage(log.message)?.slice(0, 50) || '-'}
+                                        status={{
+                                            label: log.log_level,
+                                            variant: log.log_level === 'Error' ? 'destructive' as const : log.log_level === 'Warning' ? 'outline' as const : 'secondary' as const,
+                                            className: log.log_level === 'Warning' ? 'border-yellow-500 text-yellow-500' : undefined,
+                                        }}
+                                        date={log.date}
+                                        time={format(new Date(log.created_at), 'HH:mm:ss')}
+                                        isSelected={selected.has(log.id)}
+                                        onSelect={() => toggleSelect(log.id)}
+                                        details={[
+                                            { label: '建立時間', value: format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss') },
+                                            { label: '訊息', value: translateMessage(log.message) || '-' },
+                                        ]}
+                                        actionNode={
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <Button variant="ghost" size="sm" className="h-8 text-teal-600 hover:text-teal-700 hover:bg-teal-50 px-2">
+                                                        <Eye className="w-4 h-4 mr-1" />明細
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-[95vw] md:max-w-2xl max-h-[80vh] overflow-y-auto">
+                                                    <DialogHeader>
+                                                        <DialogTitle className="flex items-center justify-between pr-8">
+                                                            執行記錄明細
+                                                            <Button size="sm" onClick={() => handleExportDetail(log)} className="bg-green-600 hover:bg-green-700">
+                                                                <Download className="w-4 h-4 mr-1" />匯出
+                                                            </Button>
+                                                        </DialogTitle>
+                                                        <DialogDescription>
+                                                            執行時間：{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <div className="mt-4 border rounded-lg overflow-hidden">
+                                                        <Table>
+                                                            <TableBody>
+                                                                <TableRow><TableCell className="bg-slate-50 font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-slate-50 font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-slate-50 font-bold">日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-slate-50 font-bold">資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.table_name)}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-slate-50 font-bold">記錄等級</TableCell><TableCell>{getLevelBadge(log.log_level)}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-slate-50 font-bold align-top">訊息</TableCell><TableCell className="whitespace-pre-wrap break-words">{translateMessage(log.message) || '-'}</TableCell></TableRow>
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
+                                                    {(log.old_data || log.new_data) && (() => {
+                                                        const parseJson = (data: any) => {
+                                                            if (!data) return null
+                                                            if (typeof data === 'string') { try { return JSON.parse(data) } catch { return null } }
+                                                            return data
+                                                        }
+                                                        const oldData = parseJson(log.old_data)
+                                                        const newData = parseJson(log.new_data)
+                                                        const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]))
+                                                        const sortedKeys = allKeys.sort((a, b) => {
+                                                            const indexA = FIELD_ORDER.indexOf(a); const indexB = FIELD_ORDER.indexOf(b);
+                                                            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                                                            if (indexA !== -1) return -1; if (indexB !== -1) return 1;
+                                                            return a.localeCompare(b);
+                                                        });
+                                                        if (Array.isArray(newData)) {
+                                                            return (
+                                                                <div className="mt-4 border rounded-lg overflow-hidden">
+                                                                    <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">執行資料快照 (共 {newData.length} 筆)</div>
+                                                                    <div className="max-h-[50vh] overflow-y-auto">
+                                                                        {newData.map((item: any, idx: number) => {
+                                                                            const itemKeys = Object.keys(item).sort((a, b) => {
+                                                                                const iA = FIELD_ORDER.indexOf(a); const iB = FIELD_ORDER.indexOf(b);
+                                                                                if (iA !== -1 && iB !== -1) return iA - iB;
+                                                                                if (iA !== -1) return -1; if (iB !== -1) return 1;
+                                                                                return a.localeCompare(b);
+                                                                            });
+                                                                            return (
+                                                                                <div key={idx} className="border-b last:border-b-0">
+                                                                                    <div className="bg-slate-50 px-4 py-1 text-xs font-bold text-slate-500 border-b border-dashed">#{idx + 1}</div>
+                                                                                    <Table><TableBody>
+                                                                                        {itemKeys.map(key => (
+                                                                                            <TableRow key={key} className="hover:bg-transparent">
+                                                                                                <TableCell className="w-32 font-bold text-slate-600 text-xs py-1 border-b-0 h-auto align-top">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                                <TableCell className="font-mono text-sm py-1 border-b-0 h-auto break-words">{item[key] !== undefined && item[key] !== null ? (typeof item[key] === 'object' ? JSON.stringify(item[key]) : String(item[key])) : '-'}</TableCell>
+                                                                                            </TableRow>
+                                                                                        ))}
+                                                                                    </TableBody></Table>
+                                                                                </div>
+                                                                            )
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        }
+                                                        return (
+                                                            <div className="mt-4 border rounded-lg overflow-hidden">
+                                                                <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">異動資料對比</div>
+                                                                <Table>
+                                                                    <TableHeader><TableRow className="bg-slate-50">
+                                                                        <TableHead className="w-32">欄位</TableHead>
+                                                                        <TableHead className="text-green-700 bg-green-50">變更前</TableHead>
+                                                                        <TableHead className="text-red-700 bg-red-50">變更後</TableHead>
+                                                                    </TableRow></TableHeader>
+                                                                    <TableBody>
+                                                                        {sortedKeys.map(key => {
+                                                                            const oldVal = oldData?.[key]; const newVal = newData?.[key];
+                                                                            const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal);
+                                                                            return (
+                                                                                <TableRow key={key} className={isChanged ? 'bg-yellow-50' : ''}>
+                                                                                    <TableCell className="font-bold text-slate-600 text-xs">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50' : ''}`}>{oldVal !== undefined ? JSON.stringify(oldVal) : '-'}</TableCell>
+                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50' : ''}`}>{newVal !== undefined ? JSON.stringify(newVal) : '-'}</TableCell>
+                                                                                </TableRow>
+                                                                            )
+                                                                        })}
+                                                                    </TableBody>
+                                                                </Table>
+                                                            </div>
+                                                        )
+                                                    })()}
+                                                </DialogContent>
+                                            </Dialog>
+                                        }
+                                    />
+                                ))
+                            )}
+                        </div>
                     </div>
                     <div className="p-4 border-t border-slate-100">
                         <DataTablePagination

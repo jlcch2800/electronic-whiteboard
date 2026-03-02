@@ -5,10 +5,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
-import { ArrowLeft, UserCog, Plus, Edit, Trash2, Search, RefreshCw, Check, X } from 'lucide-react'
+import { ArrowLeft, UserCog, Plus, Edit, Trash2, Search, RefreshCw, Check, X, Filter, Download } from 'lucide-react'
+import { MobileTableCard } from '@/components/MobileTableCard'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
 import { createClient } from '@/lib/supabase/client'
 import { userManagementSchema, type UserManagementFormValues } from '@/lib/validations/schemas'
 import { Button } from '@/components/ui/button'
@@ -41,6 +44,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     const [editingUser, setEditingUser] = useState<any | null>(null)
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
     const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<UserManagementFormValues>({
         resolver: zodResolver(userManagementSchema),
@@ -146,6 +150,38 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         }
     }
 
+    const handleExport = () => {
+        const dataToExport = selectedId ? filteredUsers.filter(u => u.id === selectedId) : filteredUsers
+        if (dataToExport.length === 0) {
+            toast({ title: '無資料可匯出', variant: 'destructive' })
+            return
+        }
+
+        const sheetData = dataToExport.map((u, i) => ({
+            '#': i + 1,
+            '建立時間': format(new Date(u.created_at), 'yyyy-MM-dd HH:mm:ss'),
+            '單位': u.unit || '',
+            '姓名': u.user_name || '',
+            '帳號': u.user_account || '',
+            '群組': u.role === 'admin' ? 'Admin' : 'Staff',
+            'Email': u.email || '',
+            '啟用狀態': u.is_active ? '啟用' : '停用',
+            '失敗計次': u.failed_attempts || 0,
+            '最後失敗時間': u.last_failed_at ? format(new Date(u.last_failed_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '鎖定至': u.locked_until ? format(new Date(u.locked_until), 'yyyy-MM-dd HH:mm:ss') : ''
+        }))
+
+        const wb = XLSX.utils.book_new()
+        const ws = XLSX.utils.json_to_sheet(sheetData)
+        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
+        XLSX.utils.book_append_sheet(wb, ws, '帳號清單')
+
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `帳號清單_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+
+        toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
+    }
+
     const filteredUsers = users.filter(user => {
         const term = searchTerm.toLowerCase()
         return user.user_name?.toLowerCase().includes(term) ||
@@ -159,19 +195,24 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
-                <div className="flex justify-between items-center max-w-7xl mx-auto">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
-                            <ArrowLeft className="w-5 h-5" />
+            <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 sticky top-0 z-10 shadow-sm">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 max-w-7xl mx-auto">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
+                                <ArrowLeft className="w-5 h-5" />
+                            </Button>
+                            <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                <UserCog className="w-6 h-6 text-green-600" />
+                                帳號管理
+                            </h1>
+                        </div>
+                        <Button variant="outline" size="sm" className="md:hidden" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
+                            <Filter className="w-4 h-4 mr-1" />{isFiltersOpen ? '隱藏' : '篩選'}
                         </Button>
-                        <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                            <UserCog className="w-6 h-6 text-green-600" />
-                            帳號管理
-                        </h1>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
                         <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
                             <Button variant="ghost" size="sm" onClick={handleEdit} disabled={!selectedId} className="text-blue-600">
                                 <Edit className="w-4 h-4 mr-1" /> 修改
@@ -187,17 +228,21 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="搜尋..."
-                                className="pl-9 w-64"
+                                className="pl-9 w-full md:w-64"
                             />
                         </div>
 
-                        <Button onClick={handleCreate} className="bg-green-600 hover:bg-green-700">
-                            <Plus className="w-4 h-4 mr-1" /> 新增帳號
-                        </Button>
-
-                        <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
-                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                        </Button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none">
+                                <Download className="w-4 h-4 mr-1" /> 匯出
+                            </Button>
+                            <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 flex-1 md:flex-none">
+                                <Plus className="w-4 h-4 mr-1" /> 新增帳號
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
+                                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -210,11 +255,11 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                     className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
                 >
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="hidden md:table">
                             <TableHeader>
                                 <TableRow className="bg-slate-50">
                                     <TableHead className="w-12">選取</TableHead>
-                                    <TableHead className="text-xs">ID</TableHead>
+                                    <TableHead className="w-12">#</TableHead>
                                     <TableHead>建立時間</TableHead>
                                     <TableHead>單位</TableHead>
                                     <TableHead>姓名</TableHead>
@@ -240,7 +285,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    paginatedUsers.map((user) => (
+                                    paginatedUsers.map((user, index) => (
                                         <TableRow
                                             key={user.id}
                                             className={`cursor-pointer transition-colors ${selectedId === user.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
@@ -249,8 +294,8 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                             <TableCell>
                                                 <Checkbox checked={selectedId === user.id} />
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[80px] truncate" title={user.id}>
-                                                {user.id?.slice(0, 8)}...
+                                            <TableCell className="font-mono text-slate-500">
+                                                {(page - 1) * pageSize + index + 1}
                                             </TableCell>
                                             <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">
                                                 {format(new Date(user.created_at), 'yyyy-MM-dd HH:mm')}
@@ -300,6 +345,43 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 )}
                             </TableBody>
                         </Table>
+
+                        {/* 手機版卡片列表 */}
+                        <div className="md:hidden mt-4 space-y-3 px-2 pb-4">
+                            {paginatedUsers.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400">沒有找到使用者</div>
+                            ) : (
+                                paginatedUsers.map((user, index) => (
+                                    <MobileTableCard
+                                        key={user.id}
+                                        id={user.id}
+                                        title={`#${(page - 1) * pageSize + index + 1} ${user.user_name}`}
+                                        subtitle={user.user_account}
+                                        status={{
+                                            label: user.role === 'admin' ? '管理員' : '員工',
+                                            variant: user.role === 'admin' ? 'destructive' : 'secondary',
+                                        }}
+                                        date={format(new Date(user.created_at), 'yyyy-MM-dd')}
+                                        time={format(new Date(user.created_at), 'HH:mm')}
+                                        isSelected={selectedId === user.id}
+                                        onSelect={() => setSelectedId(selectedId === user.id ? null : user.id)}
+                                        details={[
+                                            { label: '單位', value: user.unit },
+                                            { label: 'Email', value: user.email },
+                                            { label: '啟用', value: user.is_active ? '✅ 啟用' : '⛔ 停用' },
+                                            { label: '密碼雜湊', value: user.password_hash?.slice(0, 10) + '...' },
+                                            { label: '失敗計次', value: String(user.failed_attempts || 0) },
+                                            { label: '最後失敗', value: user.last_failed_at ? format(new Date(user.last_failed_at), 'yyyy-MM-dd HH:mm') : '-' },
+                                            { label: '鎖定至', value: user.locked_until ? format(new Date(user.locked_until), 'yyyy-MM-dd HH:mm') : '-' },
+                                            { label: 'resetToken', value: user.reset_token_hash ? user.reset_token_hash.slice(0, 8) + '...' : '-' },
+                                            { label: 'resetExpire', value: user.reset_token_expire ? format(new Date(user.reset_token_expire), 'yyyy-MM-dd HH:mm') : '-' },
+                                            { label: 'verifyToken', value: user.verify_token_hash ? user.verify_token_hash.slice(0, 8) + '...' : '-' },
+                                            { label: 'verifyExpire', value: user.verify_token_expire ? format(new Date(user.verify_token_expire), 'yyyy-MM-dd HH:mm') : '-' },
+                                        ]}
+                                    />
+                                ))
+                            )}
+                        </div>
                     </div>
                     <div className="p-4 border-t border-slate-100">
                         <DataTablePagination
