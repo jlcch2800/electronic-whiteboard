@@ -1,7 +1,7 @@
 // 系統異動記錄 Client Component
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { ArrowLeft, History, Search, RefreshCw, Download, Edit, Trash2, Plus, LogIn, LogOut, Eye, AlertTriangle, Filter } from 'lucide-react'
 import { MobileTableCard } from '@/components/MobileTableCard'
+import { EmptyState } from '@/components/EmptyState'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,7 @@ import { DataTablePagination } from '@/components/DataTablePagination'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
 interface ChangeLogClientProps {
     initialLogs: any[]
@@ -148,7 +150,27 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
     // 分頁
     const totalPages = Math.ceil(filteredLogs.length / pageSize)
-    const paginatedLogs = filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+    // 排序狀態
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+    const handleSort = (key: string) => {
+        setSort(prev => {
+            if (prev?.key === key && prev.direction === 'asc') return { key, direction: 'desc' }
+            if (prev?.key === key && prev.direction === 'desc') return null
+            return { key, direction: 'asc' }
+        })
+    }
+    const sortedLogs = useMemo(() => {
+        if (!sort) return filteredLogs
+        return [...filteredLogs].sort((a, b) => {
+            const valA = (a as any)[sort.key] ?? ''
+            const valB = (b as any)[sort.key] ?? ''
+            if (valA < valB) return sort.direction === 'asc' ? -1 : 1
+            if (valA > valB) return sort.direction === 'asc' ? 1 : -1
+            return 0
+        })
+    }, [filteredLogs, sort])
+    const paginatedLogs = sortedLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
     const toggleSelectAll = () => { selected.size === paginatedLogs.length && paginatedLogs.length > 0 ? setSelected(new Set()) : setSelected(new Set(paginatedLogs.map(i => i.id))) }
 
@@ -344,13 +366,13 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                 <TableRow className="bg-slate-50">
                                     <TableHead className="w-12"><Checkbox checked={selected.size === paginatedLogs.length && paginatedLogs.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                     <TableHead className="w-12">#</TableHead>
-                                    <TableHead>建立時間</TableHead>
-                                    <TableHead>日期</TableHead>
-                                    <TableHead>單位</TableHead>
-                                    <TableHead>姓名</TableHead>
-                                    <TableHead>帳號</TableHead>
-                                    <TableHead>動作類型</TableHead>
-                                    <TableHead>異動資料表</TableHead>
+                                    <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="日期" sortKey="date" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="單位" sortKey="user_unit" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="姓名" sortKey="user_name" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="帳號" sortKey="user_account" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="動作類型" sortKey="action_type" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="異動資料表" sortKey="modify_table" currentSort={sort} onSort={handleSort} />
                                     <TableHead>異動記錄ID</TableHead>
                                     <TableHead>異動內容</TableHead>
                                 </TableRow>
@@ -358,8 +380,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                             <TableBody>
                                 {paginatedLogs.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={11} className="text-center py-10 text-slate-400">
-                                            沒有找到記錄
+                                        <TableCell colSpan={11} className="p-0">
+                                            <EmptyState icon={History} title="沒有找到紀錄" description="目前沒有符合條件的異動紀錄，請調整篩選條件。" />
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -499,7 +521,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                         {/* 手機版卡片列表 */}
                         <div className="md:hidden mt-4 space-y-3 px-2 pb-4">
                             {paginatedLogs.length === 0 ? (
-                                <div className="text-center py-10 text-slate-400">沒有找到記錄</div>
+                                <EmptyState icon={History} title="沒有找到紀錄" description="目前沒有符合條件的異動紀錄，請調整篩選條件。" />
                             ) : (
                                 paginatedLogs.map((log, index) => (
                                     <MobileTableCard

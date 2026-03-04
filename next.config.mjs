@@ -8,6 +8,15 @@ const nextConfig = {
         // 暫時忽略 TS 錯誤以便快速開發
         ignoreBuildErrors: true,
     },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'res.cloudinary.com',
+                pathname: '/**',
+            },
+        ],
+    },
 };
 
 export default nextConfig;

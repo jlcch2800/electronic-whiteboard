@@ -1,14 +1,15 @@
 // Work File List - Client Component
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, subDays } from 'date-fns'
 import { motion } from 'framer-motion'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
-import { FileText, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, ExternalLink, Video, Download, Filter } from 'lucide-react'
+import { FileText, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, ExternalLink, Video, Download, Filter, FolderOpen } from 'lucide-react'
 import { MobileTableCard } from '@/components/MobileTableCard'
+import { EmptyState } from '@/components/EmptyState'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
 interface WorkFileRecord {
     id: string; created_at: string; date: string; vendor_name: string | null; work_item: string | null
@@ -43,6 +45,26 @@ export default function WorkFileClient() {
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
+    // 排序狀態
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+    const handleSort = (key: string) => {
+        setSort(prev => {
+            if (prev?.key === key && prev.direction === 'asc') return { key, direction: 'desc' }
+            if (prev?.key === key && prev.direction === 'desc') return null
+            return { key, direction: 'asc' }
+        })
+    }
+    const sortedData = useMemo(() => {
+        if (!sort) return data
+        return [...data].sort((a, b) => {
+            const valA = (a as any)[sort.key] ?? ''
+            const valB = (b as any)[sort.key] ?? ''
+            if (valA < valB) return sort.direction === 'asc' ? -1 : 1
+            if (valA > valB) return sort.direction === 'asc' ? 1 : -1
+            return 0
+        })
+    }, [data, sort])
+
     const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
     const toggleSelectAll = () => { selected.size === data.length && data.length > 0 ? setSelected(new Set()) : setSelected(new Set(data.map(i => i.id))) }
 
@@ -52,7 +74,7 @@ export default function WorkFileClient() {
             .gte('date', startDate).lte('date', endDate)
             .order('date', { ascending: false }).order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
-        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
+        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,date.ilike.%${keyword}%,note.ilike.%${keyword}%`)
         const { data: records, count, error } = await q
         if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
         else { setData(records || []); setTotalCount(count || 0) }
@@ -86,7 +108,7 @@ export default function WorkFileClient() {
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
             let q = supabase.from('work_file').select('*').gte('date', startDate).lte('date', endDate).order('date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
+            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,date.ilike.%${keyword}%,note.ilike.%${keyword}%`)
             const { data: allData } = await q; dataToExport = allData || []
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
@@ -138,15 +160,20 @@ export default function WorkFileClient() {
                         <Table className="hidden md:table">
                             <TableHeader><TableRow>
                                 <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
-                                <TableHead className="w-12">#</TableHead><TableHead>日期</TableHead><TableHead>廠商</TableHead><TableHead>施工項目</TableHead><TableHead>上傳人員</TableHead><TableHead>說明</TableHead><TableHead>文件</TableHead><TableHead>照片</TableHead><TableHead>影片</TableHead><TableHead>備註</TableHead>
+                                <TableHead className="w-12">#</TableHead>
+                                <SortableTableHead label="日期" sortKey="date" currentSort={sort} onSort={handleSort} />
+                                <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
+                                <SortableTableHead label="施工項目" sortKey="work_item" currentSort={sort} onSort={handleSort} />
+                                <SortableTableHead label="上傳人員" sortKey="uploader_name" currentSort={sort} onSort={handleSort} />
+                                <TableHead>說明</TableHead><TableHead>文件</TableHead><TableHead>照片</TableHead><TableHead>影片</TableHead><TableHead>備註</TableHead>
                             </TableRow></TableHeader>
                             <TableBody>
                                 {loading ? <TableRow><TableCell colSpan={11} className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></TableCell></TableRow>
-                                    : data.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center py-8 text-slate-400">查無資料</TableCell></TableRow>
-                                        : data.map((row, index) => (
+                                    : sortedData.length === 0 ? <TableRow><TableCell colSpan={11} className="p-0"><EmptyState icon={FolderOpen} title="尚無施工檔案" description="目前沒有施工檔案記錄，您可以點擊右上方新增。" /></TableCell></TableRow>
+                                        : sortedData.map((row, index) => (
                                             <TableRow key={row.id} className={`hover:bg-teal-50/50 ${selected.has(row.id) ? 'bg-teal-100' : ''}`}>
                                                 <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
-                                                <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
+                                                <TableCell className="text-slate-400 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
                                                 <TableCell className="font-mono">{row.date}</TableCell><TableCell className="font-bold">{row.vendor_name || '-'}</TableCell><TableCell>{row.work_item || '-'}</TableCell><TableCell>{row.uploader_name}</TableCell>
                                                 <TableCell className="max-w-32 truncate" title={row.description || ''}>{row.description || '-'}</TableCell>
                                                 <TableCell>{row.file_url ? <a href={row.file_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline flex items-center gap-1"><ExternalLink className="w-3 h-3" /><span className="text-xs">{shortenUrl(row.file_url)}</span></a> : '-'}</TableCell>
@@ -162,10 +189,10 @@ export default function WorkFileClient() {
                         <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
                             {loading ? (
                                 <div className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
-                            ) : data.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400">查無資料</div>
+                            ) : sortedData.length === 0 ? (
+                                <EmptyState icon={FolderOpen} title="尚無施工檔案" description="目前沒有施工檔案記錄，您可以點擊右上方新增。" />
                             ) : (
-                                data.map((row: WorkFileRecord) => (
+                                sortedData.map((row: WorkFileRecord) => (
                                     <MobileTableCard
                                         key={row.id}
                                         id={row.id}

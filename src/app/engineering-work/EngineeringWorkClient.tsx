@@ -85,7 +85,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
             .gte('end_date', search.start)
 
         if (search.keyword) {
-            query = query.or(`vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,note.ilike.%${search.keyword}%`)
+            query = query.or(`vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,note.ilike.%${search.keyword}%,unit.ilike.%${search.keyword}%,engineering_contact.ilike.%${search.keyword}%`)
         }
 
         const { data: result } = await query.order('start_date', { ascending: false })
@@ -264,8 +264,8 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                     <SortableTableHead label="結束日期" sortKey="end_date" currentSort={tableData.sort} onSort={tableData.handleSort} />
                                     <SortableTableHead label="時間" sortKey="time" currentSort={tableData.sort} onSort={tableData.handleSort} />
                                     <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={tableData.sort} onSort={tableData.handleSort} />
-                                    <TableHead>單位</TableHead>
-                                    <TableHead>負責人</TableHead>
+                                    <SortableTableHead label="單位" sortKey="unit" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                    <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={tableData.sort} onSort={tableData.handleSort} />
                                     <TableHead>內容</TableHead>
                                     <TableHead>備註</TableHead>
                                 </TableRow>

@@ -1,7 +1,7 @@
 // Vendor Work History Page - Client Component
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, subDays } from 'date-fns'
 import { motion } from 'framer-motion'
@@ -12,6 +12,7 @@ import {
     RefreshCw, Download, Filter
 } from 'lucide-react'
 import { MobileTableCard } from '@/components/MobileTableCard'
+import { EmptyState } from '@/components/EmptyState'
 
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/table'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { useToast } from '@/hooks/use-toast'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
 interface VendorHistoryRecord {
     id: string
@@ -69,6 +71,26 @@ export default function VendorHistoryClient() {
 
     const totalPages = Math.ceil(totalCount / pageSize)
 
+    // 排序狀態
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+    const handleSort = (key: string) => {
+        setSort(prev => {
+            if (prev?.key === key && prev.direction === 'asc') return { key, direction: 'desc' }
+            if (prev?.key === key && prev.direction === 'desc') return null
+            return { key, direction: 'asc' }
+        })
+    }
+    const sortedData = useMemo(() => {
+        if (!sort) return data
+        return [...data].sort((a, b) => {
+            const valA = (a as any)[sort.key] ?? ''
+            const valB = (b as any)[sort.key] ?? ''
+            if (valA < valB) return sort.direction === 'asc' ? -1 : 1
+            if (valA > valB) return sort.direction === 'asc' ? 1 : -1
+            return 0
+        })
+    }, [data, sort])
+
     // 選取功能
     const toggleSelect = (id: string) => {
         const newSet = new Set(selected)
@@ -100,7 +122,7 @@ export default function VendorHistoryClient() {
 
         // Keyword search (search in vendor_name, work_content, note)
         if (keyword.trim()) {
-            query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,work_date.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%,head_count.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
         }
 
         const { data: records, count, error } = await query
@@ -144,7 +166,7 @@ export default function VendorHistoryClient() {
                 .order('work_date', { ascending: false })
 
             if (keyword.trim()) {
-                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,work_date.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%,head_count.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
             }
 
             const { data: allData } = await query
@@ -243,19 +265,19 @@ export default function VendorHistoryClient() {
                                 <TableRow>
                                     <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                     <TableHead className="w-12">#</TableHead>
-                                    <TableHead>建立時間</TableHead>
-                                    <TableHead>狀態</TableHead>
-                                    <TableHead>日期</TableHead>
-                                    <TableHead>到院時間</TableHead>
-                                    <TableHead>離院時間</TableHead>
-                                    <TableHead>廠商名稱</TableHead>
-                                    <TableHead>廠商工作證號</TableHead>
-                                    <TableHead>廠商負責人員姓名</TableHead>
+                                    <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="狀態" sortKey="entry_status" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="日期" sortKey="work_date" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="到院時間" sortKey="arrival_time" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="離院時間" sortKey="departure_time" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="廠商名稱" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="廠商工作證號" sortKey="vendor_badge_id" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="廠商負責人員姓名" sortKey="vendor_contact" currentSort={sort} onSort={handleSort} />
                                     <TableHead>廠商負責人員電話</TableHead>
-                                    <TableHead>棟別</TableHead>
-                                    <TableHead>樓層</TableHead>
-                                    <TableHead>施工地點</TableHead>
-                                    <TableHead>施工人數</TableHead>
+                                    <SortableTableHead label="棟別" sortKey="building" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="樓層" sortKey="floor" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="施工地點" sortKey="location" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
                                     <TableHead>施工內容</TableHead>
                                     <TableHead>備註</TableHead>
                                 </TableRow>
@@ -263,13 +285,13 @@ export default function VendorHistoryClient() {
                             <TableBody>
                                 {loading ? (
                                     <TableRow><TableCell colSpan={17} className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></TableCell></TableRow>
-                                ) : data.length === 0 ? (
-                                    <TableRow><TableCell colSpan={17} className="text-center py-8 text-slate-400">查無資料</TableCell></TableRow>
+                                ) : sortedData.length === 0 ? (
+                                    <TableRow><TableCell colSpan={17} className="p-0"><EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
                                 ) : (
-                                    data.map((row, index) => (
+                                    sortedData.map((row, index) => (
                                         <TableRow key={row.id} className={`hover:bg-blue-50/50 ${selected.has(row.id) ? 'bg-blue-100' : ''}`}>
                                             <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{index + 1}</TableCell>
+                                            <TableCell className="text-slate-400 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
                                             <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">{row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-'}</TableCell>
                                             <TableCell><Badge variant={row.entry_status === 'arrival' ? 'default' : 'secondary'}>{row.entry_status === 'arrival' ? '到院' : '離院'}</Badge></TableCell>
                                             <TableCell className="font-mono">{row.work_date}</TableCell>
@@ -295,10 +317,10 @@ export default function VendorHistoryClient() {
                         <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
                             {loading ? (
                                 <div className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
-                            ) : data.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400">查無資料</div>
+                            ) : sortedData.length === 0 ? (
+                                <EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" />
                             ) : (
-                                data.map((row: VendorHistoryRecord) => (
+                                sortedData.map((row: VendorHistoryRecord) => (
                                     <MobileTableCard
                                         key={row.id}
                                         id={row.id}

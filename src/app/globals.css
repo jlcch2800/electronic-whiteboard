@@ -125,3 +125,142 @@
 .animate-in.slide-in-from-left {
   animation: slide-in-from-left 0.2s ease-out;
 }
+
+/* ============================================
+   登入 / 註冊頁面 — 品牌區塊漸變背景
+   ============================================ */
+.auth-gradient-bg {
+  background: linear-gradient(
+    135deg,
+    #1a3a6e 0%,
+    #1e5cb3 25%,
+    #2563eb 50%,
+    #1e5cb3 75%,
+    #1a3a6e 100%
+  );
+  background-size: 400% 400%;
+  animation: auth-gradient-shift 12s ease infinite;
+}
+
+@keyframes auth-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* — 品牌面板：微磨砂效果 — */
+.auth-brand-panel {
+  position: relative;
+}
+
+/* — 浮動光球裝飾 — */
+.auth-float-orb {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+.auth-float-orb-1 {
+  width: 300px; height: 300px;
+  top: -60px; left: -80px;
+  animation: auth-orb-float 8s ease-in-out infinite;
+}
+.auth-float-orb-2 {
+  width: 200px; height: 200px;
+  bottom: 60px; right: -40px;
+  animation: auth-orb-float 10s ease-in-out infinite reverse;
+}
+.auth-float-orb-3 {
+  width: 150px; height: 150px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  animation: auth-orb-float 6s ease-in-out infinite 2s;
+}
+
+@keyframes auth-orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  25% { transform: translate(20px, -30px) scale(1.1); opacity: 0.7; }
+  50% { transform: translate(-10px, 20px) scale(0.95); opacity: 0.4; }
+  75% { transform: translate(15px, 10px) scale(1.05); opacity: 0.6; }
+}
+
+/* — 登入按鈕：漸層掃光動畫 — */
+.auth-submit-btn {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transition: all 0.3s ease;
+}
+
+.auth-submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.15) 50%,
+    transparent 100%
+  );
+  transition: none;
+}
+
+.auth-submit-btn:hover::before {
+  animation: auth-btn-sweep 0.8s ease-out forwards;
+}
+
+.auth-submit-btn:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 8px 30px -5px rgba(37, 99, 235, 0.5);
+  transform: translateY(-1px);
+}
+
+.auth-submit-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes auth-btn-sweep {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* — 註冊按鈕色系 — */
+.auth-submit-btn-green {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transition: all 0.3s ease;
+}
+
+.auth-submit-btn-green::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.15) 50%,
+    transparent 100%
+  );
+  transition: none;
+}
+
+.auth-submit-btn-green:hover::before {
+  animation: auth-btn-sweep 0.8s ease-out forwards;
+}
+
+.auth-submit-btn-green:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 8px 30px -5px rgba(5, 150, 105, 0.5);
+  transform: translateY(-1px);
+}
+
+.auth-submit-btn-green:active {
+  transform: translateY(0);
+}

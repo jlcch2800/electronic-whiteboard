@@ -117,7 +117,7 @@ export default function WhiteboardClient({
             .lte('work_date', vendorSearch.end)
 
         if (vendorSearch.keyword) {
-            query = query.or(`vendor_name.ilike.%${vendorSearch.keyword}%,work_content.ilike.%${vendorSearch.keyword}%,location.ilike.%${vendorSearch.keyword}%,vendor_contact.ilike.%${vendorSearch.keyword}%`)
+            query = query.or(`vendor_name.ilike.%${vendorSearch.keyword}%,work_content.ilike.%${vendorSearch.keyword}%,location.ilike.%${vendorSearch.keyword}%,vendor_contact.ilike.%${vendorSearch.keyword}%,entry_status.ilike.%${vendorSearch.keyword}%,work_date.ilike.%${vendorSearch.keyword}%,building.ilike.%${vendorSearch.keyword}%,floor.ilike.%${vendorSearch.keyword}%,vendor_badge_id.ilike.%${vendorSearch.keyword}%,vendor_phone.ilike.%${vendorSearch.keyword}%,note.ilike.%${vendorSearch.keyword}%`)
         }
 
         const { data } = await query.order('work_date', { ascending: false })
@@ -133,7 +133,7 @@ export default function WhiteboardClient({
             .gte('end_date', engSearch.start)
 
         if (engSearch.keyword) {
-            query = query.or(`vendor_name.ilike.%${engSearch.keyword}%,work_content.ilike.%${engSearch.keyword}%,note.ilike.%${engSearch.keyword}%`)
+            query = query.or(`vendor_name.ilike.%${engSearch.keyword}%,work_content.ilike.%${engSearch.keyword}%,note.ilike.%${engSearch.keyword}%,unit.ilike.%${engSearch.keyword}%,engineering_contact.ilike.%${engSearch.keyword}%`)
         }
 
         const { data } = await query.order('start_date', { ascending: false })
@@ -149,7 +149,7 @@ export default function WhiteboardClient({
             .gte('end_date', pendingSearch.start)
 
         if (pendingSearch.keyword) {
-            query = query.or(`vendor_name.ilike.%${pendingSearch.keyword}%,work_content.ilike.%${pendingSearch.keyword}%,note.ilike.%${pendingSearch.keyword}%`)
+            query = query.or(`vendor_name.ilike.%${pendingSearch.keyword}%,work_content.ilike.%${pendingSearch.keyword}%,note.ilike.%${pendingSearch.keyword}%,unit.ilike.%${pendingSearch.keyword}%,engineering_contact.ilike.%${pendingSearch.keyword}%`)
         }
 
         const { data } = await query.order('start_date', { ascending: false })
@@ -357,8 +357,9 @@ export default function WhiteboardClient({
                                             <SortableTableHead label="工作證號" sortKey="vendor_badge_id" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
                                             <SortableTableHead label="負責人" sortKey="vendor_contact" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
                                             <TableHead>負責人電話</TableHead>
-                                            <TableHead>棟別/樓層</TableHead>
-                                            <TableHead>施工地點</TableHead>
+                                            <SortableTableHead label="棟別" sortKey="building" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <SortableTableHead label="樓層" sortKey="floor" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
+                                            <SortableTableHead label="施工地點" sortKey="location" currentSort={vendorTable.sort} onSort={vendorTable.handleSort} />
                                             <TableHead>人數</TableHead>
                                             <TableHead>施工內容</TableHead>
                                             <TableHead>備註</TableHead>
@@ -382,7 +383,8 @@ export default function WhiteboardClient({
                                                     <TableCell>{v.vendor_badge_id || '-'}</TableCell>
                                                     <TableCell>{v.vendor_contact}</TableCell>
                                                     <TableCell className="font-mono">{v.vendor_contact_phone || '-'}</TableCell>
-                                                    <TableCell>{v.building || '-'} / {v.floor || '-'}</TableCell>
+                                                    <TableCell>{v.building || '-'}</TableCell>
+                                                    <TableCell>{v.floor || '-'}</TableCell>
                                                     <TableCell>{v.location || '-'}</TableCell>
                                                     <TableCell>{v.head_count || '-'}</TableCell>
                                                     <TableCell className="max-w-[200px] truncate" title={v.work_content}>{v.work_content}</TableCell>

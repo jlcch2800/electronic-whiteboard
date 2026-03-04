@@ -1,12 +1,13 @@
 // Admin User Management Client Component
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import { ArrowLeft, UserCog, Plus, Edit, Trash2, Search, RefreshCw, Check, X, Filter, Download } from 'lucide-react'
 import { MobileTableCard } from '@/components/MobileTableCard'
+import { EmptyState } from '@/components/EmptyState'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 
@@ -25,6 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
 interface UserManagementClientProps {
     initialUsers: any[]
@@ -186,11 +188,35 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         const term = searchTerm.toLowerCase()
         return user.user_name?.toLowerCase().includes(term) ||
             user.email?.toLowerCase().includes(term) ||
-            user.unit?.toLowerCase().includes(term)
+            user.unit?.toLowerCase().includes(term) ||
+            user.user_account?.toLowerCase().includes(term) ||
+            user.role?.toLowerCase().includes(term) ||
+            (term === '是' && user.is_active) ||
+            (term === '否' && !user.is_active)
     })
 
     const totalPages = Math.ceil(filteredUsers.length / pageSize)
-    const paginatedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize)
+
+    // 排序狀態
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+    const handleSort = (key: string) => {
+        setSort(prev => {
+            if (prev?.key === key && prev.direction === 'asc') return { key, direction: 'desc' }
+            if (prev?.key === key && prev.direction === 'desc') return null
+            return { key, direction: 'asc' }
+        })
+    }
+    const sortedUsers = useMemo(() => {
+        if (!sort) return filteredUsers
+        return [...filteredUsers].sort((a, b) => {
+            const valA = (a as any)[sort.key] ?? ''
+            const valB = (b as any)[sort.key] ?? ''
+            if (valA < valB) return sort.direction === 'asc' ? -1 : 1
+            if (valA > valB) return sort.direction === 'asc' ? 1 : -1
+            return 0
+        })
+    }, [filteredUsers, sort])
+    const paginatedUsers = sortedUsers.slice((page - 1) * pageSize, page * pageSize)
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -260,15 +286,15 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 <TableRow className="bg-slate-50">
                                     <TableHead className="w-12">選取</TableHead>
                                     <TableHead className="w-12">#</TableHead>
-                                    <TableHead>建立時間</TableHead>
-                                    <TableHead>單位</TableHead>
-                                    <TableHead>姓名</TableHead>
-                                    <TableHead>帳號</TableHead>
+                                    <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="單位" sortKey="unit" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="姓名" sortKey="user_name" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="帳號" sortKey="account" currentSort={sort} onSort={handleSort} />
                                     <TableHead className="text-xs">密碼雜湊</TableHead>
-                                    <TableHead>群組</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead className="text-center">啟用</TableHead>
-                                    <TableHead className="text-center">失敗計次</TableHead>
+                                    <SortableTableHead label="群組" sortKey="group_name" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="Email" sortKey="email" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="啟用" sortKey="is_active" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="失敗計次" sortKey="failed_login_attempts" currentSort={sort} onSort={handleSort} />
                                     <TableHead>最後失敗時間</TableHead>
                                     <TableHead>鎖定至</TableHead>
                                     <TableHead className="text-xs">resetTokenHash</TableHead>
@@ -280,8 +306,8 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                             <TableBody>
                                 {paginatedUsers.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={17} className="text-center py-10 text-slate-400">
-                                            沒有找到使用者
+                                        <TableCell colSpan={17} className="p-0">
+                                            <EmptyState icon={UserCog} title="沒有找到使用者" description="目前沒有符合條件的使用者，請調整篩選條件或新增帳號。" />
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -349,7 +375,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                         {/* 手機版卡片列表 */}
                         <div className="md:hidden mt-4 space-y-3 px-2 pb-4">
                             {paginatedUsers.length === 0 ? (
-                                <div className="text-center py-10 text-slate-400">沒有找到使用者</div>
+                                <EmptyState icon={UserCog} title="沒有找到使用者" description="目前沒有符合條件的使用者，請調整篩選條件或新增帳號。" />
                             ) : (
                                 paginatedUsers.map((user, index) => (
                                     <MobileTableCard

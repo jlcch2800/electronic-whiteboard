@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import * as XLSX from 'xlsx'
@@ -9,6 +9,7 @@ import { motion } from 'framer-motion'
 import {
     Users, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw, Filter
 } from 'lucide-react'
+import { EmptyState } from '@/components/EmptyState'
 
 import { createClient } from '@/lib/supabase/client'
 import { useAppStore } from '@/stores/useAppStore'
@@ -25,6 +26,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { MobileTableCard } from '@/components/MobileTableCard'
+import { DataTablePagination } from '@/components/DataTablePagination'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
 interface VendorWorkClientProps {
     initialData: any[]
@@ -41,6 +44,11 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
     const [loading, setLoading] = useState(false)
     const [selected, setSelected] = useState<Set<string>>(new Set())
 
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [totalItems, setTotalItems] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+
     // Search state
     const [search, setSearch] = useState({
         start: format(new Date(), 'yyyy-MM-dd'),
@@ -49,19 +57,58 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
     })
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
+    // 排序狀態
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+    const handleSort = (key: string) => {
+        setSort(prev => {
+            if (prev?.key === key && prev.direction === 'asc') return { key, direction: 'desc' }
+            if (prev?.key === key && prev.direction === 'desc') return null
+            return { key, direction: 'asc' }
+        })
+    }
+    const sortedData = useMemo(() => {
+        if (!sort) return data
+        return [...data].sort((a, b) => {
+            const valA = a[sort.key] ?? ''
+            const valB = b[sort.key] ?? ''
+            if (valA < valB) return sort.direction === 'asc' ? -1 : 1
+            if (valA > valB) return sort.direction === 'asc' ? 1 : -1
+            return 0
+        })
+    }, [data, sort])
+
     // Delete dialog
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, ids: string[] }>({
         open: false, ids: []
     })
 
+    // 載入初始資料筆數與頁數
+    useEffect(() => {
+        refreshData()
+    }, [currentPage, itemsPerPage])
+
     const refreshData = async () => {
         setLoading(true)
+
+        // 取得總筆數
+        const { count } = await supabase
+            .from('vendor_today_work')
+            .select('*', { count: 'exact', head: true })
+            .gte('work_date', search.start)
+            .lte('work_date', search.end)
+
+        const total = count || 0
+        setTotalItems(total)
+        setTotalPages(Math.ceil(total / itemsPerPage))
+
+        // 取得分頁資料
         const { data: result } = await supabase
             .from('vendor_today_work')
             .select('*')
             .gte('work_date', search.start)
             .lte('work_date', search.end)
             .order('work_date', { ascending: false })
+            .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1)
 
         setData(result || [])
         setSelected(new Set())
@@ -69,18 +116,41 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
     }
 
     const handleSearch = async () => {
+        // 重設為第一頁
+        setCurrentPage(1)
+
         setLoading(true)
-        let query = supabase
+
+        // 建立查詢條件
+        let countQuery = supabase
+            .from('vendor_today_work')
+            .select('*', { count: 'exact', head: true })
+            .gte('work_date', search.start)
+            .lte('work_date', search.end)
+
+        let dataQuery = supabase
             .from('vendor_today_work')
             .select('*')
             .gte('work_date', search.start)
             .lte('work_date', search.end)
 
         if (search.keyword) {
-            query = query.or(`vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,location.ilike.%${search.keyword}%,vendor_contact.ilike.%${search.keyword}%`)
+            const keywordFilter = `vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,location.ilike.%${search.keyword}%,vendor_contact.ilike.%${search.keyword}%,entry_status.ilike.%${search.keyword}%,work_date.ilike.%${search.keyword}%,building.ilike.%${search.keyword}%,floor.ilike.%${search.keyword}%,vendor_badge_id.ilike.%${search.keyword}%,vendor_phone.ilike.%${search.keyword}%,note.ilike.%${search.keyword}%`
+            countQuery = countQuery.or(keywordFilter)
+            dataQuery = dataQuery.or(keywordFilter)
         }
 
-        const { data: result } = await query.order('work_date', { ascending: false })
+        // 取得總筆數
+        const { count } = await countQuery
+        const total = count || 0
+        setTotalItems(total)
+        setTotalPages(Math.ceil(total / itemsPerPage))
+
+        // 取得第一頁資料
+        const { data: result } = await dataQuery
+            .order('work_date', { ascending: false })
+            .range(0, itemsPerPage - 1)
+
         setData(result || [])
         setSelected(new Set())
         setLoading(false)
@@ -257,32 +327,32 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                         />
                                     </TableHead>
                                     <TableHead className="w-12">#</TableHead>
-                                    <TableHead>狀態</TableHead>
-                                    <TableHead>日期</TableHead>
-                                    <TableHead>到院時間</TableHead>
-                                    <TableHead>離院時間</TableHead>
-                                    <TableHead>廠商名稱</TableHead>
-                                    <TableHead>廠商工作證號</TableHead>
-                                    <TableHead>廠商負責人員姓名</TableHead>
+                                    <SortableTableHead label="狀態" sortKey="entry_status" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="日期" sortKey="work_date" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="到院時間" sortKey="arrival_time" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="離院時間" sortKey="departure_time" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="廠商名稱" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="廠商工作證號" sortKey="vendor_badge_id" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="廠商負責人員姓名" sortKey="vendor_contact" currentSort={sort} onSort={handleSort} />
                                     <TableHead>廠商負責人員電話</TableHead>
-                                    <TableHead>棟別</TableHead>
-                                    <TableHead>樓層</TableHead>
-                                    <TableHead>施工地點</TableHead>
-                                    <TableHead>施工人數</TableHead>
+                                    <SortableTableHead label="棟別" sortKey="building" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="樓層" sortKey="floor" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="施工地點" sortKey="location" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
                                     <TableHead>施工內容</TableHead>
                                     <TableHead>備註</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {data.length === 0 ? (
+                                {sortedData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={17} className="text-center py-8 text-slate-400">
-                                            查無資料
+                                        <TableCell colSpan={17} className="p-0">
+                                            <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    data.map((v: any, index: number) => {
-                                        const actualIndex = index + 1
+                                    sortedData.map((v: any, index: number) => {
+                                        const actualIndex = (currentPage - 1) * itemsPerPage + index + 1
                                         return (
                                             <TableRow key={v.id} className={`hover:bg-blue-50/50 transition-colors ${selected.has(v.id) ? 'bg-blue-50' : ''}`}>
                                                 <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-blue-50/50">
@@ -316,12 +386,10 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
 
                         {/* 手機版卡片列表 */}
                         <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
-                            {data.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400">
-                                    查無資料
-                                </div>
+                            {sortedData.length === 0 ? (
+                                <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
                             ) : (
-                                data.map((v: any) => (
+                                sortedData.map((v: any) => (
                                     <MobileTableCard
                                         key={v.id}
                                         id={v.id}
@@ -352,6 +420,21 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                     />
                                 ))
                             )}
+                        </div>
+
+                        <div className="p-4 border-t border-slate-100">
+                            <DataTablePagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalItems={totalItems}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={(value) => {
+                                    setItemsPerPage(value)
+                                    setCurrentPage(1)
+                                }}
+                                selectedCount={selected.size}
+                            />
                         </div>
                     </div>
                 </motion.section>

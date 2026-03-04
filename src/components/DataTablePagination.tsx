@@ -61,13 +61,30 @@ export function DataTablePagination({
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="flex w-[110px] items-center justify-center text-sm font-medium text-slate-600">
-                    第 {currentPage} 頁，共 {totalPages} 頁
+                <div className="flex w-auto items-center justify-center text-sm font-medium text-slate-600 space-x-2">
+                    <span>第</span>
+                    <Select
+                        value={`${currentPage}`}
+                        onValueChange={(value) => onPageChange(Number(value))}
+                        disabled={totalPages <= 1}
+                    >
+                        <SelectTrigger className="h-8 w-[60px] bg-white">
+                            <SelectValue placeholder={currentPage} />
+                        </SelectTrigger>
+                        <SelectContent side="top" className="max-h-[200px]">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <SelectItem key={page} value={`${page}`}>
+                                    {page}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <span>頁，共 {totalPages} 頁</span>
                 </div>
                 <div className="flex items-center space-x-2">
                     <Button
                         variant="outline"
-                        className="hidden h-8 w-8 p-0 lg:flex bg-white"
+                        className="h-8 w-8 p-0 bg-white"
                         onClick={() => onPageChange(1)}
                         disabled={currentPage === 1 || totalPages === 0}
                     >
@@ -94,7 +111,7 @@ export function DataTablePagination({
                     </Button>
                     <Button
                         variant="outline"
-                        className="hidden h-8 w-8 p-0 lg:flex bg-white"
+                        className="h-8 w-8 p-0 bg-white"
                         onClick={() => onPageChange(totalPages)}
                         disabled={currentPage >= totalPages || totalPages === 0}
                     >
