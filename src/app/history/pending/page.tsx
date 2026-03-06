@@ -7,10 +7,10 @@ export const dynamic = 'force-dynamic'
 
 function LoadingFallback() {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <div className="min-h-screen flex items-center justify-center bg-muted">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-                <p className="text-slate-500">載入中...</p>
+                <p className="text-muted-foreground">載入中...</p>
             </div>
         </div>
     )

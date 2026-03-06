@@ -170,22 +170,22 @@ function StatCard({
                 <div className={`p-3 rounded-xl ${c.iconBg} ${c.iconColor} shadow-sm`}>
                     <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-semibold text-slate-700">{label}</h3>
+                <h3 className="text-base font-semibold text-foreground/80">{label}</h3>
             </div>
 
             {/* 數字 / 空狀態 */}
             {isEmpty ? (
                 <div className="mb-1">
-                    <span className="text-4xl font-black text-slate-300 tabular-nums tracking-tight">0</span>
-                    <span className="text-base font-medium text-slate-300 ml-2">筆</span>
-                    <p className="text-sm text-slate-400 mt-2">{EMPTY_STATE_MESSAGES[color]}</p>
+                    <span className="text-4xl font-black text-muted-foreground/50 tabular-nums tracking-tight">0</span>
+                    <span className="text-base font-medium text-muted-foreground/50 ml-2">筆</span>
+                    <p className="text-sm text-muted-foreground mt-2">{EMPTY_STATE_MESSAGES[color]}</p>
                 </div>
             ) : (
                 <div className="flex items-baseline gap-2 mb-1">
                     <span className={`text-5xl font-black ${c.countColor} tabular-nums tracking-tight`}>
                         {animatedCount}
                     </span>
-                    <span className="text-base font-medium text-slate-400">筆</span>
+                    <span className="text-base font-medium text-muted-foreground">筆</span>
                 </div>
             )}
 

@@ -62,7 +62,7 @@ export default function EngineeringEditClient({ initialData }: { initialData: an
         }
     }
 
-    if (!initialData) return <div className="p-8 text-center text-slate-500">查無資料</div>
+    if (!initialData) return <div className="p-8 text-center text-muted-foreground">查無資料</div>
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">

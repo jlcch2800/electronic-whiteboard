@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
+import { SkeletonTable } from '@/components/SkeletonTable'
 
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -213,16 +214,16 @@ export default function VendorHistoryClient() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-100">
+        <div className="min-h-screen bg-muted">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+            <header className="glass border-b border-border/50 px-6 py-4 flex justify-between items-center shadow-card sticky top-0 z-50">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
                         <ArrowLeft className="w-4 h-4 mr-1" />
                         返回首頁
                     </Button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <h1 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <div className="h-6 w-px bg-border" />
+                    <h1 className="text-lg font-black text-foreground flex items-center gap-2">
                         <Users className="w-5 h-5 text-blue-500" />
                         廠商施工歷史記錄
                     </h1>
@@ -234,10 +235,10 @@ export default function VendorHistoryClient() {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200"
+                    className="bg-card rounded-2xl shadow-card border border-border"
                 >
                     {/* Filter Bar */}
-                    <div className="p-4 border-b border-slate-100">
+                    <div className="p-4 border-b border-border/50">
                         <div className="flex flex-wrap items-end gap-4">
                             <div className="flex w-full md:hidden justify-between items-center mb-2">
                                 <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
@@ -246,9 +247,9 @@ export default function VendorHistoryClient() {
                                 </Button>
                             </div>
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">關鍵字搜尋</Label><Input type="text" placeholder="廠商名稱、施工內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-60" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商名稱、施工內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-60" /></div>
                                 <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -259,102 +260,107 @@ export default function VendorHistoryClient() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto">
-                        <Table className="hidden md:table">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
-                                    <TableHead className="w-12">#</TableHead>
-                                    <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="狀態" sortKey="entry_status" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="日期" sortKey="work_date" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="到院時間" sortKey="arrival_time" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="離院時間" sortKey="departure_time" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="廠商名稱" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="廠商工作證號" sortKey="vendor_badge_id" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="廠商負責人員姓名" sortKey="vendor_contact" currentSort={sort} onSort={handleSort} />
-                                    <TableHead>廠商負責人員電話</TableHead>
-                                    <SortableTableHead label="棟別" sortKey="building" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="樓層" sortKey="floor" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="施工地點" sortKey="location" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
-                                    <TableHead>施工內容</TableHead>
-                                    <TableHead>備註</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow><TableCell colSpan={17} className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></TableCell></TableRow>
-                                ) : sortedData.length === 0 ? (
-                                    <TableRow><TableCell colSpan={17} className="p-0"><EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
-                                ) : (
-                                    sortedData.map((row, index) => (
-                                        <TableRow key={row.id} className={`hover:bg-blue-50/50 ${selected.has(row.id) ? 'bg-blue-100' : ''}`}>
-                                            <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">{row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-'}</TableCell>
-                                            <TableCell><Badge variant={row.entry_status === 'arrival' ? 'default' : 'secondary'}>{row.entry_status === 'arrival' ? '到院' : '離院'}</Badge></TableCell>
-                                            <TableCell className="font-mono">{row.work_date}</TableCell>
-                                            <TableCell className="font-mono">{row.arrival_time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-mono">{row.departure_time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-bold">{row.vendor_name}</TableCell>
-                                            <TableCell className="font-mono">{row.vendor_badge_id || '-'}</TableCell>
-                                            <TableCell>{row.vendor_contact || '-'}</TableCell>
-                                            <TableCell className="font-mono">{row.vendor_contact_phone || '-'}</TableCell>
-                                            <TableCell>{row.building || '-'}</TableCell>
-                                            <TableCell>{row.floor || '-'}</TableCell>
-                                            <TableCell>{row.location || '-'}</TableCell>
-                                            <TableCell>{row.head_count || '-'}</TableCell>
-                                            <TableCell className="max-w-xs truncate" title={row.work_content || ''}>{row.work_content || '-'}</TableCell>
-                                            <TableCell className="text-slate-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
+                    {loading ? (
+                        <SkeletonTable />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table className="hidden md:table">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
+                                            <TableHead className="w-12">#</TableHead>
+                                            <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="狀態" sortKey="entry_status" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="日期" sortKey="work_date" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="到院時間" sortKey="arrival_time" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="離院時間" sortKey="departure_time" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="廠商名稱" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="廠商工作證號" sortKey="vendor_badge_id" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="廠商負責人員姓名" sortKey="vendor_contact" currentSort={sort} onSort={handleSort} />
+                                            <TableHead>廠商負責人員電話</TableHead>
+                                            <SortableTableHead label="棟別" sortKey="building" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="樓層" sortKey="floor" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="施工地點" sortKey="location" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
+                                            <TableHead>施工內容</TableHead>
+                                            <TableHead>備註</TableHead>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {sortedData.length === 0 ? (
+                                            <TableRow><TableCell colSpan={17} className="p-0"><EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
+                                        ) : (
+                                            sortedData.map((row, index) => (
+                                                <TableRow key={row.id} className={`hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors even:bg-muted/20 dark:even:bg-muted/10 ${selected.has(row.id) ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}>
+                                                    <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
+                                                    <TableCell className="text-muted-foreground dark:text-muted-foreground/70 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-muted-foreground dark:text-gray-300 whitespace-nowrap relative pl-6">
+                                                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-400 ring-4 ring-blue-50 dark:ring-blue-950" />
+                                                        {row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-'}
+                                                    </TableCell>
+                                                    <TableCell><Badge variant={row.entry_status === 'arrival' ? 'default' : 'secondary'} className={row.entry_status === 'arrival' ? 'dark:bg-blue-600 dark:text-white' : 'dark:bg-gray-800 dark:text-gray-300'}>{row.entry_status === 'arrival' ? '到院' : '離院'}</Badge></TableCell>
+                                                    <TableCell className="font-mono dark:text-gray-200">{row.work_date}</TableCell>
+                                                    <TableCell className="font-mono dark:text-gray-200">{row.arrival_time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-mono dark:text-gray-200">{row.departure_time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-bold dark:text-gray-100">{row.vendor_name}</TableCell>
+                                                    <TableCell className="font-mono dark:text-gray-200">{row.vendor_badge_id || '-'}</TableCell>
+                                                    <TableCell className="dark:text-gray-200">{row.vendor_contact || '-'}</TableCell>
+                                                    <TableCell className="font-mono dark:text-gray-200">{row.vendor_contact_phone || '-'}</TableCell>
+                                                    <TableCell className="dark:text-gray-200">{row.building || '-'}</TableCell>
+                                                    <TableCell className="dark:text-gray-200">{row.floor || '-'}</TableCell>
+                                                    <TableCell className="dark:text-gray-200">{row.location || '-'}</TableCell>
+                                                    <TableCell className="dark:text-gray-200">{row.head_count || '-'}</TableCell>
+                                                    <TableCell className="max-w-xs truncate dark:text-gray-200" title={row.work_content || ''}>{row.work_content || '-'}</TableCell>
+                                                    <TableCell className="text-muted-foreground dark:text-gray-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
 
-                        {/* 手機版卡片列表 */}
-                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
-                            {loading ? (
-                                <div className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
-                            ) : sortedData.length === 0 ? (
-                                <EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" />
-                            ) : (
-                                sortedData.map((row: VendorHistoryRecord) => (
-                                    <MobileTableCard
-                                        key={row.id}
-                                        id={row.id}
-                                        title={row.vendor_name}
-                                        subtitle={row.vendor_contact || undefined}
-                                        status={{
-                                            label: row.entry_status === 'arrival' ? '到院' : '離院',
-                                            variant: row.entry_status === 'arrival' ? 'default' : 'secondary',
-                                        }}
-                                        date={row.work_date}
-                                        time={row.arrival_time?.slice(0, 5) || '-'}
-                                        isSelected={selected.has(row.id)}
-                                        onSelect={() => toggleSelect(row.id)}
-                                        details={[
-                                            { label: '建立時間', value: row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-' },
-                                            { label: '離院時間', value: row.departure_time?.slice(0, 5) || '-' },
-                                            { label: '工作證號', value: row.vendor_badge_id?.toString() || '-' },
-                                            { label: '聯絡人', value: row.vendor_contact },
-                                            { label: '聯絡電話', value: row.vendor_contact_phone },
-                                            { label: '棟別', value: row.building },
-                                            { label: '樓層', value: row.floor },
-                                            { label: '地點', value: row.location },
-                                            { label: '人數', value: row.head_count?.toString() || '-' },
-                                            { label: '內容', value: row.work_content },
-                                            { label: '備註', value: row.note },
-                                        ]}
-                                    />
-                                ))
-                            )}
-                        </div>
-                    </div>
+                                {/* 手機版卡片列表 */}
+                                <div className="md:hidden mt-4 space-y-4 px-1 pb-4 relative before:absolute before:inset-y-0 before:left-4 before:w-0.5 before:bg-border">
+                                    {sortedData.length === 0 ? (
+                                        <EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" />
+                                    ) : (
+                                        sortedData.map((row: VendorHistoryRecord) => (
+                                            <MobileTableCard
+                                                key={row.id}
+                                                id={row.id}
+                                                title={row.vendor_name}
+                                                subtitle={row.vendor_contact || undefined}
+                                                status={{
+                                                    label: row.entry_status === 'arrival' ? '到院' : '離院',
+                                                    variant: row.entry_status === 'arrival' ? 'default' : 'secondary',
+                                                }}
+                                                date={row.work_date}
+                                                time={row.arrival_time?.slice(0, 5) || '-'}
+                                                isSelected={selected.has(row.id)}
+                                                onSelect={() => toggleSelect(row.id)}
+                                                details={[
+                                                    { label: '建立時間', value: row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-' },
+                                                    { label: '離院時間', value: row.departure_time?.slice(0, 5) || '-' },
+                                                    { label: '工作證號', value: row.vendor_badge_id?.toString() || '-' },
+                                                    { label: '聯絡人', value: row.vendor_contact },
+                                                    { label: '聯絡電話', value: row.vendor_contact_phone },
+                                                    { label: '棟別', value: row.building },
+                                                    { label: '樓層', value: row.floor },
+                                                    { label: '地點', value: row.location },
+                                                    { label: '人數', value: row.head_count?.toString() || '-' },
+                                                    { label: '內容', value: row.work_content },
+                                                    { label: '備註', value: row.note },
+                                                ]}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     {/* Pagination */}
-                    <div className="p-4 border-t border-slate-100">
+                    <div className="p-4 border-t border-border/50">
                         <DataTablePagination
                             currentPage={page}
                             totalPages={totalPages}

@@ -297,7 +297,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                 }
                 return <Badge variant="outline" className="border-emerald-500 text-emerald-600 gap-1"><LogIn className="w-3 h-3" /> 登入</Badge>
             case 'Logout':
-                return <Badge variant="outline" className="border-slate-500 text-slate-600 gap-1"><LogOut className="w-3 h-3" /> 登出</Badge>
+                return <Badge variant="outline" className="border-slate-500 text-foreground/70 gap-1"><LogOut className="w-3 h-3" /> 登出</Badge>
             default:
                 return <Badge variant="secondary">{actionType}</Badge>
         }
@@ -305,7 +305,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100">
-            <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-10">
+            <header className="bg-white/80 backdrop-blur-md border-b border-border sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div className="flex items-center justify-between">
@@ -318,8 +318,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                         <History className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <h1 className="text-xl font-bold text-slate-800">系統異動記錄</h1>
-                                        <p className="text-sm text-slate-500 hidden md:block">使用者操作與資料異動記錄</p>
+                                        <h1 className="text-xl font-bold text-foreground">系統異動記錄</h1>
+                                        <p className="text-sm text-muted-foreground hidden md:block">使用者操作與資料異動記錄</p>
                                     </div>
                                 </div>
                             </div>
@@ -331,12 +331,12 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                         <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
                             <div className="flex items-center gap-2">
                                 <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-36" placeholder="開始日期" />
-                                <span className="text-slate-400">~</span>
+                                <span className="text-muted-foreground">~</span>
                                 <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-36" placeholder="結束日期" />
                             </div>
 
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="搜尋..." className="pl-10 w-full md:w-48" />
                             </div>
 
@@ -358,12 +358,12 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
+                    className="bg-card rounded-2xl shadow-card border border-border overflow-hidden"
                 >
                     <div className="overflow-x-auto">
                         <Table className="hidden md:table">
                             <TableHeader>
-                                <TableRow className="bg-slate-50">
+                                <TableRow className="bg-muted">
                                     <TableHead className="w-12"><Checkbox checked={selected.size === paginatedLogs.length && paginatedLogs.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                     <TableHead className="w-12">#</TableHead>
                                     <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
@@ -386,12 +386,12 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                     </TableRow>
                                 ) : (
                                     paginatedLogs.map((log, index) => (
-                                        <TableRow key={log.id} className={`hover:bg-slate-50 ${selected.has(log.id) ? 'bg-orange-100' : ''}`}>
+                                        <TableRow key={log.id} className={`hover:bg-muted ${selected.has(log.id) ? 'bg-orange-100' : ''}`}>
                                             <TableCell><Checkbox checked={selected.has(log.id)} onCheckedChange={() => toggleSelect(log.id)} /></TableCell>
-                                            <TableCell className="text-slate-400 text-sm">
+                                            <TableCell className="text-muted-foreground text-sm">
                                                 {(currentPage - 1) * pageSize + index + 1}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">
+                                            <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                                                 {format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}
                                             </TableCell>
                                             <TableCell className="font-mono text-sm">
@@ -412,7 +412,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                             <TableCell className="font-mono text-sm">
                                                 {getTranslatedTableName(log.modify_table)}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[100px] truncate" title={log.modify_record_id}>
+                                            <TableCell className="font-mono text-xs text-muted-foreground max-w-[100px] truncate" title={log.modify_record_id}>
                                                 {log.modify_record_id?.slice(0, 8)}...
                                             </TableCell>
                                             <TableCell>
@@ -440,15 +440,15 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                             {/* 基本資訊 */}
                                                             <Table>
                                                                 <TableBody>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">發生日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">使用者單位</TableCell><TableCell>{log.user_unit || '-'}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">使用者姓名</TableCell><TableCell className="font-bold">{log.user_name || '-'}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">使用者帳號</TableCell><TableCell className="font-mono">{log.user_account || '-'}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">操作方式</TableCell><TableCell>{getActionBadge(log)}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">異動資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.modify_table)}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">異動項目的UUID</TableCell><TableCell className="font-mono text-xs">{log.modify_record_id}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold">發生日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold">使用者單位</TableCell><TableCell>{log.user_unit || '-'}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold">使用者姓名</TableCell><TableCell className="font-bold">{log.user_name || '-'}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold">使用者帳號</TableCell><TableCell className="font-mono">{log.user_account || '-'}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold">操作方式</TableCell><TableCell>{getActionBadge(log)}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold">異動資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.modify_table)}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted font-bold">異動項目的UUID</TableCell><TableCell className="font-mono text-xs">{log.modify_record_id}</TableCell></TableRow>
                                                                 </TableBody>
                                                             </Table>
                                                         </div>
@@ -477,10 +477,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
                                                             return (
                                                                 <div className="mt-4 border rounded-lg overflow-hidden">
-                                                                    <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">異動資料對比</div>
+                                                                    <div className="bg-muted px-4 py-2 font-bold text-sm text-foreground/80">異動資料對比</div>
                                                                     <Table>
                                                                         <TableHeader>
-                                                                            <TableRow className="bg-slate-50">
+                                                                            <TableRow className="bg-muted">
                                                                                 <TableHead className="w-32">欄位</TableHead>
                                                                                 <TableHead className="text-green-700 bg-green-50">變更前</TableHead>
                                                                                 <TableHead className="text-red-700 bg-red-50">變更後</TableHead>
@@ -494,7 +494,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
                                                                                 return (
                                                                                     <TableRow key={key} className={isChanged ? 'bg-yellow-50' : ''}>
-                                                                                        <TableCell className="font-bold text-slate-600 text-xs">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                        <TableCell className="font-bold text-foreground/70 text-xs">{FIELD_LABELS[key] || key}</TableCell>
                                                                                         <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50' : ''}`}>
                                                                                             {oldVal !== undefined ? JSON.stringify(oldVal) : '-'}
                                                                                         </TableCell>
@@ -566,15 +566,15 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                     <div className="mt-4 border rounded-lg overflow-hidden">
                                                         <Table>
                                                             <TableBody>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">發生日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">使用者單位</TableCell><TableCell>{log.user_unit || '-'}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">使用者姓名</TableCell><TableCell className="font-bold">{log.user_name || '-'}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">使用者帳號</TableCell><TableCell className="font-mono">{log.user_account || '-'}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">操作方式</TableCell><TableCell>{getActionBadge(log)}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">異動資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.modify_table)}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">異動項目的UUID</TableCell><TableCell className="font-mono text-xs">{log.modify_record_id}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">發生日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">使用者單位</TableCell><TableCell>{log.user_unit || '-'}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">使用者姓名</TableCell><TableCell className="font-bold">{log.user_name || '-'}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">使用者帳號</TableCell><TableCell className="font-mono">{log.user_account || '-'}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">操作方式</TableCell><TableCell>{getActionBadge(log)}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">異動資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.modify_table)}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">異動項目的UUID</TableCell><TableCell className="font-mono text-xs">{log.modify_record_id}</TableCell></TableRow>
                                                             </TableBody>
                                                         </Table>
                                                     </div>
@@ -596,9 +596,9 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                         if (sortedKeys.length === 0) return null;
                                                         return (
                                                             <div className="mt-4 border rounded-lg overflow-hidden">
-                                                                <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">異動資料對比</div>
+                                                                <div className="bg-muted px-4 py-2 font-bold text-sm text-foreground/80">異動資料對比</div>
                                                                 <Table>
-                                                                    <TableHeader><TableRow className="bg-slate-50">
+                                                                    <TableHeader><TableRow className="bg-muted">
                                                                         <TableHead className="w-32">欄位</TableHead>
                                                                         <TableHead className="text-green-700 bg-green-50">變更前</TableHead>
                                                                         <TableHead className="text-red-700 bg-red-50">變更後</TableHead>
@@ -609,7 +609,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                                             const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal);
                                                                             return (
                                                                                 <TableRow key={key} className={isChanged ? 'bg-yellow-50' : ''}>
-                                                                                    <TableCell className="font-bold text-slate-600 text-xs">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                    <TableCell className="font-bold text-foreground/70 text-xs">{FIELD_LABELS[key] || key}</TableCell>
                                                                                     <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50' : ''}`}>{oldVal !== undefined ? JSON.stringify(oldVal) : '-'}</TableCell>
                                                                                     <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50' : ''}`}>{newVal !== undefined ? JSON.stringify(newVal) : '-'}</TableCell>
                                                                                 </TableRow>
@@ -629,7 +629,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                         </div>
                     </div>
 
-                    <div className="p-4 border-t border-slate-100">
+                    <div className="p-4 border-t border-border/50">
                         <DataTablePagination
                             currentPage={currentPage}
                             totalPages={totalPages || 1}

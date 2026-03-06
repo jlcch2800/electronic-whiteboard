@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 // 導覽項目定義
 interface NavItem {
@@ -217,7 +218,7 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
     return (
         <>
             {/* ========== 導覽列 ========== */}
-            <header className="bg-white/80 backdrop-blur-xl border-b border-border/50 px-4 lg:px-6 py-3 flex justify-between items-center shadow-sm sticky top-0 z-50">
+            <header className="glass border-b border-border/50 px-4 lg:px-6 py-3 flex justify-between items-center shadow-card sticky top-0 z-50">
                 {/* 左側：品牌 + 漢堡按鈕 */}
                 <div className="flex items-center gap-3">
                     {/* 漢堡按鈕 — 僅行動版 */}
@@ -231,10 +232,11 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                     </Button>
 
                     <h1
-                        className="text-xl lg:text-2xl font-black text-foreground cursor-pointer hover:text-primary transition-colors"
+                        className="text-xl lg:text-2xl font-black cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-2"
                         onClick={() => router.push('/')}
                     >
-                        🏥 工務室電子白板
+                        <span className="text-2xl">🏥</span>
+                        <span className="text-gradient-primary">工務室電子白板</span>
                     </h1>
                 </div>
 
@@ -291,6 +293,9 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                         </Button>
                     )}
 
+                    {/* Dark Mode 切換 */}
+                    <ThemeToggle />
+
                     {/* 重整按鈕 */}
                     {onRefresh && (
                         <Button
@@ -314,7 +319,7 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
 
                     {/* 側欄面板 */}
                     <nav
-                        className="absolute top-0 left-0 bottom-0 w-72 bg-white shadow-2xl p-4 pt-20 space-y-1 overflow-y-auto animate-in slide-in-from-left duration-200"
+                        className="absolute top-0 left-0 bottom-0 w-72 bg-card shadow-2xl p-4 pt-20 space-y-1 overflow-y-auto animate-in slide-in-from-left duration-200"
                         onClick={e => e.stopPropagation()}
                     >
                         {/* 使用者資訊 — 行動版 */}

@@ -36,6 +36,7 @@ import { DataTablePagination } from '@/components/DataTablePagination'
 import { EmptyState } from '@/components/EmptyState'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { MobileTableCard } from '@/components/MobileTableCard'
+import { SkeletonTable } from '@/components/SkeletonTable'
 
 interface WhiteboardClientProps {
     initialVendors: any[]
@@ -293,11 +294,11 @@ export default function WhiteboardClient({
                 <motion.section
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200"
+                    className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                    <div className="p-4 border-b border-border/50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                         <div className="flex justify-between items-center w-full xl:w-auto">
-                            <h2 className="font-black text-slate-700 flex items-center gap-2">
+                            <h2 className="font-black text-foreground/80 flex items-center gap-2">
                                 <Users className="w-5 h-5 text-blue-500" />
                                 廠商今日施工項目
                             </h2>
@@ -308,7 +309,7 @@ export default function WhiteboardClient({
                         <div className={`flex-col xl:flex-row w-full xl:w-auto items-stretch xl:items-center gap-4 ${isVendorFiltersOpen ? 'flex' : 'hidden xl:flex'}`}>
                             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 mr-auto">
                                 <Input type="date" value={vendorSearch.start} onChange={(e) => setVendorSearch(s => ({ ...s, start: e.target.value }))} className="w-full md:w-36 h-9" />
-                                <span className="text-slate-400 hidden md:inline">-</span>
+                                <span className="text-muted-foreground hidden md:inline">-</span>
                                 <Input type="date" value={vendorSearch.end} onChange={(e) => setVendorSearch(s => ({ ...s, end: e.target.value }))} className="w-full md:w-36 h-9" />
                                 <Input placeholder="搜尋關鍵字..." value={vendorSearch.keyword} onChange={(e) => setVendorSearch(s => ({ ...s, keyword: e.target.value }))} className="w-full md:w-48 h-9" />
                                 <Button size="sm" onClick={searchVendor} variant="secondary" className="h-9 w-full md:w-auto">
@@ -337,15 +338,17 @@ export default function WhiteboardClient({
                         </div>
                     </div>
 
-                    {vendors.length === 0 ? (
+                    {loading ? (
+                        <SkeletonTable />
+                    ) : vendors.length === 0 ? (
                         <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
                     ) : (
                         <>
                             <div className="overflow-x-auto">
                                 <Table className="hidden md:table">
-                                    <TableHeader className="bg-slate-50/50">
+                                    <TableHeader className="bg-muted/50">
                                         <TableRow>
-                                            <TableHead className="w-12 sticky left-0 bg-slate-50/50 z-10">
+                                            <TableHead className="w-12 sticky left-0 bg-muted/50 z-10">
                                                 <Checkbox checked={vendorSelected.size === vendorTable.paginatedData.length && vendorTable.paginatedData.length > 0} onCheckedChange={() => toggleSelectAll(vendorTable.paginatedData, vendorSelected, setVendorSelected)} />
                                             </TableHead>
                                             <TableHead className="w-12">#</TableHead>
@@ -370,11 +373,11 @@ export default function WhiteboardClient({
                                         {vendorTable.paginatedData.map((v: any, index: number) => {
                                             const actualIndex = (vendorTable.page - 1) * vendorTable.perPage + index + 1
                                             return (
-                                                <TableRow key={v.id} className={`hover:bg-blue-50/50 transition-colors ${vendorSelected.has(v.id) ? 'bg-blue-50' : ''}`}>
-                                                    <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-blue-50/50">
+                                                <TableRow key={v.id} className={`table-row-hover hover:bg-primary/5 transition-all duration-200 even:bg-muted/20 ${vendorSelected.has(v.id) ? 'bg-blue-50' : ''}`}>
+                                                    <TableCell className="sticky left-0 bg-card z-10">
                                                         <Checkbox checked={vendorSelected.has(v.id)} onCheckedChange={() => toggleSelect(v.id, vendorSelected, setVendorSelected)} />
                                                     </TableCell>
-                                                    <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
                                                     <TableCell><Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-[var(--primary)]' : ''}>{v.entry_status === 'arrival' ? '到院' : '離院'}</Badge></TableCell>
                                                     <TableCell className="font-mono">{v.work_date}</TableCell>
                                                     <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
@@ -388,7 +391,7 @@ export default function WhiteboardClient({
                                                     <TableCell>{v.location || '-'}</TableCell>
                                                     <TableCell>{v.head_count || '-'}</TableCell>
                                                     <TableCell className="max-w-[200px] truncate" title={v.work_content}>{v.work_content}</TableCell>
-                                                    <TableCell className="text-slate-400 text-xs">{v.note || '-'}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-xs">{v.note || '-'}</TableCell>
 
                                                 </TableRow>
                                             )
@@ -399,7 +402,7 @@ export default function WhiteboardClient({
                                 {/* 手機版廠商卡片列表 */}
                                 <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
                                     {vendorTable.paginatedData.length === 0 ? (
-                                        <div className="text-center py-8 text-slate-400 border rounded-lg bg-white/50 border-slate-200 border-dashed">
+                                        <div className="text-center py-8 text-muted-foreground border rounded-lg bg-white/50 border-border border-dashed">
                                             目前無廠商施工項目
                                         </div>
                                     ) : (
@@ -436,7 +439,7 @@ export default function WhiteboardClient({
                                     )}
                                 </div>
                             </div>
-                            <div className="p-4 border-t border-slate-100">
+                            <div className="p-4 border-t border-border/50">
                                 <DataTablePagination
 
                                     currentPage={vendorTable.page} totalPages={vendorTable.totalPages}
@@ -454,11 +457,11 @@ export default function WhiteboardClient({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200"
+                    className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                    <div className="p-4 border-b border-border/50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                         <div className="flex justify-between items-center w-full xl:w-auto">
-                            <h2 className="font-black text-slate-700 flex items-center gap-2">
+                            <h2 className="font-black text-foreground/80 flex items-center gap-2">
                                 <HardHat className="w-5 h-5 text-amber-500" />
                                 工務今日工作項目
                             </h2>
@@ -469,7 +472,7 @@ export default function WhiteboardClient({
                         <div className={`flex-col xl:flex-row w-full xl:w-auto items-stretch xl:items-center gap-4 ${isEngFiltersOpen ? 'flex' : 'hidden xl:flex'}`}>
                             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 mr-auto">
                                 <Input type="date" value={engSearch.start} onChange={(e) => setEngSearch(s => ({ ...s, start: e.target.value }))} className="w-full md:w-36 h-9" />
-                                <span className="text-slate-400 hidden md:inline">-</span>
+                                <span className="text-muted-foreground hidden md:inline">-</span>
                                 <Input type="date" value={engSearch.end} onChange={(e) => setEngSearch(s => ({ ...s, end: e.target.value }))} className="w-full md:w-36 h-9" />
                                 <Input placeholder="搜尋關鍵字..." value={engSearch.keyword} onChange={(e) => setEngSearch(s => ({ ...s, keyword: e.target.value }))} className="w-full md:w-48 h-9" />
                                 <Button size="sm" onClick={searchEngineering} variant="secondary" className="h-9 w-full md:w-auto">
@@ -498,15 +501,17 @@ export default function WhiteboardClient({
                         </div>
                     </div>
 
-                    {engineering.length === 0 ? (
+                    {loading ? (
+                        <SkeletonTable />
+                    ) : engineering.length === 0 ? (
                         <EmptyState icon={HardHat} title="今日暫無工務施工" description="目前沒有安排任何工務施工項目，您可以點擊右上方新增。" />
                     ) : (
                         <>
                             <div className="overflow-x-auto">
                                 <Table className="hidden md:table">
-                                    <TableHeader className="bg-slate-50/50">
+                                    <TableHeader className="bg-muted/50">
                                         <TableRow>
-                                            <TableHead className="w-12 sticky left-0 bg-slate-50/50 z-10">
+                                            <TableHead className="w-12 sticky left-0 bg-muted/50 z-10">
                                                 <Checkbox checked={engSelected.size === engTable.paginatedData.length && engTable.paginatedData.length > 0} onCheckedChange={() => toggleSelectAll(engTable.paginatedData, engSelected, setEngSelected)} />
                                             </TableHead>
                                             <TableHead className="w-12">#</TableHead>
@@ -525,11 +530,11 @@ export default function WhiteboardClient({
                                         {engTable.paginatedData.map((e: any, index: number) => {
                                             const actualIndex = (engTable.page - 1) * engTable.perPage + index + 1
                                             return (
-                                                <TableRow key={e.id} className={`hover:bg-amber-50/50 transition-colors ${engSelected.has(e.id) ? 'bg-amber-50' : ''}`}>
+                                                <TableRow key={e.id} className={`hover:bg-amber-50/50 transition-colors even:bg-muted/20 ${engSelected.has(e.id) ? 'bg-amber-50' : ''}`}>
                                                     <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-amber-50/50">
                                                         <Checkbox checked={engSelected.has(e.id)} onCheckedChange={() => toggleSelect(e.id, engSelected, setEngSelected)} />
                                                     </TableCell>
-                                                    <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
                                                     <TableCell className="font-mono">{e.start_date}</TableCell>
                                                     <TableCell className="font-mono">{e.end_date}</TableCell>
                                                     <TableCell className="font-mono">{e.time?.slice(0, 5) || '-'}</TableCell>
@@ -537,7 +542,7 @@ export default function WhiteboardClient({
                                                     <TableCell><Badge variant="outline" className="bg-amber-50 text-amber-700 hover:bg-amber-100">{e.unit}</Badge></TableCell>
                                                     <TableCell>{e.engineering_contact}</TableCell>
                                                     <TableCell className="max-w-[200px] truncate" title={e.work_content}>{e.work_content}</TableCell>
-                                                    <TableCell className="text-slate-400 text-xs">{e.note || '-'}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-xs">{e.note || '-'}</TableCell>
 
                                                 </TableRow>
                                             )
@@ -548,7 +553,7 @@ export default function WhiteboardClient({
                                 {/* 手機版工務卡片列表 */}
                                 <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
                                     {engTable.paginatedData.length === 0 ? (
-                                        <div className="text-center py-8 text-slate-400 border rounded-lg bg-white/50 border-slate-200 border-dashed">
+                                        <div className="text-center py-8 text-muted-foreground border rounded-lg bg-white/50 border-border border-dashed">
                                             目前無工務施工項目
                                         </div>
                                     ) : (
@@ -581,7 +586,7 @@ export default function WhiteboardClient({
                                     )}
                                 </div>
                             </div>
-                            <div className="p-4 border-t border-slate-100">
+                            <div className="p-4 border-t border-border/50">
                                 <DataTablePagination
                                     currentPage={engTable.page} totalPages={engTable.totalPages}
                                     totalItems={engTable.totalItems} itemsPerPage={engTable.perPage}
@@ -598,11 +603,11 @@ export default function WhiteboardClient({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200"
+                    className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                    <div className="p-4 border-b border-border/50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                         <div className="flex justify-between items-center w-full xl:w-auto">
-                            <h2 className="font-black text-slate-700 flex items-center gap-2">
+                            <h2 className="font-black text-foreground/80 flex items-center gap-2">
                                 <FileClock className="w-5 h-5 text-purple-500" />
                                 待處理工作項目
                             </h2>
@@ -613,7 +618,7 @@ export default function WhiteboardClient({
                         <div className={`flex-col xl:flex-row w-full xl:w-auto items-stretch xl:items-center gap-4 ${isPendingFiltersOpen ? 'flex' : 'hidden xl:flex'}`}>
                             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 mr-auto">
                                 <Input type="date" value={pendingSearch.start} onChange={(e) => setPendingSearch(s => ({ ...s, start: e.target.value }))} className="w-full md:w-36 h-9" />
-                                <span className="text-slate-400 hidden md:inline">-</span>
+                                <span className="text-muted-foreground hidden md:inline">-</span>
                                 <Input type="date" value={pendingSearch.end} onChange={(e) => setPendingSearch(s => ({ ...s, end: e.target.value }))} className="w-full md:w-36 h-9" />
                                 <Input placeholder="搜尋關鍵字..." value={pendingSearch.keyword} onChange={(e) => setPendingSearch(s => ({ ...s, keyword: e.target.value }))} className="w-full md:w-48 h-9" />
                                 <Button size="sm" onClick={searchPending} variant="secondary" className="h-9 w-full md:w-auto">
@@ -642,100 +647,101 @@ export default function WhiteboardClient({
                         </div>
                     </div>
 
-                    {
-                        pendingWork.length === 0 ? (
-                            <EmptyState icon={FileClock} title="目前無待處理項目" description="沒有需要追蹤的待處理任務，點擊右上方即可新增。" />
-                        ) : (
-                            <>
-                                <div className="overflow-x-auto">
-                                    <Table className="hidden md:table">
-                                        <TableHeader className="bg-slate-50/50">
-                                            <TableRow>
-                                                <TableHead className="w-12 sticky left-0 bg-slate-50/50 z-10">
-                                                    <Checkbox checked={pendingSelected.size === pendingTable.paginatedData.length && pendingTable.paginatedData.length > 0} onCheckedChange={() => toggleSelectAll(pendingTable.paginatedData, pendingSelected, setPendingSelected)} />
-                                                </TableHead>
-                                                <TableHead className="w-12">#</TableHead>
-                                                <SortableTableHead label="開始日期" sortKey="start_date" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
-                                                <SortableTableHead label="結束日期" sortKey="end_date" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
-                                                <SortableTableHead label="時間" sortKey="time" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
-                                                <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
-                                                <SortableTableHead label="單位" sortKey="unit" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
-                                                <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
-                                                <TableHead>內容</TableHead>
-                                                <TableHead>備註</TableHead>
+                    {loading ? (
+                        <SkeletonTable />
+                    ) : pendingWork.length === 0 ? (
+                        <EmptyState icon={FileClock} title="目前無待處理項目" description="沒有需要追蹤的待處理任務，點擊右上方即可新增。" />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table className="hidden md:table">
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead className="w-12 sticky left-0 bg-muted/50 z-10">
+                                                <Checkbox checked={pendingSelected.size === pendingTable.paginatedData.length && pendingTable.paginatedData.length > 0} onCheckedChange={() => toggleSelectAll(pendingTable.paginatedData, pendingSelected, setPendingSelected)} />
+                                            </TableHead>
+                                            <TableHead className="w-12">#</TableHead>
+                                            <SortableTableHead label="開始日期" sortKey="start_date" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="結束日期" sortKey="end_date" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="時間" sortKey="time" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="單位" sortKey="unit" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={pendingTable.sort} onSort={pendingTable.handleSort} />
+                                            <TableHead>內容</TableHead>
+                                            <TableHead>備註</TableHead>
 
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {pendingTable.paginatedData.map((p: any, index: number) => {
-                                                const actualIndex = (pendingTable.page - 1) * pendingTable.perPage + index + 1
-                                                return (
-                                                    <TableRow key={p.id} className={`hover:bg-purple-50/50 transition-colors ${pendingSelected.has(p.id) ? 'bg-purple-50' : ''}`}>
-                                                        <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-purple-50/50">
-                                                            <Checkbox checked={pendingSelected.has(p.id)} onCheckedChange={() => toggleSelect(p.id, pendingSelected, setPendingSelected)} />
-                                                        </TableCell>
-                                                        <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
-                                                        <TableCell className="font-mono">{p.start_date}</TableCell>
-                                                        <TableCell className="font-mono">{p.end_date}</TableCell>
-                                                        <TableCell className="font-mono">{p.time?.slice(0, 5) || '-'}</TableCell>
-                                                        <TableCell className="font-bold text-purple-700">{p.vendor_name}</TableCell>
-                                                        <TableCell><Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-100">{p.unit}</Badge></TableCell>
-                                                        <TableCell>{p.engineering_contact}</TableCell>
-                                                        <TableCell className="max-w-[200px] truncate" title={p.work_content}>{p.work_content}</TableCell>
-                                                        <TableCell className="text-slate-400 text-xs">{p.note || '-'}</TableCell>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingTable.paginatedData.map((p: any, index: number) => {
+                                            const actualIndex = (pendingTable.page - 1) * pendingTable.perPage + index + 1
+                                            return (
+                                                <TableRow key={p.id} className={`hover:bg-purple-50/50 transition-colors even:bg-muted/20 ${pendingSelected.has(p.id) ? 'bg-purple-50' : ''}`}>
+                                                    <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-purple-50/50">
+                                                        <Checkbox checked={pendingSelected.has(p.id)} onCheckedChange={() => toggleSelect(p.id, pendingSelected, setPendingSelected)} />
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
+                                                    <TableCell className="font-mono">{p.start_date}</TableCell>
+                                                    <TableCell className="font-mono">{p.end_date}</TableCell>
+                                                    <TableCell className="font-mono">{p.time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-bold text-purple-700">{p.vendor_name}</TableCell>
+                                                    <TableCell><Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-100">{p.unit}</Badge></TableCell>
+                                                    <TableCell>{p.engineering_contact}</TableCell>
+                                                    <TableCell className="max-w-[200px] truncate" title={p.work_content}>{p.work_content}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-xs">{p.note || '-'}</TableCell>
 
-                                                    </TableRow>
-                                                )
-                                            })}
-                                        </TableBody>
-                                    </Table>
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
 
-                                    {/* 手機版待處理卡片列表 */}
-                                    <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
-                                        {pendingTable.paginatedData.length === 0 ? (
-                                            <div className="text-center py-8 text-slate-400 border rounded-lg bg-white/50 border-slate-200 border-dashed">
-                                                目前無待辦事項
-                                            </div>
-                                        ) : (
-                                            pendingTable.paginatedData.map((p: any) => (
-                                                <MobileTableCard
-                                                    key={p.id}
-                                                    id={p.id}
-                                                    title={p.vendor_name}
-                                                    subtitle={p.engineering_contact || '無負責人'}
-                                                    status={{
-                                                        label: '待處理',
-                                                        variant: 'outline',
-                                                        className: 'bg-purple-50 text-purple-700 border-purple-200'
-                                                    }}
-                                                    date={p.start_date}
-                                                    endDate={p.end_date}
-                                                    time={p.time?.slice(0, 5) || '-'}
-                                                    isSelected={pendingSelected.has(p.id)}
-                                                    onSelect={() => toggleSelect(p.id, pendingSelected, setPendingSelected)}
-                                                    onClick={() => router.push(`/pending-work/${p.id}/edit`)}
-                                                    details={[
-                                                        { label: "廠商", value: p.vendor_name },
-                                                        { label: "單位", value: p.unit },
-                                                        { label: "負責人", value: p.engineering_contact },
-                                                        { label: "內容", value: p.work_content },
-                                                        { label: "備註", value: p.note }
-                                                    ]}
-                                                />
-                                            ))
-                                        )}
-                                    </div>
+                                {/* 手機版待處理卡片列表 */}
+                                <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                    {pendingTable.paginatedData.length === 0 ? (
+                                        <div className="text-center py-8 text-muted-foreground border rounded-lg bg-white/50 border-border border-dashed">
+                                            目前無待辦事項
+                                        </div>
+                                    ) : (
+                                        pendingTable.paginatedData.map((p: any) => (
+                                            <MobileTableCard
+                                                key={p.id}
+                                                id={p.id}
+                                                title={p.vendor_name}
+                                                subtitle={p.engineering_contact || '無負責人'}
+                                                status={{
+                                                    label: '待處理',
+                                                    variant: 'outline',
+                                                    className: 'bg-purple-50 text-purple-700 border-purple-200'
+                                                }}
+                                                date={p.start_date}
+                                                endDate={p.end_date}
+                                                time={p.time?.slice(0, 5) || '-'}
+                                                isSelected={pendingSelected.has(p.id)}
+                                                onSelect={() => toggleSelect(p.id, pendingSelected, setPendingSelected)}
+                                                onClick={() => router.push(`/pending-work/${p.id}/edit`)}
+                                                details={[
+                                                    { label: "廠商", value: p.vendor_name },
+                                                    { label: "單位", value: p.unit },
+                                                    { label: "負責人", value: p.engineering_contact },
+                                                    { label: "內容", value: p.work_content },
+                                                    { label: "備註", value: p.note }
+                                                ]}
+                                            />
+                                        ))
+                                    )}
                                 </div>
-                                <div className="p-4 border-t border-slate-100">
-                                    <DataTablePagination
-                                        currentPage={pendingTable.page} totalPages={pendingTable.totalPages}
-                                        totalItems={pendingTable.totalItems} itemsPerPage={pendingTable.perPage}
-                                        onPageChange={pendingTable.setPage} onItemsPerPageChange={pendingTable.setPerPage}
-                                        selectedCount={pendingSelected.size}
-                                    />
-                                </div>
-                            </>
-                        )
+                            </div>
+                            <div className="p-4 border-t border-border/50">
+                                <DataTablePagination
+                                    currentPage={pendingTable.page} totalPages={pendingTable.totalPages}
+                                    totalItems={pendingTable.totalItems} itemsPerPage={pendingTable.perPage}
+                                    onPageChange={pendingTable.setPage} onItemsPerPageChange={pendingTable.setPerPage}
+                                    selectedCount={pendingSelected.size}
+                                />
+                            </div>
+                        </>
+                    )
                     }
                 </motion.section >
             </main >

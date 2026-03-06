@@ -33,6 +33,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { useTableData } from '@/hooks/useTableData'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { MobileTableCard } from '@/components/MobileTableCard'
+import { SkeletonTable } from '@/components/SkeletonTable'
 
 interface PendingWorkClientProps {
     initialData: any[]
@@ -166,16 +167,16 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
     const tableData = useTableData(data, 'start_date')
 
     return (
-        <div className="min-h-screen bg-slate-100 flex flex-col">
+        <div className="min-h-screen bg-background flex flex-col">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+            <header className="glass border-b border-border/50 px-6 py-4 flex justify-between items-center shadow-card sticky top-0 z-50">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
                         <ArrowLeft className="w-4 h-4 mr-1" />
                         返回首頁
                     </Button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                    <div className="h-6 w-px bg-border" />
+                    <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                         <FileClock className="w-6 h-6 text-purple-500" />
                         待處理工作項目
                     </h1>
@@ -187,9 +188,9 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                 <motion.section
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200"
+                    className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-between items-center gap-4">
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
                             <div className="flex w-full md:hidden justify-between items-center mb-2">
                                 <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
@@ -205,7 +206,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                     onChange={(e) => setSearch(s => ({ ...s, start: e.target.value }))}
                                     className="w-full md:w-36"
                                 />
-                                <span className="text-slate-400 hidden md:inline">~</span>
+                                <span className="text-muted-foreground hidden md:inline">~</span>
                                 <Input
                                     type="date"
                                     value={search.end}
@@ -249,116 +250,122 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <Table className="hidden md:table">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={selected.size === data.length && data.length > 0}
-                                            onCheckedChange={toggleSelectAll}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-12">#</TableHead>
-                                    <SortableTableHead label="開始日期" sortKey="start_date" currentSort={tableData.sort} onSort={tableData.handleSort} />
-                                    <SortableTableHead label="結束日期" sortKey="end_date" currentSort={tableData.sort} onSort={tableData.handleSort} />
-                                    <SortableTableHead label="時間" sortKey="time" currentSort={tableData.sort} onSort={tableData.handleSort} />
-                                    <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={tableData.sort} onSort={tableData.handleSort} />
-                                    <SortableTableHead label="單位" sortKey="unit" currentSort={tableData.sort} onSort={tableData.handleSort} />
-                                    <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={tableData.sort} onSort={tableData.handleSort} />
-                                    <TableHead>內容</TableHead>
-                                    <TableHead>備註</TableHead>
+                    {loading ? (
+                        <SkeletonTable />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table className="hidden md:table">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-12">
+                                                <Checkbox
+                                                    checked={selected.size === data.length && data.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                />
+                                            </TableHead>
+                                            <TableHead className="w-12">#</TableHead>
+                                            <SortableTableHead label="開始日期" sortKey="start_date" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                            <SortableTableHead label="結束日期" sortKey="end_date" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                            <SortableTableHead label="時間" sortKey="time" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                            <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                            <SortableTableHead label="單位" sortKey="unit" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                            <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={tableData.sort} onSort={tableData.handleSort} />
+                                            <TableHead>內容</TableHead>
+                                            <TableHead>備註</TableHead>
 
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {tableData.paginatedData.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={11} className="text-center py-8 text-slate-400">
-                                            <EmptyState
-                                                icon={Search}
-                                                title="查無待處理工作"
-                                                description="目前沒有符合條件的待處理工作資料。"
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    tableData.paginatedData.map((e: any, index: number) => {
-                                        const actualIndex = (tableData.page - 1) * tableData.perPage + index + 1
-                                        return (
-                                            <TableRow key={e.id} className={`hover:bg-purple-50/50 transition-colors ${selected.has(e.id) ? 'bg-purple-50' : ''}`}>
-                                                <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-purple-50/50">
-                                                    <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {tableData.paginatedData.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                                                    <EmptyState
+                                                        icon={Search}
+                                                        title="查無待處理工作"
+                                                        description="目前沒有符合條件的待處理工作資料。"
+                                                    />
                                                 </TableCell>
-                                                <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
-                                                <TableCell className="font-mono">{e.start_date}</TableCell>
-                                                <TableCell className="font-mono">{e.end_date}</TableCell>
-                                                <TableCell className="font-mono">{e.time?.slice(0, 5) || '-'}</TableCell>
-                                                <TableCell className="font-bold">{e.vendor_name}</TableCell>
-                                                <TableCell><Badge variant="outline">{e.unit}</Badge></TableCell>
-                                                <TableCell>{e.engineering_contact}</TableCell>
-                                                <TableCell className="max-w-xs truncate" title={e.work_content}>{e.work_content}</TableCell>
-                                                <TableCell className="text-slate-400 text-xs">{e.note || '-'}</TableCell>
                                             </TableRow>
-                                        )
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
+                                        ) : (
+                                            tableData.paginatedData.map((e: any, index: number) => {
+                                                const actualIndex = (tableData.page - 1) * tableData.perPage + index + 1
+                                                return (
+                                                    <TableRow key={e.id} className={`hover:bg-purple-50/50 transition-colors even:bg-muted/20 ${selected.has(e.id) ? 'bg-purple-50' : ''}`}>
+                                                        <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-purple-50/50">
+                                                            <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
+                                                        </TableCell>
+                                                        <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
+                                                        <TableCell className="font-mono">{e.start_date}</TableCell>
+                                                        <TableCell className="font-mono">{e.end_date}</TableCell>
+                                                        <TableCell className="font-mono">{e.time?.slice(0, 5) || '-'}</TableCell>
+                                                        <TableCell className="font-bold">{e.vendor_name}</TableCell>
+                                                        <TableCell><Badge variant="outline">{e.unit}</Badge></TableCell>
+                                                        <TableCell>{e.engineering_contact}</TableCell>
+                                                        <TableCell className="max-w-xs truncate" title={e.work_content}>{e.work_content}</TableCell>
+                                                        <TableCell className="text-muted-foreground text-xs">{e.note || '-'}</TableCell>
+                                                    </TableRow>
+                                                )
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
 
-                        {/* 手機版卡片列表 */}
-                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
-                            {tableData.paginatedData.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400">
-                                    查無待處理工作
+                                {/* 手機版卡片列表 */}
+                                <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                    {tableData.paginatedData.length === 0 ? (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            查無待處理工作
+                                        </div>
+                                    ) : (
+                                        tableData.paginatedData.map((e: any) => (
+                                            <MobileTableCard
+                                                key={e.id}
+                                                id={e.id}
+                                                title={e.vendor_name}
+                                                subtitle={e.engineering_contact || '無負責人'}
+                                                status={e.status === '待處理' ? {
+                                                    label: '待處理',
+                                                    variant: 'outline',
+                                                    className: 'bg-purple-50 text-purple-700 border-purple-200'
+                                                } : e.status === '進行中' ? {
+                                                    label: '進行中',
+                                                    variant: 'outline',
+                                                    className: 'bg-blue-50 text-blue-700 border-blue-200'
+                                                } : {
+                                                    label: e.status || '待處理',
+                                                    variant: 'outline',
+                                                    className: 'bg-green-50 text-green-700 border-green-200'
+                                                }}
+                                                date={e.start_date}
+                                                endDate={e.end_date}
+                                                time={e.time?.slice(0, 5) || '-'}
+                                                isSelected={selected.has(e.id)}
+                                                onSelect={() => toggleSelect(e.id)}
+                                                onClick={() => router.push(`/pending-work/${e.id}/edit`)}
+                                                details={[
+                                                    { label: "廠商", value: e.vendor_name },
+                                                    { label: "單位", value: e.unit },
+                                                    { label: "負責人", value: e.engineering_contact },
+                                                    { label: "內容", value: e.work_content },
+                                                    { label: "備註", value: e.note }
+                                                ]}
+                                            />
+                                        ))
+                                    )}
                                 </div>
-                            ) : (
-                                tableData.paginatedData.map((e: any) => (
-                                    <MobileTableCard
-                                        key={e.id}
-                                        id={e.id}
-                                        title={e.vendor_name}
-                                        subtitle={e.engineering_contact || '無負責人'}
-                                        status={e.status === '待處理' ? {
-                                            label: '待處理',
-                                            variant: 'outline',
-                                            className: 'bg-purple-50 text-purple-700 border-purple-200'
-                                        } : e.status === '進行中' ? {
-                                            label: '進行中',
-                                            variant: 'outline',
-                                            className: 'bg-blue-50 text-blue-700 border-blue-200'
-                                        } : {
-                                            label: e.status || '待處理',
-                                            variant: 'outline',
-                                            className: 'bg-green-50 text-green-700 border-green-200'
-                                        }}
-                                        date={e.start_date}
-                                        endDate={e.end_date}
-                                        time={e.time?.slice(0, 5) || '-'}
-                                        isSelected={selected.has(e.id)}
-                                        onSelect={() => toggleSelect(e.id)}
-                                        onClick={() => router.push(`/pending-work/${e.id}/edit`)}
-                                        details={[
-                                            { label: "廠商", value: e.vendor_name },
-                                            { label: "單位", value: e.unit },
-                                            { label: "負責人", value: e.engineering_contact },
-                                            { label: "內容", value: e.work_content },
-                                            { label: "備註", value: e.note }
-                                        ]}
-                                    />
-                                ))
-                            )}
-                        </div>
-                    </div>
+                            </div>
 
-                    <div className="p-4 border-t border-slate-100">
-                        <DataTablePagination
-                            currentPage={tableData.page} totalPages={tableData.totalPages}
-                            totalItems={tableData.totalItems} itemsPerPage={tableData.perPage}
-                            onPageChange={tableData.setPage} onItemsPerPageChange={tableData.setPerPage}
-                            selectedCount={selected.size}
-                        />
-                    </div>
+                            <div className="p-4 border-t border-border/50">
+                                <DataTablePagination
+                                    currentPage={tableData.page} totalPages={tableData.totalPages}
+                                    totalItems={tableData.totalItems} itemsPerPage={tableData.perPage}
+                                    onPageChange={tableData.setPage} onItemsPerPageChange={tableData.setPerPage}
+                                    selectedCount={selected.size}
+                                />
+                            </div>
+                        </>
+                    )}
                 </motion.section>
             </main>
 

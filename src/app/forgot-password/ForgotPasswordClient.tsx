@@ -81,10 +81,10 @@ export default function ForgotPasswordClient() {
                             <div className="mx-auto w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-green-200">
                                 <CheckCircle2 className="w-8 h-8 text-white" />
                             </div>
-                            <CardTitle className="text-2xl font-black text-slate-800">
+                            <CardTitle className="text-2xl font-black text-foreground">
                                 已發送重設密碼信件
                             </CardTitle>
-                            <CardDescription className="text-slate-500">
+                            <CardDescription className="text-muted-foreground">
                                 我們已將重設密碼連結寄送至
                             </CardDescription>
                         </CardHeader>
@@ -92,7 +92,7 @@ export default function ForgotPasswordClient() {
                             <p className="text-blue-600 font-semibold mb-4 break-all">
                                 {submittedEmail}
                             </p>
-                            <p className="text-sm text-slate-500 mb-6">
+                            <p className="text-sm text-muted-foreground mb-6">
                                 請檢查您的信箱（包含垃圾郵件資料夾），點擊信中連結重設密碼。連結有效期為 24 小時。
                             </p>
                             <Link href="/login">
@@ -120,10 +120,10 @@ export default function ForgotPasswordClient() {
                         <div className="mx-auto w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-amber-200">
                             <KeyRound className="w-8 h-8 text-white" />
                         </div>
-                        <CardTitle className="text-2xl font-black text-slate-800">
+                        <CardTitle className="text-2xl font-black text-foreground">
                             忘記密碼
                         </CardTitle>
-                        <CardDescription className="text-slate-500">
+                        <CardDescription className="text-muted-foreground">
                             輸入您的 Email，我們將寄送重設密碼連結給您
                         </CardDescription>
                     </CardHeader>
@@ -141,11 +141,11 @@ export default function ForgotPasswordClient() {
 
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-slate-700 font-bold">
+                                <Label htmlFor="email" className="text-foreground/80 font-bold">
                                     Email
                                 </Label>
                                 <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <Input
                                         id="email"
                                         type="email"

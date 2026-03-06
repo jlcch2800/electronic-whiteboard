@@ -38,19 +38,29 @@ export function MobileTableCard({
     return (
         <div
             className={`
-                bg-white p-4 rounded-xl shadow-sm border mb-3 relative transition-colors
-                ${isSelected ? 'border-primary bg-primary/5' : 'border-slate-200'}
+                bg-card p-4 rounded-xl shadow-card mb-3 relative transition-all duration-200 active:scale-[0.98] select-none
+                ${isSelected
+                    ? 'shadow-glow-primary border-transparent'
+                    : 'border border-border cursor-pointer hover:shadow-elevated hover:border-primary/30'}
+                overflow-hidden
             `}
             onClick={() => onClick && onClick()}
         >
-            <div className="flex items-start justify-between mb-3">
+            {/* 左側狀態色條 */}
+            <div
+                className={`absolute left-0 top-0 bottom-0 w-1.5 transition-all duration-300 ${isSelected ? 'bg-primary scale-y-100' : 'bg-transparent scale-y-0'}`}
+            />
+            {/* 卡片背景 (Selected 疊加) */}
+            <div className={`absolute inset-0 transition-opacity duration-300 pointer-events-none ${isSelected ? 'bg-primary/5 opacity-100' : 'opacity-0'}`} />
+
+            <div className="flex items-start justify-between mb-3 relative z-10">
                 <div className="flex items-start gap-3">
                     <div onClick={(e) => e.stopPropagation()} className="mt-1">
                         <Checkbox checked={isSelected} onCheckedChange={() => onSelect(id)} />
                     </div>
                     <div className="w-full">
-                        <h3 className="font-bold text-slate-800 text-base mb-1">{title}</h3>
-                        {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+                        <h3 className="font-bold text-foreground text-base mb-1">{title}</h3>
+                        {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -67,30 +77,30 @@ export function MobileTableCard({
                 </div>
             </div>
 
-            <div className={`grid ${endDate ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-3 bg-slate-50 p-3 rounded-lg`}>
+            <div className={`grid ${endDate ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-3 bg-muted/60 p-3 rounded-lg relative z-10`}>
                 <div className="text-xs">
-                    <span className="text-slate-400 block mb-0.5">{endDate ? '開始日期' : '日期'}</span>
-                    <span className="font-mono text-slate-700">{date}</span>
+                    <span className="text-muted-foreground block mb-0.5">{endDate ? '開始日期' : '日期'}</span>
+                    <span className="font-mono text-foreground/80">{date}</span>
                 </div>
                 {endDate && (
                     <div className="text-xs">
-                        <span className="text-slate-400 block mb-0.5">結束日期</span>
-                        <span className="font-mono text-slate-700">{endDate}</span>
+                        <span className="text-muted-foreground block mb-0.5">結束日期</span>
+                        <span className="font-mono text-foreground/80">{endDate}</span>
                     </div>
                 )}
                 {time && (
                     <div className="text-xs">
-                        <span className="text-slate-400 block mb-0.5">時間</span>
-                        <span className="font-mono text-slate-700">{time}</span>
+                        <span className="text-muted-foreground block mb-0.5">時間</span>
+                        <span className="font-mono text-foreground/80">{time}</span>
                     </div>
                 )}
             </div>
 
-            <div className="space-y-2 text-sm text-slate-600">
+            <div className="space-y-2 text-sm text-foreground/70 relative z-10">
                 {details.map((detail, index) => (
                     <div key={index} className="flex items-start gap-2">
-                        <span className="text-slate-400 min-w-[60px]">{detail.label}：</span>
-                        <span className="flex-1 {detail.label === '內容' ? 'line-clamp-2' : ''}">{detail.value || '-'}</span>
+                        <span className="text-muted-foreground min-w-[60px]">{detail.label}：</span>
+                        <span className="flex-1">{detail.value || '-'}</span>
                     </div>
                 ))}
             </div>

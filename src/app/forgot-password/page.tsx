@@ -11,7 +11,7 @@ function ForgotPasswordLoading() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 p-4">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-                <p className="text-slate-500">載入中...</p>
+                <p className="text-muted-foreground">載入中...</p>
             </div>
         </div>
     )

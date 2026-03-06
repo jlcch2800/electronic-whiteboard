@@ -91,7 +91,7 @@ function PasswordStrength({ password }: { password: string }) {
             {/* Checklist */}
             <div className="grid grid-cols-2 gap-1 text-xs">
                 {checks.map((check, i) => (
-                    <div key={i} className={`flex items-center gap-1 ${check.test ? 'text-green-600' : 'text-slate-400'}`}>
+                    <div key={i} className={`flex items-center gap-1 ${check.test ? 'text-green-600' : 'text-muted-foreground'}`}>
                         {check.test ? (
                             <CheckCircle2 className="w-3 h-3" />
                         ) : (
@@ -101,7 +101,7 @@ function PasswordStrength({ password }: { password: string }) {
                     </div>
                 ))}
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
                 <AlertCircle className="w-3 h-3 inline mr-1" />
                 需符合至少 3 項條件
             </p>
@@ -170,7 +170,7 @@ export default function ResetPasswordClient() {
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 p-4">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                    <p className="text-slate-500">驗證中...</p>
+                    <p className="text-muted-foreground">驗證中...</p>
                 </div>
             </div>
         )
@@ -190,10 +190,10 @@ export default function ResetPasswordClient() {
                             <div className="mx-auto w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-red-200">
                                 <XCircle className="w-8 h-8 text-white" />
                             </div>
-                            <CardTitle className="text-2xl font-black text-slate-800">
+                            <CardTitle className="text-2xl font-black text-foreground">
                                 連結已失效
                             </CardTitle>
-                            <CardDescription className="text-slate-500">
+                            <CardDescription className="text-muted-foreground">
                                 重設密碼連結已過期或無效，請重新申請
                             </CardDescription>
                         </CardHeader>
@@ -227,10 +227,10 @@ export default function ResetPasswordClient() {
                             <div className="mx-auto w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-green-200">
                                 <CheckCircle2 className="w-8 h-8 text-white" />
                             </div>
-                            <CardTitle className="text-2xl font-black text-slate-800">
+                            <CardTitle className="text-2xl font-black text-foreground">
                                 密碼重設成功！
                             </CardTitle>
-                            <CardDescription className="text-slate-500">
+                            <CardDescription className="text-muted-foreground">
                                 您的密碼已成功更新，請使用新密碼登入
                             </CardDescription>
                         </CardHeader>
@@ -260,10 +260,10 @@ export default function ResetPasswordClient() {
                         <div className="mx-auto w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-200">
                             <ShieldCheck className="w-8 h-8 text-white" />
                         </div>
-                        <CardTitle className="text-2xl font-black text-slate-800">
+                        <CardTitle className="text-2xl font-black text-foreground">
                             重設密碼
                         </CardTitle>
-                        <CardDescription className="text-slate-500">
+                        <CardDescription className="text-muted-foreground">
                             請輸入您的新密碼
                         </CardDescription>
                     </CardHeader>
@@ -282,11 +282,11 @@ export default function ResetPasswordClient() {
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             {/* New Password */}
                             <div className="space-y-2">
-                                <Label htmlFor="password" className="text-slate-700 font-bold">
+                                <Label htmlFor="password" className="text-foreground/80 font-bold">
                                     新密碼 <span className="text-red-500">*</span>
                                 </Label>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <Input
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
@@ -297,7 +297,7 @@ export default function ResetPasswordClient() {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground/70"
                                     >
                                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>
@@ -312,11 +312,11 @@ export default function ResetPasswordClient() {
 
                             {/* Confirm Password */}
                             <div className="space-y-2">
-                                <Label htmlFor="confirmPassword" className="text-slate-700 font-bold">
+                                <Label htmlFor="confirmPassword" className="text-foreground/80 font-bold">
                                     確認新密碼 <span className="text-red-500">*</span>
                                 </Label>
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <Input
                                         id="confirmPassword"
                                         type={showConfirmPassword ? 'text' : 'password'}
@@ -327,7 +327,7 @@ export default function ResetPasswordClient() {
                                     <button
                                         type="button"
                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground/70"
                                     >
                                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </button>

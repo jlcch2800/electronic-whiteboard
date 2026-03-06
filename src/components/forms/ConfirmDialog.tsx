@@ -61,14 +61,14 @@ export default function ConfirmDialog({
                     {entries.map(({ label, value }, i) => (
                         <div
                             key={i}
-                            className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0"
+                            className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0"
                         >
-                            <span className="text-sm font-medium text-slate-500 min-w-[100px] shrink-0">
+                            <span className="text-sm font-medium text-muted-foreground min-w-[100px] shrink-0">
                                 {label}
                             </span>
                             <span className={`text-sm flex-1 ${value === null || value === undefined || value === ''
-                                    ? 'text-slate-300 italic'
-                                    : 'text-slate-800'
+                                    ? 'text-muted-foreground/50 italic'
+                                    : 'text-foreground'
                                 }`}>
                                 {value === null || value === undefined || value === ''
                                     ? '未填寫'

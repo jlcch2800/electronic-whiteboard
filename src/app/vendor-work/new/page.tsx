@@ -151,11 +151,11 @@ export default function VendorWorkNewPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="flex gap-4">
-                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'arrival' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-slate-300'}`}>
+                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'arrival' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border hover:border-slate-300'}`}>
                                         <input type="radio" value="arrival" {...register('entry_status')} className="sr-only" />
                                         <span className="font-bold">到院 (Arrival)</span>
                                     </label>
-                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 hover:border-slate-300'}`}>
+                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border hover:border-slate-300'}`}>
                                         <input type="radio" value="departure" {...register('entry_status')} className="sr-only" />
                                         <span className="font-bold">離院 (Departure)</span>
                                     </label>

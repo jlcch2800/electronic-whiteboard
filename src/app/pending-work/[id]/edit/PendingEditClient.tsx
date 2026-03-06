@@ -63,7 +63,7 @@ export default function PendingEditClient({ initialData }: { initialData: any })
         }
     }
 
-    if (!initialData) return <div className="p-8 text-center text-slate-500">查無資料</div>
+    if (!initialData) return <div className="p-8 text-center text-muted-foreground">查無資料</div>
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">

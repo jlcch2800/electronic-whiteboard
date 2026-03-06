@@ -22,6 +22,7 @@ import { DataTablePagination } from '@/components/DataTablePagination'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
+import { SkeletonTable } from '@/components/SkeletonTable'
 
 interface WorkReportRecord {
     id: string; created_at: string; report_date: string; report_time: string | null; vendor_name: string
@@ -128,18 +129,18 @@ export default function WorkReportClient() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-100">
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+        <div className="min-h-screen bg-muted">
+            <header className="glass border-b border-border/50 px-6 py-4 flex justify-between items-center shadow-card sticky top-0 z-50">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => router.push('/')}><ArrowLeft className="w-4 h-4 mr-1" />返回首頁</Button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <h1 className="text-lg font-black text-slate-800 flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-indigo-500" />施工回報管理</h1>
+                    <div className="h-6 w-px bg-border" />
+                    <h1 className="text-lg font-black text-foreground flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-indigo-500" />施工回報管理</h1>
                 </div>
                 <Button onClick={() => router.push('/work-report/new')} className="bg-indigo-600 hover:bg-indigo-700"><Plus className="w-4 h-4 mr-1" />新增回報</Button>
             </header>
             <main className="p-6">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-slate-200">
-                    <div className="p-4 border-b border-slate-100">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl shadow-card border border-border">
+                    <div className="p-4 border-b border-border/50">
                         <div className="flex flex-wrap items-end gap-4">
                             {/* 手機版篩選切換 */}
                             <div className="flex w-full md:hidden justify-between items-center mb-2">
@@ -149,10 +150,10 @@ export default function WorkReportClient() {
                                 </Button>
                             </div>
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">狀態</Label><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部</SelectItem><SelectItem value="completed">完成</SelectItem><SelectItem value="incomplete">未完成</SelectItem><SelectItem value="abnormal">異常</SelectItem></SelectContent></Select></div>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">關鍵字搜尋</Label><Input type="text" placeholder="廠商、地點、內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-52" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">狀態</Label><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部</SelectItem><SelectItem value="completed">完成</SelectItem><SelectItem value="incomplete">未完成</SelectItem><SelectItem value="abnormal">異常</SelectItem></SelectContent></Select></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、地點、內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-52" /></div>
                                 <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -163,81 +164,84 @@ export default function WorkReportClient() {
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <Table className="hidden md:table">
-                            <TableHeader><TableRow>
-                                <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
-                                <TableHead className="w-12">#</TableHead>
-                                <SortableTableHead label="日期" sortKey="report_date" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="時間" sortKey="report_time" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="地點" sortKey="work_location" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="狀態" sortKey="work_status" currentSort={sort} onSort={handleSort} />
-                                <TableHead>施工內容</TableHead><TableHead>備註</TableHead>
-                            </TableRow></TableHeader>
-                            <TableBody>
-                                {loading ? <TableRow><TableCell colSpan={10} className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></TableCell></TableRow>
-                                    : sortedData.length === 0 ? <TableRow><TableCell colSpan={10} className="p-0"><EmptyState icon={FileText} title="尚無施工回報" description="目前沒有施工回報記錄，您可以點擊右上方新增。" /></TableCell></TableRow>
-                                        : sortedData.map((row, index) => (
-                                            <TableRow key={row.id} className={`hover:bg-indigo-50/50 ${selected.has(row.id) ? 'bg-indigo-100' : ''}`}>
-                                                <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
-                                                <TableCell className="text-slate-400 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
-                                                <TableCell className="font-mono">{row.report_date}</TableCell><TableCell className="font-mono">{row.report_time?.slice(0, 5) || '-'}</TableCell>
-                                                <TableCell className="font-bold">{row.vendor_name}</TableCell><TableCell>{row.work_location}</TableCell><TableCell>{row.engineering_contact}</TableCell>
-                                                <TableCell><Badge variant={statusLabels[row.work_status]?.variant || 'secondary'}>{statusLabels[row.work_status]?.text || row.work_status}</Badge></TableCell>
-                                                <TableCell className="max-w-xs truncate" title={row.work_content}>{row.work_content}</TableCell><TableCell className="text-slate-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
-                                            </TableRow>
-                                        ))}
-                            </TableBody>
-                        </Table>
+                    {loading ? (
+                        <SkeletonTable />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table className="hidden md:table">
+                                    <TableHeader><TableRow>
+                                        <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
+                                        <TableHead className="w-12">#</TableHead>
+                                        <SortableTableHead label="日期" sortKey="report_date" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="時間" sortKey="report_time" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="地點" sortKey="work_location" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="狀態" sortKey="work_status" currentSort={sort} onSort={handleSort} />
+                                        <TableHead>施工內容</TableHead><TableHead>備註</TableHead>
+                                    </TableRow></TableHeader>
+                                    <TableBody>
+                                        {sortedData.length === 0 ? <TableRow><TableCell colSpan={10} className="p-0"><EmptyState icon={FileText} title="尚無施工回報" description="目前沒有施工回報記錄，您可以點擊右上方新增。" /></TableCell></TableRow>
+                                            : sortedData.map((row, index) => (
+                                                <TableRow key={row.id} className={`hover:bg-indigo-50/50 transition-colors even:bg-muted/20 ${selected.has(row.id) ? 'bg-indigo-100' : ''}`}>
+                                                    <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
+                                                    <TableCell className="font-mono">{row.report_date}</TableCell><TableCell className="font-mono">{row.report_time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-bold">{row.vendor_name}</TableCell><TableCell>{row.work_location}</TableCell><TableCell>{row.engineering_contact}</TableCell>
+                                                    <TableCell><Badge variant={statusLabels[row.work_status]?.variant || 'secondary'}>{statusLabels[row.work_status]?.text || row.work_status}</Badge></TableCell>
+                                                    <TableCell className="max-w-xs truncate" title={row.work_content}>{row.work_content}</TableCell><TableCell className="text-muted-foreground text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                    </TableBody>
+                                </Table>
 
-                        {/* 手機版卡片列表 */}
-                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
-                            {loading ? (
-                                <div className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
-                            ) : sortedData.length === 0 ? (
-                                <EmptyState icon={FileText} title="尚無施工回報" description="目前沒有施工回報記錄，您可以點擊右上方新增。" />
-                            ) : (
-                                sortedData.map((row: WorkReportRecord) => (
-                                    <MobileTableCard
-                                        key={row.id}
-                                        id={row.id}
-                                        title={row.vendor_name}
-                                        subtitle={row.engineering_contact}
-                                        status={{
-                                            label: statusLabels[row.work_status]?.text || row.work_status,
-                                            variant: statusLabels[row.work_status]?.variant || 'secondary',
-                                        }}
-                                        date={row.report_date}
-                                        time={row.report_time?.slice(0, 5) || '-'}
-                                        isSelected={selected.has(row.id)}
-                                        onSelect={() => toggleSelect(row.id)}
-                                        onClick={() => router.push(`/work-report/${row.id}/edit`)}
-                                        details={[
-                                            { label: '地點', value: row.work_location },
-                                            { label: '施工內容', value: row.work_content },
-                                            { label: '備註', value: row.note },
-                                        ]}
-                                    />
-                                ))
-                            )}
-                        </div>
-                    </div>
-                    <div className="p-4 border-t border-slate-100">
-                        <DataTablePagination
-                            currentPage={page}
-                            totalPages={totalPages}
-                            totalItems={totalCount}
-                            itemsPerPage={pageSize}
-                            onPageChange={setPage}
-                            onItemsPerPageChange={(size) => {
-                                setPageSize(size)
-                                setPage(1)
-                            }}
-                            selectedCount={selected.size}
-                        />
-                    </div>
+                                {/* 手機版卡片列表 */}
+                                <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                    {sortedData.length === 0 ? (
+                                        <EmptyState icon={FileText} title="尚無施工回報" description="目前沒有施工回報記錄，您可以點擊右上方新增。" />
+                                    ) : (
+                                        sortedData.map((row: WorkReportRecord) => (
+                                            <MobileTableCard
+                                                key={row.id}
+                                                id={row.id}
+                                                title={row.vendor_name}
+                                                subtitle={row.engineering_contact}
+                                                status={{
+                                                    label: statusLabels[row.work_status]?.text || row.work_status,
+                                                    variant: statusLabels[row.work_status]?.variant || 'secondary',
+                                                }}
+                                                date={row.report_date}
+                                                time={row.report_time?.slice(0, 5) || '-'}
+                                                isSelected={selected.has(row.id)}
+                                                onSelect={() => toggleSelect(row.id)}
+                                                onClick={() => router.push(`/work-report/${row.id}/edit`)}
+                                                details={[
+                                                    { label: '地點', value: row.work_location },
+                                                    { label: '施工內容', value: row.work_content },
+                                                    { label: '備註', value: row.note },
+                                                ]}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                            <div className="p-4 border-t border-border/50">
+                                <DataTablePagination
+                                    currentPage={page}
+                                    totalPages={totalPages}
+                                    totalItems={totalCount}
+                                    itemsPerPage={pageSize}
+                                    onPageChange={setPage}
+                                    onItemsPerPageChange={(size) => {
+                                        setPageSize(size)
+                                        setPage(1)
+                                    }}
+                                    selectedCount={selected.size}
+                                />
+                            </div>
+                        </>
+                    )}
                 </motion.div>
             </main>
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

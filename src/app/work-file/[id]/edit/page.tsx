@@ -133,7 +133,7 @@ export default function WorkFileEditPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-100">
+            <div className="min-h-screen flex items-center justify-center bg-muted">
                 <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
             </div>
         )
@@ -195,7 +195,7 @@ export default function WorkFileEditPage() {
                                         onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                                         className="cursor-pointer file:cursor-pointer file:text-teal-700 file:bg-teal-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-teal-100" />
                                     {existingFileUrl && !selectedFile && (
-                                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
                                             現有檔案: <a href={existingFileUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline flex items-center gap-1"><ExternalLink className="w-3 h-3" />{shortenUrl(existingFileUrl)}</a>
                                         </p>
                                     )}
@@ -212,9 +212,9 @@ export default function WorkFileEditPage() {
                                         className="cursor-pointer file:cursor-pointer file:text-blue-700 file:bg-blue-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-blue-100" />
                                     {existingImageUrl && !selectedImage && (
                                         <div className="flex items-center gap-2">
-                                            <span className="text-xs text-slate-500">現有照片:</span>
+                                            <span className="text-xs text-muted-foreground">現有照片:</span>
                                             <a href={existingImageUrl} target="_blank" rel="noopener noreferrer">
-                                                <img src={existingImageUrl} alt="Current" className="w-16 h-16 object-cover rounded-md border border-slate-200 shadow-sm" />
+                                                <img src={existingImageUrl} alt="Current" className="w-16 h-16 object-cover rounded-md border border-border shadow-sm" />
                                             </a>
                                         </div>
                                     )}
@@ -230,7 +230,7 @@ export default function WorkFileEditPage() {
                                         onChange={(e) => setSelectedVideo(e.target.files?.[0] || null)}
                                         className="cursor-pointer file:cursor-pointer file:text-purple-700 file:bg-purple-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-purple-100" />
                                     {existingVideoUrl && !selectedVideo && (
-                                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
                                             現有影片: <a href={existingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center gap-1"><ExternalLink className="w-3 h-3" />{shortenUrl(existingVideoUrl)}</a>
                                         </p>
                                     )}

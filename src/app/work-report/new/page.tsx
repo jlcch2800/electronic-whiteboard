@@ -154,7 +154,7 @@ export default function WorkReportNewPage() {
                                                 ? status === 'completed' ? 'border-green-500 bg-green-50 text-green-700'
                                                     : status === 'abnormal' ? 'border-red-500 bg-red-50 text-red-700'
                                                         : 'border-orange-500 bg-orange-50 text-orange-700'
-                                                : 'border-slate-200 hover:border-slate-300'
+                                                : 'border-border hover:border-slate-300'
                                                 }`}
                                         >
                                             <input type="radio" value={status} {...register('work_status')} className="sr-only" />

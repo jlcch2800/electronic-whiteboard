@@ -35,7 +35,7 @@ export function DataTablePagination({
 }: DataTablePaginationProps) {
     return (
         <div className="flex flex-col sm:flex-row items-center justify-between px-2 gap-4">
-            <div className="flex-1 text-sm text-slate-500 whitespace-nowrap">
+            <div className="flex-1 text-sm text-muted-foreground whitespace-nowrap">
                 {selectedCount > 0 ? (
                     <>已選取 {selectedCount} / {totalItems} 筆</>
                 ) : (
@@ -44,12 +44,12 @@ export function DataTablePagination({
             </div>
             <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 lg:space-x-8">
                 <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium text-slate-600">每頁筆數</p>
+                    <p className="text-sm font-medium text-foreground/70">每頁筆數</p>
                     <Select
                         value={`${itemsPerPage}`}
                         onValueChange={(value) => onItemsPerPageChange(Number(value))}
                     >
-                        <SelectTrigger className="h-8 w-[70px] bg-white">
+                        <SelectTrigger className="h-8 w-[70px] bg-background">
                             <SelectValue placeholder={itemsPerPage} />
                         </SelectTrigger>
                         <SelectContent side="top">
@@ -61,14 +61,14 @@ export function DataTablePagination({
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="flex w-auto items-center justify-center text-sm font-medium text-slate-600 space-x-2">
+                <div className="flex w-auto items-center justify-center text-sm font-medium text-foreground/70 space-x-2">
                     <span>第</span>
                     <Select
                         value={`${currentPage}`}
                         onValueChange={(value) => onPageChange(Number(value))}
                         disabled={totalPages <= 1}
                     >
-                        <SelectTrigger className="h-8 w-[60px] bg-white">
+                        <SelectTrigger className="h-8 w-[60px] bg-background">
                             <SelectValue placeholder={currentPage} />
                         </SelectTrigger>
                         <SelectContent side="top" className="max-h-[200px]">
@@ -84,7 +84,7 @@ export function DataTablePagination({
                 <div className="flex items-center space-x-2">
                     <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 bg-white"
+                        className="h-8 w-8 p-0 bg-background active:scale-95 transition-transform"
                         onClick={() => onPageChange(1)}
                         disabled={currentPage === 1 || totalPages === 0}
                     >
@@ -93,7 +93,7 @@ export function DataTablePagination({
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 bg-white"
+                        className="h-8 w-8 p-0 bg-background active:scale-95 transition-transform"
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage === 1 || totalPages === 0}
                     >
@@ -102,7 +102,7 @@ export function DataTablePagination({
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 bg-white"
+                        className="h-8 w-8 p-0 bg-background active:scale-95 transition-transform"
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages || totalPages === 0}
                     >
@@ -111,7 +111,7 @@ export function DataTablePagination({
                     </Button>
                     <Button
                         variant="outline"
-                        className="h-8 w-8 p-0 bg-white"
+                        className="h-8 w-8 p-0 bg-background active:scale-95 transition-transform"
                         onClick={() => onPageChange(totalPages)}
                         disabled={currentPage >= totalPages || totalPages === 0}
                     >

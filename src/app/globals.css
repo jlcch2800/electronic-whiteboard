@@ -32,9 +32,9 @@
     --muted: 210 15% 95%;
     --muted-foreground: 215 15% 50%;
 
-    /* 強調色：活力橘 */
-    --accent: 210 15% 93%;
-    --accent-foreground: 214 25% 25%;
+    /* 強調色：活力青綠（全新！與 secondary 明確區分） */
+    --accent: 172 66% 50%;
+    --accent-foreground: 172 80% 10%;
 
     /* 危險色 */
     --destructive: 0 72% 51%;
@@ -61,6 +61,22 @@
     --chart-5: 340 65% 50%;
 
     --radius: 0.625rem;
+
+    /* === 漸層變數 === */
+    --gradient-primary: linear-gradient(135deg, hsl(214 72% 41%) 0%, hsl(214 72% 55%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 71% 45%) 0%, hsl(160 60% 50%) 100%);
+    --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(28 85% 55%) 100%);
+    --gradient-danger: linear-gradient(135deg, hsl(0 72% 51%) 0%, hsl(350 65% 55%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(172 66% 50%) 0%, hsl(190 70% 50%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(214 72% 35%) 0%, hsl(199 89% 48%) 50%, hsl(172 66% 50%) 100%);
+
+    /* === 陰影層級 === */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+    --shadow-elevated: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --shadow-float: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 10px -4px rgba(0, 0, 0, 0.04);
+    --shadow-glow-primary: 0 0 20px -5px hsla(214, 72%, 41%, 0.35);
+    --shadow-glow-accent: 0 0 20px -5px hsla(172, 66%, 50%, 0.35);
   }
 
   .dark {
@@ -79,11 +95,12 @@
     --secondary: 215 20% 18%;
     --secondary-foreground: 210 15% 90%;
 
-    --muted: 215 20% 18%;
-    --muted-foreground: 210 10% 55%;
+    --muted: 215 20% 16%;
+    --muted-foreground: 210 15% 70%;
 
-    --accent: 215 20% 18%;
-    --accent-foreground: 210 15% 90%;
+    /* 強調色 dark mode：活力青綠偏亮 */
+    --accent: 172 55% 42%;
+    --accent-foreground: 172 20% 95%;
 
     --destructive: 0 62% 40%;
     --destructive-foreground: 0 0% 100%;
@@ -104,6 +121,22 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* === 漸層變數 (Dark) === */
+    --gradient-primary: linear-gradient(135deg, hsl(214 72% 45%) 0%, hsl(214 72% 60%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 60% 40%) 0%, hsl(160 55% 45%) 100%);
+    --gradient-warning: linear-gradient(135deg, hsl(38 80% 45%) 0%, hsl(28 75% 50%) 100%);
+    --gradient-danger: linear-gradient(135deg, hsl(0 62% 40%) 0%, hsl(350 55% 45%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(172 55% 42%) 0%, hsl(190 60% 45%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(214 72% 25%) 0%, hsl(199 75% 35%) 50%, hsl(172 55% 35%) 100%);
+
+    /* === 陰影層級 (Dark) === */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.15);
+    --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 2px -1px rgba(0, 0, 0, 0.15);
+    --shadow-elevated: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.15);
+    --shadow-float: 0 10px 25px -3px rgba(0, 0, 0, 0.3), 0 4px 10px -4px rgba(0, 0, 0, 0.2);
+    --shadow-glow-primary: 0 0 25px -5px hsla(214, 72%, 55%, 0.3);
+    --shadow-glow-accent: 0 0 25px -5px hsla(172, 55%, 42%, 0.3);
   }
 }
 
@@ -111,41 +144,435 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* === 全域動畫 === */
+/* ============================================
+   全域微動畫工具庫
+   ============================================ */
+
+/* --- 淡入上移 --- */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out both;
+}
+
+/* --- 淡入下移 --- */
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-down {
+  animation: fade-in-down 0.5s ease-out both;
+}
+
+/* --- 縮放進場 --- */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* --- 滑入展開（用於 filter 區域） --- */
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.35s ease-out both;
+  overflow: hidden;
+}
+
+/* --- 滑入隱藏 --- */
+@keyframes slide-up {
+  from {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-in both;
+  overflow: hidden;
+}
+
+/* --- 骨架屏光澤 --- */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.08) 50%,
+      hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* --- 浮動動畫（用於 EmptyState icon） --- */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* --- 脈衝呼吸 --- */
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* --- 抖動動畫（用於錯誤） --- */
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* --- 旋轉漸入 --- */
+@keyframes spin-in {
+  from {
+    opacity: 0;
+    transform: rotate(-180deg) scale(0.5);
+  }
+
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+.animate-spin-in {
+  animation: spin-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* --- 左側滑入 --- */
 @keyframes slide-in-from-left {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
 
 .animate-in.slide-in-from-left {
   animation: slide-in-from-left 0.2s ease-out;
 }
 
+/* --- 右側滑入 --- */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-from-right 0.3s ease-out both;
+}
+
+/* --- 漸進延遲工具 (stagger) --- */
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+.stagger-4 {
+  animation-delay: 0.2s;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+}
+
+.stagger-6 {
+  animation-delay: 0.3s;
+}
+
+.stagger-7 {
+  animation-delay: 0.35s;
+}
+
+.stagger-8 {
+  animation-delay: 0.4s;
+}
+
+/* === 動畫偏好尊重 === */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   全域增強樣式
+   ============================================ */
+
+/* --- 表格行 hover 左側色條 --- */
+.table-row-hover {
+  position: relative;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.table-row-hover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: hsl(var(--primary));
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
+  transform: scaleY(0);
+  transition: all 0.25s ease;
+}
+
+.table-row-hover:hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* --- 卡片 hover 上浮 --- */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-float);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+/* --- Input focus 發光邊框 --- */
+.input-glow:focus {
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12), var(--shadow-xs);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+/* --- 漸層文字 --- */
+.text-gradient-primary {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-accent {
+  background: var(--gradient-accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-hero {
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* --- 毛玻璃效果 --- */
+.glass {
+  background: hsl(var(--background) / 0.7);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.glass-card {
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+
+/* --- 按鈕按壓回饋 --- */
+.btn-press {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-press:active {
+  transform: scale(0.96);
+}
+
+/* --- 按鈕漸層光暈 hover --- */
+.btn-glow-primary:hover {
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.btn-glow-accent:hover {
+  box-shadow: var(--shadow-glow-accent);
+}
+
+/* --- 自訂滾動條（WebKit） --- */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ============================================
+   Dark Mode 平滑過渡
+   ============================================ */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
 /* ============================================
    登入 / 註冊頁面 — 品牌區塊漸變背景
    ============================================ */
 .auth-gradient-bg {
-  background: linear-gradient(
-    135deg,
-    #1a3a6e 0%,
-    #1e5cb3 25%,
-    #2563eb 50%,
-    #1e5cb3 75%,
-    #1a3a6e 100%
-  );
+  background: linear-gradient(135deg,
+      #1a3a6e 0%,
+      #1e5cb3 25%,
+      #2563eb 50%,
+      #1e5cb3 75%,
+      #1a3a6e 100%);
   background-size: 400% 400%;
   animation: auth-gradient-shift 12s ease infinite;
 }
 
 @keyframes auth-gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* — 品牌面板：微磨砂效果 — */
@@ -157,31 +584,57 @@
 .auth-float-orb {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
   pointer-events: none;
 }
+
 .auth-float-orb-1 {
-  width: 300px; height: 300px;
-  top: -60px; left: -80px;
+  width: 300px;
+  height: 300px;
+  top: -60px;
+  left: -80px;
   animation: auth-orb-float 8s ease-in-out infinite;
 }
+
 .auth-float-orb-2 {
-  width: 200px; height: 200px;
-  bottom: 60px; right: -40px;
+  width: 200px;
+  height: 200px;
+  bottom: 60px;
+  right: -40px;
   animation: auth-orb-float 10s ease-in-out infinite reverse;
 }
+
 .auth-float-orb-3 {
-  width: 150px; height: 150px;
-  top: 50%; left: 50%;
+  width: 150px;
+  height: 150px;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
   animation: auth-orb-float 6s ease-in-out infinite 2s;
 }
 
 @keyframes auth-orb-float {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
-  25% { transform: translate(20px, -30px) scale(1.1); opacity: 0.7; }
-  50% { transform: translate(-10px, 20px) scale(0.95); opacity: 0.4; }
-  75% { transform: translate(15px, 10px) scale(1.05); opacity: 0.6; }
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+
+  25% {
+    transform: translate(20px, -30px) scale(1.1);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: translate(-10px, 20px) scale(0.95);
+    opacity: 0.4;
+  }
+
+  75% {
+    transform: translate(15px, 10px) scale(1.05);
+    opacity: 0.6;
+  }
 }
 
 /* — 登入按鈕：漸層掃光動畫 — */
@@ -199,12 +652,10 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255,255,255,0.15) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 50%,
+      transparent 100%);
   transition: none;
 }
 
@@ -223,8 +674,13 @@
 }
 
 @keyframes auth-btn-sweep {
-  0% { left: -100%; }
-  100% { left: 100%; }
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
 
 /* — 註冊按鈕色系 — */
@@ -242,12 +698,10 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255,255,255,0.15) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 50%,
+      transparent 100%);
   transition: none;
 }
 

@@ -41,13 +41,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     render() {
         if (this.state.hasError) {
             return (
-                <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+                <div className="min-h-screen flex items-center justify-center bg-muted p-4">
                     <div className="text-center space-y-4">
                         <div className="mx-auto w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center">
                             <span className="text-3xl">⚠️</span>
                         </div>
-                        <h2 className="text-xl font-bold text-slate-800">發生錯誤</h2>
-                        <p className="text-slate-500 text-sm">
+                        <h2 className="text-xl font-bold text-foreground">發生錯誤</h2>
+                        <p className="text-muted-foreground text-sm">
                             系統已自動記錄錯誤資訊，請重新整理頁面或聯繫管理員
                         </p>
                         <button

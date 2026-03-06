@@ -43,6 +43,18 @@ const config: Config = {
 					DEFAULT: 'hsl(var(--destructive))',
 					foreground: 'hsl(var(--destructive-foreground))'
 				},
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
+				},
+				info: {
+					DEFAULT: 'hsl(var(--info))',
+					foreground: 'hsl(var(--info-foreground))'
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -58,7 +70,29 @@ const config: Config = {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
-			}
+			},
+			boxShadow: {
+				'xs': 'var(--shadow-xs)',
+				'card': 'var(--shadow-card)',
+				'elevated': 'var(--shadow-elevated)',
+				'float': 'var(--shadow-float)',
+				'glow-primary': 'var(--shadow-glow-primary)',
+				'glow-accent': 'var(--shadow-glow-accent)',
+			},
+			keyframes: {
+				'fade-in-up': {
+					from: { opacity: '0', transform: 'translateY(16px)' },
+					to: { opacity: '1', transform: 'translateY(0)' },
+				},
+				'scale-in': {
+					from: { opacity: '0', transform: 'scale(0.92)' },
+					to: { opacity: '1', transform: 'scale(1)' },
+				},
+			},
+			animation: {
+				'fade-in-up': 'fade-in-up 0.5s ease-out both',
+				'scale-in': 'scale-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

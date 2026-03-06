@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
 import { Agentation } from "agentation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -29,17 +30,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-TW">
+    <html lang="zh-TW" suppressHydrationWarning>
       <body className={`${inter.variable} ${notoSansTC.variable} font-sans antialiased`}>
         <ErrorBoundary source="RootLayout">
-          <AuthProvider>
-            {children}
-            <Toaster />
-            <Agentation />
-            <GlobalErrorHandler />
-          </AuthProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              {children}
+              <Toaster />
+              <Agentation />
+              <GlobalErrorHandler />
+            </AuthProvider>
+          </ThemeProvider>
         </ErrorBoundary>
       </body>
     </html>
   );
 }
+

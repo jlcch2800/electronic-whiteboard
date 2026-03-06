@@ -93,7 +93,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
         }
     }
 
-    if (!initialData) return <div className="p-8 text-center text-slate-500">查無資料</div>
+    if (!initialData) return <div className="p-8 text-center text-muted-foreground">查無資料</div>
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100">
@@ -109,10 +109,10 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                             <CardHeader><CardTitle className="text-base">到院或離院 (不可修改)</CardTitle></CardHeader>
                             <CardContent>
                                 <div className="flex gap-4 opacity-75 pointer-events-none">
-                                    <div className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 ${entryStatus === 'arrival' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200'}`}>
+                                    <div className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 ${entryStatus === 'arrival' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border'}`}>
                                         <span className="font-bold">到院</span>
                                     </div>
-                                    <div className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200'}`}>
+                                    <div className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border'}`}>
                                         <span className="font-bold">離院</span>
                                     </div>
                                 </div>

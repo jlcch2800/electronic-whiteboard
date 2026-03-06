@@ -211,7 +211,7 @@ export default function WorkFileNewPage() {
                                         className="cursor-pointer file:cursor-pointer file:text-teal-700 file:bg-teal-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-teal-100"
                                     />
                                     <input type="hidden" {...register('file_url')} />
-                                    <p className="text-xs text-slate-500">支援 PDF, Word, Excel 等文件格式</p>
+                                    <p className="text-xs text-muted-foreground">支援 PDF, Word, Excel 等文件格式</p>
                                 </div>
 
                                 <div className="space-y-2">

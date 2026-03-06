@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
+import { SkeletonTable } from '@/components/SkeletonTable'
 
 interface VendorWorkClientProps {
     initialData: any[]
@@ -232,16 +233,16 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
     }
 
     return (
-        <div className="min-h-screen bg-slate-100 flex flex-col">
+        <div className="min-h-screen bg-background flex flex-col">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+            <header className="glass border-b border-border/50 px-6 py-4 flex justify-between items-center shadow-card sticky top-0 z-50">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
                         <ArrowLeft className="w-4 h-4 mr-1" />
                         返回首頁
                     </Button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                    <div className="h-6 w-px bg-border" />
+                    <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                         <Users className="w-6 h-6 text-blue-500" />
                         廠商今日施工項目
                     </h1>
@@ -253,9 +254,9 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                 <motion.section
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200"
+                    className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-between items-center gap-4">
                         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
                             <div className="flex w-full md:hidden justify-between items-center mb-2">
                                 <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
@@ -271,7 +272,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                     onChange={(e) => setSearch(s => ({ ...s, start: e.target.value }))}
                                     className="w-full md:w-36"
                                 />
-                                <span className="text-slate-400 hidden md:inline">~</span>
+                                <span className="text-muted-foreground hidden md:inline">~</span>
                                 <Input
                                     type="date"
                                     value={search.end}
@@ -316,127 +317,133 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <Table className="hidden md:table">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <Checkbox
-                                            checked={selected.size === data.length && data.length > 0}
-                                            onCheckedChange={toggleSelectAll}
-                                        />
-                                    </TableHead>
-                                    <TableHead className="w-12">#</TableHead>
-                                    <SortableTableHead label="狀態" sortKey="entry_status" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="日期" sortKey="work_date" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="到院時間" sortKey="arrival_time" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="離院時間" sortKey="departure_time" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="廠商名稱" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="廠商工作證號" sortKey="vendor_badge_id" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="廠商負責人員姓名" sortKey="vendor_contact" currentSort={sort} onSort={handleSort} />
-                                    <TableHead>廠商負責人員電話</TableHead>
-                                    <SortableTableHead label="棟別" sortKey="building" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="樓層" sortKey="floor" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="施工地點" sortKey="location" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
-                                    <TableHead>施工內容</TableHead>
-                                    <TableHead>備註</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {sortedData.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={17} className="p-0">
-                                            <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    sortedData.map((v: any, index: number) => {
-                                        const actualIndex = (currentPage - 1) * itemsPerPage + index + 1
-                                        return (
-                                            <TableRow key={v.id} className={`hover:bg-blue-50/50 transition-colors ${selected.has(v.id) ? 'bg-blue-50' : ''}`}>
-                                                <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-blue-50/50">
-                                                    <Checkbox checked={selected.has(v.id)} onCheckedChange={() => toggleSelect(v.id)} />
+                    {loading ? (
+                        <SkeletonTable />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table className="hidden md:table">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-12">
+                                                <Checkbox
+                                                    checked={selected.size === data.length && data.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                />
+                                            </TableHead>
+                                            <TableHead className="w-12">#</TableHead>
+                                            <SortableTableHead label="狀態" sortKey="entry_status" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="日期" sortKey="work_date" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="到院時間" sortKey="arrival_time" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="離院時間" sortKey="departure_time" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="廠商名稱" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="廠商工作證號" sortKey="vendor_badge_id" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="廠商負責人員姓名" sortKey="vendor_contact" currentSort={sort} onSort={handleSort} />
+                                            <TableHead>廠商負責人員電話</TableHead>
+                                            <SortableTableHead label="棟別" sortKey="building" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="樓層" sortKey="floor" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="施工地點" sortKey="location" currentSort={sort} onSort={handleSort} />
+                                            <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
+                                            <TableHead>施工內容</TableHead>
+                                            <TableHead>備註</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {sortedData.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={17} className="p-0">
+                                                    <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
                                                 </TableCell>
-                                                <TableCell className="text-slate-400 text-sm">{actualIndex}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}>
-                                                        {v.entry_status === 'arrival' ? '到院' : '離院'}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="font-mono">{v.work_date}</TableCell>
-                                                <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
-                                                <TableCell className="font-mono">{v.departure_time?.slice(0, 5) || '-'}</TableCell>
-                                                <TableCell className="font-bold text-blue-600">{v.vendor_name}</TableCell>
-                                                <TableCell>{v.vendor_badge_id || '-'}</TableCell>
-                                                <TableCell>{v.vendor_contact}</TableCell>
-                                                <TableCell className="font-mono">{v.vendor_contact_phone || '-'}</TableCell>
-                                                <TableCell>{v.building || '-'}</TableCell>
-                                                <TableCell>{v.floor || '-'}</TableCell>
-                                                <TableCell className="max-w-[150px] truncate" title={v.location}>{v.location}</TableCell>
-                                                <TableCell>{v.head_count || '-'}</TableCell>
-                                                <TableCell className="max-w-[200px] truncate" title={v.work_content}>{v.work_content}</TableCell>
-                                                <TableCell className="max-w-[150px] truncate" title={v.note}>{v.note || '-'}</TableCell>
                                             </TableRow>
-                                        )
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
+                                        ) : (
+                                            sortedData.map((v: any, index: number) => {
+                                                const actualIndex = (currentPage - 1) * itemsPerPage + index + 1
+                                                return (
+                                                    <TableRow key={v.id} className={`table-row-hover hover:bg-primary/5 transition-all duration-200 even:bg-muted/20 ${selected.has(v.id) ? 'bg-primary/5' : ''}`}>
+                                                        <TableCell className="sticky left-0 bg-card z-10">
+                                                            <Checkbox checked={selected.has(v.id)} onCheckedChange={() => toggleSelect(v.id)} />
+                                                        </TableCell>
+                                                        <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-muted text-foreground/80 hover:bg-slate-200'}>
+                                                                {v.entry_status === 'arrival' ? '到院' : '離院'}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="font-mono">{v.work_date}</TableCell>
+                                                        <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
+                                                        <TableCell className="font-mono">{v.departure_time?.slice(0, 5) || '-'}</TableCell>
+                                                        <TableCell className="font-bold text-blue-600">{v.vendor_name}</TableCell>
+                                                        <TableCell>{v.vendor_badge_id || '-'}</TableCell>
+                                                        <TableCell>{v.vendor_contact}</TableCell>
+                                                        <TableCell className="font-mono">{v.vendor_contact_phone || '-'}</TableCell>
+                                                        <TableCell>{v.building || '-'}</TableCell>
+                                                        <TableCell>{v.floor || '-'}</TableCell>
+                                                        <TableCell className="max-w-[150px] truncate" title={v.location}>{v.location}</TableCell>
+                                                        <TableCell>{v.head_count || '-'}</TableCell>
+                                                        <TableCell className="max-w-[200px] truncate" title={v.work_content}>{v.work_content}</TableCell>
+                                                        <TableCell className="max-w-[150px] truncate" title={v.note}>{v.note || '-'}</TableCell>
+                                                    </TableRow>
+                                                )
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
 
-                        {/* 手機版卡片列表 */}
-                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
-                            {sortedData.length === 0 ? (
-                                <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
-                            ) : (
-                                sortedData.map((v: any) => (
-                                    <MobileTableCard
-                                        key={v.id}
-                                        id={v.id}
-                                        title={v.vendor_name}
-                                        subtitle={v.vendor_contact}
-                                        status={{
-                                            label: '廠商',
-                                            variant: 'outline',
-                                            className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                {/* 手機版卡片列表 */}
+                                <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                    {sortedData.length === 0 ? (
+                                        <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
+                                    ) : (
+                                        sortedData.map((v: any) => (
+                                            <MobileTableCard
+                                                key={v.id}
+                                                id={v.id}
+                                                title={v.vendor_name}
+                                                subtitle={v.vendor_contact}
+                                                status={{
+                                                    label: '廠商',
+                                                    variant: 'outline',
+                                                    className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                                }}
+                                                date={v.work_date}
+                                                time={v.time?.slice(0, 5) || '-'}
+                                                isSelected={selected.has(v.id)}
+                                                onSelect={() => toggleSelect(v.id)}
+                                                onClick={() => router.push(`/vendor-work/${v.id}/edit`)}
+                                                details={[
+                                                    { label: "狀態", value: v.entry_status === 'arrival' ? '到院' : '離院' },
+                                                    { label: "工作證號", value: v.vendor_badge_id },
+                                                    { label: "聯絡人", value: v.vendor_contact },
+                                                    { label: "聯絡電話", value: v.vendor_contact_phone },
+                                                    { label: "棟別", value: v.building },
+                                                    { label: "樓層", value: v.floor },
+                                                    { label: "地點", value: v.location },
+                                                    { label: "人數", value: v.head_count },
+                                                    { label: "內容", value: v.work_content },
+                                                    { label: "備註", value: v.note }
+                                                ]}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+
+                                <div className="p-4 border-t border-border/50">
+                                    <DataTablePagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        totalItems={totalItems}
+                                        itemsPerPage={itemsPerPage}
+                                        onPageChange={setCurrentPage}
+                                        onItemsPerPageChange={(value) => {
+                                            setItemsPerPage(value)
+                                            setCurrentPage(1)
                                         }}
-                                        date={v.work_date}
-                                        time={v.time?.slice(0, 5) || '-'}
-                                        isSelected={selected.has(v.id)}
-                                        onSelect={() => toggleSelect(v.id)}
-                                        onClick={() => router.push(`/vendor-work/${v.id}/edit`)}
-                                        details={[
-                                            { label: "狀態", value: v.entry_status === 'arrival' ? '到院' : '離院' },
-                                            { label: "工作證號", value: v.vendor_badge_id },
-                                            { label: "聯絡人", value: v.vendor_contact },
-                                            { label: "聯絡電話", value: v.vendor_contact_phone },
-                                            { label: "棟別", value: v.building },
-                                            { label: "樓層", value: v.floor },
-                                            { label: "地點", value: v.location },
-                                            { label: "人數", value: v.head_count },
-                                            { label: "內容", value: v.work_content },
-                                            { label: "備註", value: v.note }
-                                        ]}
+                                        selectedCount={selected.size}
                                     />
-                                ))
-                            )}
-                        </div>
-
-                        <div className="p-4 border-t border-slate-100">
-                            <DataTablePagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                totalItems={totalItems}
-                                itemsPerPage={itemsPerPage}
-                                onPageChange={setCurrentPage}
-                                onItemsPerPageChange={(value) => {
-                                    setItemsPerPage(value)
-                                    setCurrentPage(1)
-                                }}
-                                selectedCount={selected.size}
-                            />
-                        </div>
-                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </motion.section>
             </main>
 

@@ -219,16 +219,16 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     const paginatedUsers = sortedUsers.slice((page - 1) * pageSize, page * pageSize)
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-muted">
             {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-4 sticky top-0 z-10 shadow-sm">
+            <header className="bg-white border-b border-border px-4 md:px-6 py-4 sticky top-0 z-10 shadow-sm">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 max-w-7xl mx-auto">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
                                 <ArrowLeft className="w-5 h-5" />
                             </Button>
-                            <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                            <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                                 <UserCog className="w-6 h-6 text-green-600" />
                                 帳號管理
                             </h1>
@@ -239,7 +239,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                     </div>
 
                     <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                        <div className="flex items-center gap-2 bg-muted p-1 rounded-xl">
                             <Button variant="ghost" size="sm" onClick={handleEdit} disabled={!selectedId} className="text-blue-600">
                                 <Edit className="w-4 h-4 mr-1" /> 修改
                             </Button>
@@ -249,7 +249,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                         </div>
 
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -278,12 +278,12 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
+                    className="bg-card rounded-2xl shadow-card border border-border overflow-hidden"
                 >
                     <div className="overflow-x-auto">
                         <Table className="hidden md:table">
                             <TableHeader>
-                                <TableRow className="bg-slate-50">
+                                <TableRow className="bg-muted">
                                     <TableHead className="w-12">選取</TableHead>
                                     <TableHead className="w-12">#</TableHead>
                                     <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
@@ -314,22 +314,22 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                     paginatedUsers.map((user, index) => (
                                         <TableRow
                                             key={user.id}
-                                            className={`cursor-pointer transition-colors ${selectedId === user.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                                            className={`cursor-pointer transition-colors ${selectedId === user.id ? 'bg-blue-50' : 'hover:bg-muted'}`}
                                             onClick={() => setSelectedId(selectedId === user.id ? null : user.id)}
                                         >
                                             <TableCell>
                                                 <Checkbox checked={selectedId === user.id} />
                                             </TableCell>
-                                            <TableCell className="font-mono text-slate-500">
+                                            <TableCell className="font-mono text-muted-foreground">
                                                 {(page - 1) * pageSize + index + 1}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">
+                                            <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                                                 {format(new Date(user.created_at), 'yyyy-MM-dd HH:mm')}
                                             </TableCell>
                                             <TableCell className="font-bold">{user.unit}</TableCell>
-                                            <TableCell className="font-bold text-slate-800">{user.user_name}</TableCell>
+                                            <TableCell className="font-bold text-foreground">{user.user_name}</TableCell>
                                             <TableCell className="font-mono">{user.user_account}</TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[80px] truncate" title={user.password_hash}>
+                                            <TableCell className="font-mono text-xs text-muted-foreground max-w-[80px] truncate" title={user.password_hash}>
                                                 {user.password_hash?.slice(0, 10)}...
                                             </TableCell>
                                             <TableCell>
@@ -348,22 +348,22 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                             <TableCell className="text-center font-mono">
                                                 {user.failed_attempts || 0}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">
+                                            <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                                                 {user.last_failed_at ? format(new Date(user.last_failed_at), 'yyyy-MM-dd HH:mm') : '-'}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">
+                                            <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                                                 {user.locked_until ? format(new Date(user.locked_until), 'yyyy-MM-dd HH:mm') : '-'}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[60px] truncate" title={user.reset_token_hash}>
+                                            <TableCell className="font-mono text-xs text-muted-foreground max-w-[60px] truncate" title={user.reset_token_hash}>
                                                 {user.reset_token_hash ? user.reset_token_hash.slice(0, 8) + '...' : '-'}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">
+                                            <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                                                 {user.reset_token_expire ? format(new Date(user.reset_token_expire), 'yyyy-MM-dd HH:mm') : '-'}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-400 max-w-[60px] truncate" title={user.verify_token_hash}>
+                                            <TableCell className="font-mono text-xs text-muted-foreground max-w-[60px] truncate" title={user.verify_token_hash}>
                                                 {user.verify_token_hash ? user.verify_token_hash.slice(0, 8) + '...' : '-'}
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">
+                                            <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                                                 {user.verify_token_expire ? format(new Date(user.verify_token_expire), 'yyyy-MM-dd HH:mm') : '-'}
                                             </TableCell>
                                         </TableRow>
@@ -409,7 +409,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                             )}
                         </div>
                     </div>
-                    <div className="p-4 border-t border-slate-100">
+                    <div className="p-4 border-t border-border/50">
                         <DataTablePagination
                             currentPage={page}
                             totalPages={totalPages || 1}
@@ -470,7 +470,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 </Label>
                                 <Input type="password" {...register('password')} placeholder={editingUser ? '留空表示不變更密碼' : ''} />
                                 {errors.password && <p className="text-red-500 text-xs">{errors.password.message}</p>}
-                                <p className="text-xs text-slate-400">密碼需8字元以上，需包含大寫、小寫、數字及特殊符號</p>
+                                <p className="text-xs text-muted-foreground">密碼需8字元以上，需包含大寫、小寫、數字及特殊符號</p>
                             </div>
 
                             <div className="space-y-2">
@@ -503,9 +503,9 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
 
                             {/* Lockout Status Section */}
                             {editingUser && (
-                                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 mt-4 space-y-3">
+                                <div className="p-4 bg-muted rounded-lg border border-border mt-4 space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-sm font-semibold text-slate-700">帳號狀態</h4>
+                                        <h4 className="text-sm font-semibold text-foreground/80">帳號狀態</h4>
                                         {(watch('failed_attempts') || 0) > 0 && (
                                             <Button
                                                 type="button"
@@ -524,13 +524,13 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                         )}
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 text-xs">
-                                        <div className="text-slate-500">失敗計次</div>
+                                        <div className="text-muted-foreground">失敗計次</div>
                                         <div className="font-mono">{watch('failed_attempts') || 0} 次</div>
-                                        <div className="text-slate-500">最後失敗</div>
+                                        <div className="text-muted-foreground">最後失敗</div>
                                         <div className="font-mono">
                                             {watch('last_failed_at') ? format(new Date(watch('last_failed_at')!), 'yyyy-MM-dd HH:mm:ss') : '-'}
                                         </div>
-                                        <div className="text-slate-500">鎖定至</div>
+                                        <div className="text-muted-foreground">鎖定至</div>
                                         <div className={`font-mono ${watch('locked_until') ? 'text-red-600 font-bold' : ''}`}>
                                             {watch('locked_until') ? format(new Date(watch('locked_until')!), 'yyyy-MM-dd HH:mm:ss') : '-'}
                                         </div>

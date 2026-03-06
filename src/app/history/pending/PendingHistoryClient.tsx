@@ -10,6 +10,7 @@ import { saveAs } from 'file-saver'
 import { FileClock, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Download, Filter } from 'lucide-react'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
+import { SkeletonTable } from '@/components/SkeletonTable'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -100,17 +101,17 @@ export default function PendingHistoryClient() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-100">
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+        <div className="min-h-screen bg-muted">
+            <header className="glass border-b border-border/50 px-6 py-4 flex justify-between items-center shadow-card sticky top-0 z-50">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => router.push('/')}><ArrowLeft className="w-4 h-4 mr-1" />返回首頁</Button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <h1 className="text-lg font-black text-slate-800 flex items-center gap-2"><FileClock className="w-5 h-5 text-purple-500" />待處理工作歷史記錄</h1>
+                    <div className="h-6 w-px bg-border" />
+                    <h1 className="text-lg font-black text-foreground flex items-center gap-2"><FileClock className="w-5 h-5 text-purple-500" />待處理工作歷史記錄</h1>
                 </div>
             </header>
             <main className="p-6">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-slate-200">
-                    <div className="p-4 border-b border-slate-100">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl shadow-card border border-border">
+                    <div className="p-4 border-b border-border/50">
                         <div className="flex flex-wrap items-end gap-4">
                             <div className="flex w-full md:hidden justify-between items-center mb-2">
                                 <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
@@ -119,9 +120,9 @@ export default function PendingHistoryClient() {
                                 </Button>
                             </div>
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-slate-500">關鍵字搜尋</Label><Input type="text" placeholder="廠商、單位、施工內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-60" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、單位、施工內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-60" /></div>
                                 <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -130,70 +131,76 @@ export default function PendingHistoryClient() {
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <Table className="hidden md:table">
-                            <TableHeader><TableRow>
-                                <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
-                                <TableHead className="w-12">#</TableHead>
-                                <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="開始日期" sortKey="start_date" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="結束日期" sortKey="end_date" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="時間" sortKey="time" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="單位" sortKey="unit" currentSort={sort} onSort={handleSort} />
-                                <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={sort} onSort={handleSort} />
-                                <TableHead>施工內容</TableHead><TableHead>備註</TableHead>
-                            </TableRow></TableHeader>
-                            <TableBody>
-                                {loading ? <TableRow><TableCell colSpan={11} className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></TableCell></TableRow>
-                                    : sortedData.length === 0 ? <TableRow><TableCell colSpan={11} className="p-0"><EmptyState icon={FileClock} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
-                                        : sortedData.map((row, index) => (
-                                            <TableRow key={row.id} className={`hover:bg-purple-50/50 ${selected.has(row.id) ? 'bg-purple-100' : ''}`}>
-                                                <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
-                                                <TableCell className="text-slate-400 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
-                                                <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">{row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-'}</TableCell>
-                                                <TableCell className="font-mono">{row.start_date}</TableCell><TableCell className="font-mono">{row.end_date}</TableCell><TableCell className="font-mono">{row.time?.slice(0, 5) || '-'}</TableCell>
-                                                <TableCell className="font-bold">{row.vendor_name}</TableCell><TableCell><Badge variant="outline">{row.unit}</Badge></TableCell><TableCell>{row.engineering_contact}</TableCell>
-                                                <TableCell className="max-w-xs truncate" title={row.work_content}>{row.work_content}</TableCell><TableCell className="text-slate-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
-                                            </TableRow>
-                                        ))}
-                            </TableBody>
-                        </Table>
+                    {loading ? (
+                        <SkeletonTable />
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table className="hidden md:table">
+                                    <TableHeader><TableRow>
+                                        <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
+                                        <TableHead className="w-12">#</TableHead>
+                                        <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="開始日期" sortKey="start_date" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="結束日期" sortKey="end_date" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="時間" sortKey="time" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="廠商" sortKey="vendor_name" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="單位" sortKey="unit" currentSort={sort} onSort={handleSort} />
+                                        <SortableTableHead label="負責人" sortKey="engineering_contact" currentSort={sort} onSort={handleSort} />
+                                        <TableHead>施工內容</TableHead><TableHead>備註</TableHead>
+                                    </TableRow></TableHeader>
+                                    <TableBody>
+                                        {sortedData.length === 0 ? <TableRow><TableCell colSpan={11} className="p-0"><EmptyState icon={FileClock} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
+                                            : sortedData.map((row, index) => (
+                                                <TableRow key={row.id} className={`hover:bg-purple-50/50 dark:hover:bg-purple-900/20 transition-colors even:bg-muted/20 dark:even:bg-muted/10 ${selected.has(row.id) ? 'bg-purple-100 dark:bg-purple-900/40' : ''}`}>
+                                                    <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
+                                                    <TableCell className="text-muted-foreground dark:text-muted-foreground/70 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-muted-foreground dark:text-gray-300 whitespace-nowrap relative pl-6">
+                                                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-purple-400 ring-4 ring-purple-50 dark:ring-purple-950" />
+                                                        {row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="font-mono dark:text-gray-200">{row.start_date}</TableCell><TableCell className="font-mono dark:text-gray-200">{row.end_date}</TableCell><TableCell className="font-mono dark:text-gray-200">{row.time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-bold dark:text-gray-100">{row.vendor_name}</TableCell><TableCell><Badge variant="outline" className="dark:text-purple-400 dark:border-purple-800">{row.unit}</Badge></TableCell><TableCell className="dark:text-gray-200">{row.engineering_contact}</TableCell>
+                                                    <TableCell className="max-w-xs truncate dark:text-gray-200" title={row.work_content}>{row.work_content}</TableCell><TableCell className="text-muted-foreground dark:text-gray-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                    </TableBody>
+                                </Table>
 
-                        {/* 手機版卡片列表 */}
-                        <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
-                            {loading ? (
-                                <div className="text-center py-8"><RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" /></div>
-                            ) : sortedData.length === 0 ? (
-                                <EmptyState icon={FileClock} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" />
-                            ) : (
-                                sortedData.map((row: PendingHistoryRecord) => (
-                                    <MobileTableCard
-                                        key={row.id}
-                                        id={row.id}
-                                        title={row.vendor_name}
-                                        subtitle={row.engineering_contact}
-                                        status={{
-                                            label: row.unit,
-                                            variant: 'outline' as const,
-                                            className: 'bg-purple-50 text-purple-700 border-purple-200'
-                                        }}
-                                        date={row.start_date}
-                                        endDate={row.end_date}
-                                        time={row.time?.slice(0, 5) || '-'}
-                                        isSelected={selected.has(row.id)}
-                                        onSelect={() => toggleSelect(row.id)}
-                                        details={[
-                                            { label: '建立時間', value: row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-' },
-                                            { label: '施工內容', value: row.work_content },
-                                            { label: '備註', value: row.note },
-                                        ]}
-                                    />
-                                ))
-                            )}
-                        </div>
-                    </div>
-                    <div className="p-4 border-t border-slate-100">
+                                {/* 手機版卡片列表 */}
+                                <div className="md:hidden mt-4 space-y-4 px-1 pb-4 relative before:absolute before:inset-y-0 before:left-4 before:w-0.5 before:bg-border">
+                                    {sortedData.length === 0 ? (
+                                        <EmptyState icon={FileClock} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" />
+                                    ) : (
+                                        sortedData.map((row: PendingHistoryRecord) => (
+                                            <MobileTableCard
+                                                key={row.id}
+                                                id={row.id}
+                                                title={row.vendor_name}
+                                                subtitle={row.engineering_contact}
+                                                status={{
+                                                    label: row.unit,
+                                                    variant: 'outline' as const,
+                                                    className: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:border-purple-800'
+                                                }}
+                                                date={row.start_date}
+                                                endDate={row.end_date}
+                                                time={row.time?.slice(0, 5) || '-'}
+                                                isSelected={selected.has(row.id)}
+                                                onSelect={() => toggleSelect(row.id)}
+                                                details={[
+                                                    { label: '建立時間', value: row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-' },
+                                                    { label: '施工內容', value: row.work_content },
+                                                    { label: '備註', value: row.note },
+                                                ]}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                    <div className="p-4 border-t border-border/50">
                         <DataTablePagination
                             currentPage={page}
                             totalPages={totalPages}

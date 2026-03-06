@@ -39,13 +39,13 @@ const FloatingInput = forwardRef<HTMLInputElement, {
 
     return (
         <div className="relative">
-            <Icon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 z-10 transition-colors duration-200 ${focused ? 'text-blue-500' : 'text-slate-400'}`} />
+            <Icon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 z-10 transition-colors duration-200 ${focused ? 'text-blue-500' : 'text-muted-foreground'}`} />
             <label
                 htmlFor={id}
                 className={`absolute left-10 z-10 pointer-events-none transition-all duration-200 ease-out origin-left
                     ${isFloating
-                        ? 'top-1 text-[11px] font-semibold ' + (focused ? 'text-blue-500' : 'text-slate-400')
-                        : 'top-1/2 -translate-y-1/2 text-sm text-slate-400'
+                        ? 'top-1 text-[11px] font-semibold ' + (focused ? 'text-blue-500' : 'text-muted-foreground')
+                        : 'top-1/2 -translate-y-1/2 text-sm text-muted-foreground'
                     }`}
             >
                 {label}
@@ -58,8 +58,8 @@ const FloatingInput = forwardRef<HTMLInputElement, {
                 type={type}
                 disabled={disabled}
                 className={`w-full pl-10 pr-10 pt-5 pb-2 rounded-xl border bg-white/80 backdrop-blur-sm
-                    text-sm text-slate-800 outline-none transition-all duration-200
-                    ${focused ? 'border-blue-400 ring-2 ring-blue-100 shadow-md' : 'border-slate-200 hover:border-slate-300'}
+                    text-sm text-foreground outline-none transition-all duration-200
+                    ${focused ? 'border-blue-400 ring-2 ring-blue-100 shadow-md' : 'border-border hover:border-slate-300'}
                     ${error ? 'border-red-400 ring-2 ring-red-100' : ''}
                     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onFocus={() => setFocused(true)}
@@ -83,17 +83,17 @@ FloatingInput.displayName = 'FloatingInput'
 function RecentAccount({ email, onSelect, onRemove }: { email: string; onSelect: () => void; onRemove: () => void }) {
     return (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="mb-5">
-            <p className="text-xs text-slate-400 mb-2 font-medium">最近登入</p>
+            <p className="text-xs text-muted-foreground mb-2 font-medium">最近登入</p>
             <button type="button" onClick={onSelect}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white/60 backdrop-blur-sm hover:bg-blue-50/80 hover:border-blue-200 transition-all duration-200 group text-left">
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-white/60 backdrop-blur-sm hover:bg-blue-50/80 hover:border-blue-200 transition-all duration-200 group text-left">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0 shadow-md shadow-blue-200/60">
                     <User className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-sm font-medium text-slate-700 truncate flex-1 group-hover:text-blue-600 transition-colors">{email}</span>
+                <span className="text-sm font-medium text-foreground/80 truncate flex-1 group-hover:text-blue-600 transition-colors">{email}</span>
                 <span role="button" tabIndex={0}
                     onClick={(e) => { e.stopPropagation(); onRemove() }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onRemove() } }}
-                    className="p-1 rounded-full hover:bg-red-100 text-slate-300 hover:text-red-500 transition-colors" aria-label="移除記錄">
+                    className="p-1 rounded-full hover:bg-red-100 text-muted-foreground/50 hover:text-red-500 transition-colors" aria-label="移除記錄">
                     <X className="w-3.5 h-3.5" />
                 </span>
             </button>
@@ -224,8 +224,8 @@ export default function LoginClient() {
                         <div className="mx-auto w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-200/70">
                             <LogIn className="w-7 h-7 text-white" />
                         </div>
-                        <h1 className="text-2xl font-black text-slate-800 mb-1">登入系統</h1>
-                        <p className="text-slate-400 text-sm">工務室電子白板管理系統</p>
+                        <h1 className="text-2xl font-black text-foreground mb-1">登入系統</h1>
+                        <p className="text-muted-foreground text-sm">工務室電子白板管理系統</p>
                     </div>
 
                     <AnimatePresence>
@@ -256,7 +256,7 @@ export default function LoginClient() {
                         <FloatingInput id="password" label="密碼" type={showPassword ? 'text' : 'password'} icon={Lock} error={errors.password?.message} disabled={isLockedOut}
                             ref={passwordReg.ref} name={passwordReg.name} onBlur={passwordReg.onBlur} onChange={passwordReg.onChange}
                             endAdornment={
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600 transition-colors p-0.5" tabIndex={-1}>
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground hover:text-foreground/70 transition-colors p-0.5" tabIndex={-1}>
                                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             }
@@ -266,7 +266,7 @@ export default function LoginClient() {
                             <div className="flex items-center gap-2">
                                 <Checkbox id="remember-me" checked={rememberMe} onCheckedChange={(checked) => setRememberMe(checked === true)}
                                     className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600" />
-                                <label htmlFor="remember-me" className="text-sm text-slate-500 cursor-pointer select-none hover:text-slate-700 transition-colors">記住我</label>
+                                <label htmlFor="remember-me" className="text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground/80 transition-colors">記住我</label>
                             </div>
                             <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors">忘記密碼？</Link>
                         </div>
@@ -276,7 +276,7 @@ export default function LoginClient() {
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center text-sm text-slate-500">
+                    <div className="mt-6 text-center text-sm text-muted-foreground">
                         還沒有帳號？{' '}
                         <Link href="/register" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold transition-colors">建立帳號</Link>
                     </div>

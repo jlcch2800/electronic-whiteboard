@@ -99,7 +99,7 @@ export default function WorkReportEditPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-100">
+            <div className="min-h-screen flex items-center justify-center bg-muted">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
             </div>
         )
@@ -154,7 +154,7 @@ export default function WorkReportEditPage() {
                                             ? status === 'completed' ? 'border-green-500 bg-green-50 text-green-700'
                                                 : status === 'abnormal' ? 'border-red-500 bg-red-50 text-red-700'
                                                     : 'border-orange-500 bg-orange-50 text-orange-700'
-                                            : 'border-slate-200 hover:border-slate-300'}`}>
+                                            : 'border-border hover:border-slate-300'}`}>
                                             <input type="radio" value={status} {...register('work_status')} className="sr-only" />
                                             <span className="font-bold">{STATUS_MAP[status]}</span>
                                         </label>

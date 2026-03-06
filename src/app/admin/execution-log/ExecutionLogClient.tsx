@@ -308,7 +308,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100">
-            <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-10">
+            <header className="bg-white/80 backdrop-blur-md border-b border-border sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div className="flex items-center justify-between">
@@ -316,7 +316,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                 <Button variant="ghost" size="icon" onClick={() => router.push('/')}><ArrowLeft className="w-5 h-5" /></Button>
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl text-white"><FileText className="w-6 h-6" /></div>
-                                    <div><h1 className="text-xl font-bold text-slate-800">系統執行記錄</h1><p className="text-sm text-slate-500 hidden md:block">排程執行與系統運作記錄</p></div>
+                                    <div><h1 className="text-xl font-bold text-foreground">系統執行記錄</h1><p className="text-sm text-muted-foreground hidden md:block">排程執行與系統運作記錄</p></div>
                                 </div>
                             </div>
                             <Button variant="outline" size="sm" className="md:hidden" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
@@ -324,8 +324,8 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                             </Button>
                         </div>
                         <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                            <div className="flex items-center gap-2"><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-36" /><span className="text-slate-400">~</span><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-36" /></div>
-                            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="搜尋..." className="pl-10 w-full md:w-48" /></div>
+                            <div className="flex items-center gap-2"><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-36" /><span className="text-muted-foreground">~</span><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-36" /></div>
+                            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="搜尋..." className="pl-10 w-full md:w-48" /></div>
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" onClick={fetchLogs} disabled={loading} className="flex-1 md:flex-none"><RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />查詢</Button>
                                 <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none"><Download className="w-4 h-4 mr-2" /> 匯出</Button>
@@ -335,10 +335,10 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                 </div>
             </header>
             <main className="max-w-7xl mx-auto p-6">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
                     <div className="overflow-x-auto">
                         <Table className="hidden md:table">
-                            <TableHeader><TableRow className="bg-slate-50">
+                            <TableHeader><TableRow className="bg-muted">
                                 <TableHead className="w-12"><Checkbox checked={selected.size === paginatedLogs.length && paginatedLogs.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                 <TableHead className="w-12">#</TableHead>
                                 <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
@@ -350,14 +350,14 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                             <TableBody>
                                 {paginatedLogs.length === 0 ? <TableRow><TableCell colSpan={8} className="p-0"><EmptyState icon={Terminal} title="沒有找到紀錄" description="目前沒有符合條件的執行紀錄，請調整篩選條件。" /></TableCell></TableRow>
                                     : paginatedLogs.map((log, index) => (
-                                        <TableRow key={log.id} className={`hover:bg-slate-50 ${selected.has(log.id) ? 'bg-indigo-100' : ''}`}>
+                                        <TableRow key={log.id} className={`hover:bg-muted dark:hover:bg-indigo-900/20 ${selected.has(log.id) ? 'bg-indigo-100 dark:bg-indigo-900/40' : ''}`}>
                                             <TableCell><Checkbox checked={selected.has(log.id)} onCheckedChange={() => toggleSelect(log.id)} /></TableCell>
-                                            <TableCell className="text-slate-400 text-sm">{(currentPage - 1) * pageSize + index + 1}</TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell>
-                                            <TableCell className="font-mono text-sm">{log.date}</TableCell>
-                                            <TableCell className="font-mono text-sm">{getTranslatedTableName(log.table_name)}</TableCell>
+                                            <TableCell className="text-muted-foreground dark:text-muted-foreground/70 text-sm">{(currentPage - 1) * pageSize + index + 1}</TableCell>
+                                            <TableCell className="font-mono text-xs text-muted-foreground dark:text-gray-300 whitespace-nowrap">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell>
+                                            <TableCell className="font-mono text-sm dark:text-gray-200">{log.date}</TableCell>
+                                            <TableCell className="font-mono text-sm dark:text-gray-200">{getTranslatedTableName(log.table_name)}</TableCell>
                                             <TableCell>{getLevelBadge(log.log_level)}</TableCell>
-                                            <TableCell className="max-w-[300px] truncate text-sm" title={log.message}>{translateMessage(log.message) || '-'}</TableCell>
+                                            <TableCell className="max-w-[300px] truncate text-sm dark:text-gray-200" title={log.message}>{translateMessage(log.message) || '-'}</TableCell>
                                             <TableCell>
                                                 <Dialog>
                                                     <DialogTrigger asChild>
@@ -381,12 +381,12 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                             {/* 基本資訊 */}
                                                             <Table>
                                                                 <TableBody>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.table_name)}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold">記錄等級</TableCell><TableCell>{getLevelBadge(log.log_level)}</TableCell></TableRow>
-                                                                    <TableRow><TableCell className="bg-slate-50 font-bold align-top">訊息</TableCell><TableCell className="whitespace-pre-wrap break-words">{translateMessage(log.message) || '-'}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted dark:bg-slate-800/50 font-bold w-32 dark:text-gray-200">ID</TableCell><TableCell className="font-mono text-xs dark:text-gray-300">{log.id}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted dark:bg-slate-800/50 font-bold dark:text-gray-200">建立時間</TableCell><TableCell className="font-mono dark:text-gray-300">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted dark:bg-slate-800/50 font-bold dark:text-gray-200">日期</TableCell><TableCell className="font-mono dark:text-gray-300">{log.date}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted dark:bg-slate-800/50 font-bold dark:text-gray-200">資料表</TableCell><TableCell className="font-mono dark:text-gray-300">{getTranslatedTableName(log.table_name)}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted dark:bg-slate-800/50 font-bold dark:text-gray-200">記錄等級</TableCell><TableCell>{getLevelBadge(log.log_level)}</TableCell></TableRow>
+                                                                    <TableRow><TableCell className="bg-muted dark:bg-slate-800/50 font-bold align-top dark:text-gray-200">訊息</TableCell><TableCell className="whitespace-pre-wrap break-words dark:text-gray-300">{translateMessage(log.message) || '-'}</TableCell></TableRow>
                                                                 </TableBody>
                                                             </Table>
                                                         </div>
@@ -415,7 +415,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                             if (Array.isArray(newData)) {
                                                                 return (
                                                                     <div className="mt-4 border rounded-lg overflow-hidden">
-                                                                        <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">
+                                                                        <div className="bg-muted px-4 py-2 font-bold text-sm text-foreground/80">
                                                                             執行資料快照 (共 {newData.length} 筆)
                                                                         </div>
                                                                         <div className="max-h-[50vh] overflow-y-auto">
@@ -430,17 +430,17 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                                                 });
                                                                                 return (
                                                                                     <div key={idx} className="border-b last:border-b-0">
-                                                                                        <div className="bg-slate-50 px-4 py-1 text-xs font-bold text-slate-500 border-b border-dashed border-slate-200">
+                                                                                        <div className="bg-muted px-4 py-1 text-xs font-bold text-muted-foreground border-b border-dashed border-border">
                                                                                             #{idx + 1}
                                                                                         </div>
                                                                                         <Table>
                                                                                             <TableBody>
                                                                                                 {itemKeys.map(key => (
                                                                                                     <TableRow key={key} className="hover:bg-transparent">
-                                                                                                        <TableCell className="w-32 font-bold text-slate-600 text-xs py-1 border-b-0 h-auto align-top">
+                                                                                                        <TableCell className="w-32 font-bold text-foreground/70 dark:text-gray-300 text-xs py-1 border-b-0 h-auto align-top">
                                                                                                             {FIELD_LABELS[key] || key}
                                                                                                         </TableCell>
-                                                                                                        <TableCell className="font-mono text-sm py-1 border-b-0 h-auto break-words">
+                                                                                                        <TableCell className="font-mono text-sm py-1 border-b-0 h-auto break-words dark:text-gray-200">
                                                                                                             {item[key] !== undefined && item[key] !== null ? (typeof item[key] === 'object' ? JSON.stringify(item[key]) : String(item[key])) : '-'}
                                                                                                         </TableCell>
                                                                                                     </TableRow>
@@ -457,10 +457,10 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
 
                                                             return (
                                                                 <div className="mt-4 border rounded-lg overflow-hidden">
-                                                                    <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">異動資料對比</div>
+                                                                    <div className="bg-muted px-4 py-2 font-bold text-sm text-foreground/80">異動資料對比</div>
                                                                     <Table>
                                                                         <TableHeader>
-                                                                            <TableRow className="bg-slate-50">
+                                                                            <TableRow className="bg-muted">
                                                                                 <TableHead className="w-32">欄位</TableHead>
                                                                                 <TableHead className="text-green-700 bg-green-50">變更前</TableHead>
                                                                                 <TableHead className="text-red-700 bg-red-50">變更後</TableHead>
@@ -472,12 +472,12 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                                                 const newVal = newData?.[key]
                                                                                 const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal)
                                                                                 return (
-                                                                                    <TableRow key={key} className={isChanged ? 'bg-yellow-50' : ''}>
-                                                                                        <TableCell className="font-bold text-slate-600 text-xs">{FIELD_LABELS[key] || key}</TableCell>
-                                                                                        <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50' : ''}`}>
+                                                                                    <TableRow key={key} className={isChanged ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}>
+                                                                                        <TableCell className="font-bold text-foreground/70 dark:text-gray-300 text-xs">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                        <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-900/20' : 'dark:text-gray-200'}`}>
                                                                                             {oldVal !== undefined ? JSON.stringify(oldVal) : '-'}
                                                                                         </TableCell>
-                                                                                        <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50' : ''}`}>
+                                                                                        <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20' : 'dark:text-gray-200'}`}>
                                                                                             {newVal !== undefined ? JSON.stringify(newVal) : '-'}
                                                                                         </TableCell>
                                                                                     </TableRow>
@@ -542,12 +542,12 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                     <div className="mt-4 border rounded-lg overflow-hidden">
                                                         <Table>
                                                             <TableBody>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.table_name)}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold">記錄等級</TableCell><TableCell>{getLevelBadge(log.log_level)}</TableCell></TableRow>
-                                                                <TableRow><TableCell className="bg-slate-50 font-bold align-top">訊息</TableCell><TableCell className="whitespace-pre-wrap break-words">{translateMessage(log.message) || '-'}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold w-32">ID</TableCell><TableCell className="font-mono text-xs">{log.id}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">建立時間</TableCell><TableCell className="font-mono">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">日期</TableCell><TableCell className="font-mono">{log.date}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">資料表</TableCell><TableCell className="font-mono">{getTranslatedTableName(log.table_name)}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold">記錄等級</TableCell><TableCell>{getLevelBadge(log.log_level)}</TableCell></TableRow>
+                                                                <TableRow><TableCell className="bg-muted font-bold align-top">訊息</TableCell><TableCell className="whitespace-pre-wrap break-words">{translateMessage(log.message) || '-'}</TableCell></TableRow>
                                                             </TableBody>
                                                         </Table>
                                                     </div>
@@ -569,7 +569,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                         if (Array.isArray(newData)) {
                                                             return (
                                                                 <div className="mt-4 border rounded-lg overflow-hidden">
-                                                                    <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">執行資料快照 (共 {newData.length} 筆)</div>
+                                                                    <div className="bg-muted px-4 py-2 font-bold text-sm text-foreground/80">執行資料快照 (共 {newData.length} 筆)</div>
                                                                     <div className="max-h-[50vh] overflow-y-auto">
                                                                         {newData.map((item: any, idx: number) => {
                                                                             const itemKeys = Object.keys(item).sort((a, b) => {
@@ -580,11 +580,11 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                                             });
                                                                             return (
                                                                                 <div key={idx} className="border-b last:border-b-0">
-                                                                                    <div className="bg-slate-50 px-4 py-1 text-xs font-bold text-slate-500 border-b border-dashed">#{idx + 1}</div>
+                                                                                    <div className="bg-muted px-4 py-1 text-xs font-bold text-muted-foreground border-b border-dashed">#{idx + 1}</div>
                                                                                     <Table><TableBody>
                                                                                         {itemKeys.map(key => (
                                                                                             <TableRow key={key} className="hover:bg-transparent">
-                                                                                                <TableCell className="w-32 font-bold text-slate-600 text-xs py-1 border-b-0 h-auto align-top">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                                <TableCell className="w-32 font-bold text-foreground/70 text-xs py-1 border-b-0 h-auto align-top">{FIELD_LABELS[key] || key}</TableCell>
                                                                                                 <TableCell className="font-mono text-sm py-1 border-b-0 h-auto break-words">{item[key] !== undefined && item[key] !== null ? (typeof item[key] === 'object' ? JSON.stringify(item[key]) : String(item[key])) : '-'}</TableCell>
                                                                                             </TableRow>
                                                                                         ))}
@@ -598,9 +598,9 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                         }
                                                         return (
                                                             <div className="mt-4 border rounded-lg overflow-hidden">
-                                                                <div className="bg-slate-100 px-4 py-2 font-bold text-sm text-slate-700">異動資料對比</div>
+                                                                <div className="bg-muted px-4 py-2 font-bold text-sm text-foreground/80">異動資料對比</div>
                                                                 <Table>
-                                                                    <TableHeader><TableRow className="bg-slate-50">
+                                                                    <TableHeader><TableRow className="bg-muted">
                                                                         <TableHead className="w-32">欄位</TableHead>
                                                                         <TableHead className="text-green-700 bg-green-50">變更前</TableHead>
                                                                         <TableHead className="text-red-700 bg-red-50">變更後</TableHead>
@@ -611,7 +611,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                                             const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal);
                                                                             return (
                                                                                 <TableRow key={key} className={isChanged ? 'bg-yellow-50' : ''}>
-                                                                                    <TableCell className="font-bold text-slate-600 text-xs">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                    <TableCell className="font-bold text-foreground/70 text-xs">{FIELD_LABELS[key] || key}</TableCell>
                                                                                     <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50' : ''}`}>{oldVal !== undefined ? JSON.stringify(oldVal) : '-'}</TableCell>
                                                                                     <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50' : ''}`}>{newVal !== undefined ? JSON.stringify(newVal) : '-'}</TableCell>
                                                                                 </TableRow>
@@ -630,7 +630,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                             )}
                         </div>
                     </div>
-                    <div className="p-4 border-t border-slate-100">
+                    <div className="p-4 border-t border-border/50">
                         <DataTablePagination
                             currentPage={currentPage}
                             totalPages={totalPages || 1}

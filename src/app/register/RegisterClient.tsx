@@ -29,15 +29,15 @@ const FloatingInput = forwardRef<HTMLInputElement, {
 
     return (
         <div className="relative">
-            <Icon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 z-10 transition-colors duration-200 ${focused ? 'text-emerald-500' : 'text-slate-400'}`} />
+            <Icon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 z-10 transition-colors duration-200 ${focused ? 'text-emerald-500' : 'text-muted-foreground'}`} />
             <label htmlFor={id}
                 className={`absolute left-10 z-10 pointer-events-none transition-all duration-200 ease-out origin-left
-                    ${isFloating ? 'top-1 text-[11px] font-semibold ' + (focused ? 'text-emerald-500' : 'text-slate-400') : 'top-1/2 -translate-y-1/2 text-sm text-slate-400'}`}>
+                    ${isFloating ? 'top-1 text-[11px] font-semibold ' + (focused ? 'text-emerald-500' : 'text-muted-foreground') : 'top-1/2 -translate-y-1/2 text-sm text-muted-foreground'}`}>
                 {label}{required && <span className="text-red-500 ml-0.5">*</span>}
             </label>
             <input ref={ref} id={id} name={name} type={type} disabled={disabled}
-                className={`w-full pl-10 pr-10 pt-5 pb-2 rounded-xl border bg-white/80 backdrop-blur-sm text-sm text-slate-800 outline-none transition-all duration-200
-                    ${focused ? 'border-emerald-400 ring-2 ring-emerald-100 shadow-md' : 'border-slate-200 hover:border-slate-300'}
+                className={`w-full pl-10 pr-10 pt-5 pb-2 rounded-xl border bg-white/80 backdrop-blur-sm text-sm text-foreground outline-none transition-all duration-200
+                    ${focused ? 'border-emerald-400 ring-2 ring-emerald-100 shadow-md' : 'border-border hover:border-slate-300'}
                     ${error ? 'border-red-400 ring-2 ring-red-100' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onFocus={() => setFocused(true)}
                 onBlur={(e) => { setFocused(false); setHasValue(!!e.target.value); onBlur?.(e) }}
@@ -77,13 +77,13 @@ function PasswordStrength({ password }: { password: string }) {
             </div>
             <div className="grid grid-cols-2 gap-1 text-xs">
                 {checks.map((check, i) => (
-                    <div key={i} className={`flex items-center gap-1 ${check.test ? 'text-green-600' : 'text-slate-400'}`}>
+                    <div key={i} className={`flex items-center gap-1 ${check.test ? 'text-green-600' : 'text-muted-foreground'}`}>
                         {check.test ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
                         <span>{check.label}</span>
                     </div>
                 ))}
             </div>
-            <p className="text-xs text-slate-500"><AlertCircle className="w-3 h-3 inline mr-1" />需符合至少 3 項條件</p>
+            <p className="text-xs text-muted-foreground"><AlertCircle className="w-3 h-3 inline mr-1" />需符合至少 3 項條件</p>
         </motion.div>
     )
 }
@@ -135,13 +135,13 @@ export default function RegisterClient() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-4">
                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }} className="w-full max-w-md">
-                    <div className="text-center bg-white rounded-2xl shadow-2xl border border-slate-100 p-10">
+                    <div className="text-center bg-white rounded-2xl shadow-2xl border border-border/50 p-10">
                         <div className="mx-auto w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-700 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-green-200/70">
                             <CheckCircle2 className="w-8 h-8 text-white" />
                         </div>
-                        <h2 className="text-2xl font-black text-slate-800 mb-2">註冊成功！</h2>
-                        <p className="text-slate-500 text-sm mb-2">我們已發送驗證信至您的 Email，請點擊信中連結完成驗證。</p>
-                        <p className="text-xs text-slate-400 mb-6">若未收到驗證信，請檢查垃圾郵件資料夾。</p>
+                        <h2 className="text-2xl font-black text-foreground mb-2">註冊成功！</h2>
+                        <p className="text-muted-foreground text-sm mb-2">我們已發送驗證信至您的 Email，請點擊信中連結完成驗證。</p>
+                        <p className="text-xs text-muted-foreground mb-6">若未收到驗證信，請檢查垃圾郵件資料夾。</p>
                         <Button onClick={() => router.push('/login')} className="auth-submit-btn w-full text-white font-bold py-6 rounded-xl shadow-lg shadow-blue-200/70 text-base">前往登入頁面</Button>
                     </div>
                 </motion.div>
@@ -184,8 +184,8 @@ export default function RegisterClient() {
                         <div className="mx-auto w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-emerald-200/70">
                             <UserPlus className="w-7 h-7 text-white" />
                         </div>
-                        <h1 className="text-2xl font-black text-slate-800 mb-1">建立帳號</h1>
-                        <p className="text-slate-400 text-sm">工務室電子白板管理系統</p>
+                        <h1 className="text-2xl font-black text-foreground mb-1">建立帳號</h1>
+                        <p className="text-muted-foreground text-sm">工務室電子白板管理系統</p>
                     </div>
 
                     <AnimatePresence>
@@ -205,20 +205,20 @@ export default function RegisterClient() {
                         <div>
                             <FloatingInput id="password" label="密碼" type={showPassword ? 'text' : 'password'} icon={Lock} error={errors.password?.message} required
                                 ref={passwordReg.ref} name={passwordReg.name} onBlur={passwordReg.onBlur} onChange={passwordReg.onChange}
-                                endAdornment={<button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600 transition-colors p-0.5" tabIndex={-1}>{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>}
+                                endAdornment={<button type="button" onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground hover:text-foreground/70 transition-colors p-0.5" tabIndex={-1}>{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>}
                             />
                             <AnimatePresence><PasswordStrength password={watchPassword || ''} /></AnimatePresence>
                         </div>
                         <FloatingInput id="confirmPassword" label="確認密碼" type={showConfirmPassword ? 'text' : 'password'} icon={Lock} error={errors.confirmPassword?.message} required
                             ref={confirmPasswordReg.ref} name={confirmPasswordReg.name} onBlur={confirmPasswordReg.onBlur} onChange={confirmPasswordReg.onChange}
-                            endAdornment={<button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="text-slate-400 hover:text-slate-600 transition-colors p-0.5" tabIndex={-1}>{showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>}
+                            endAdornment={<button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="text-muted-foreground hover:text-foreground/70 transition-colors p-0.5" tabIndex={-1}>{showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>}
                         />
                         <Button type="submit" disabled={isSubmitting} className="auth-submit-btn-green w-full text-white font-bold py-6 rounded-xl shadow-lg shadow-emerald-200/70 text-base mt-2">
                             {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="flex items-center gap-2"><UserPlus className="w-4 h-4" />建立帳號</span>}
                         </Button>
                     </form>
 
-                    <div className="mt-5 text-center text-sm text-slate-500">
+                    <div className="mt-5 text-center text-sm text-muted-foreground">
                         已經有帳號？{' '}<Link href="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold transition-colors">登入</Link>
                     </div>
                 </motion.div>

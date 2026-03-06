@@ -1,0 +1,1025 @@
+電子白板網站規格如下:
+A:系統需求:
+單位人員和廠商人員透過手機掃描QR Code後，填寫對應的表單，角色、表單建立的規範，請對照下面規格表(使用者角色定義、表單建立)。
+上傳檔案需限制檔案類型與大小，實際限制由系統設定檔控管。
+使用者角色定義規格表:
+角色
+是否登入
+來源方式
+核心定位
+廠商人員
+不需登入
+QR Code / 首頁
+填寫廠商今日施工表單
+單位人員(工務室 / 醫工組）
+需登入
+帳密登入
+填寫待處理工作項目表單、施工回報記錄、管理與追蹤施工事項
+管理人員
+需登入
+帳密登入
+系統管理與稽核
+系統(排程）
+N/A
+cron
+自動資料搬移與記錄
+
+表單建立規格表:
+流程編號
+流程名稱
+觸發角色
+是否登入
+觸發方式
+寫入資料表
+排程介入
+Form-01
+新增廠商今日施工
+廠商人員
+否
+QR Code / 首頁表單
+廠商今日施工項目
+否
+Form-02
+新增待處理工作
+單位人員
+否
+QR Code / 首頁表單
+待處理工作項目
+否
+Form-03
+新增施工回報
+單位人員
+否
+QR Code / 首頁表單
+施工回報記錄
+否
+
+
+B: 系統排程(cron)規範：
+使用系統排程(cron)依據各資料表的欄位(施工日期、施工回報日期、施工結束日期、施工開始日期)，比對當日日期後，進行資料異動，資料異動是採用兩種方式(copy + delete、copy)，詳細的系統排程(cron）請對照下面的系統排程(cron)定義規格表。
+系統排程之目的包含「資料歸檔(Archive)」與「狀態快照(Snapshot)」兩種，其處理方式、資料生命週期與是否影響主資料，需依各排程規則個別判定，不得一概視為資料結束或刪除依據。
+各排程僅處理其執行當下仍符合條件之資料，排程執行結果不得依賴其他排程是否已執行之假設。
+狀態快照(Snapshot):記錄資料於特定時間點之狀態，用於追蹤歷程，不影響原本的資料。
+資料歸檔(Archive):表示資料生命週期結束，移轉至歷史資料保存後，刪除原本的資料。
+排程：Schd-05屬於狀態快照(Snapshot)，其餘排程屬於資料歸檔(Archive)，同一筆待處理資料的施工開始日期若為未來日期，亦須每日產生狀態快照，於不同日期所產生之歷史資料應視為獨立狀態快照，不得互相覆蓋。
+排程需具備冪等性(idempotent)設計，避免重複處理同一筆資料。
+(copy + delete):自動複製該筆記錄到對應的廠商今日施工歷史記錄、工務施工歷史記錄、待處理工作歷史記錄、施工回報歷史記錄，再刪除該筆記錄。
+(copy):當待處理工作項目的施工開始日期≠當日，自動複製該筆記錄到待處理工作歷史記錄。
+須留存所有排程執行結果，不論執行成功或失敗，皆須標記為成功或失敗，記錄於系統執行記錄。
+系統排程連續失敗達上限時，需標記為錯誤等級並供管理員查詢。
+須依流程編號順序依序執行，後續排程須等前一排程執行完，才能繼續執行。
+每一筆施工相關資料需有全域唯一識別碼(例如uuid)，在移動至歷史資料表時需保留該識別碼。
+每一排程流程需於單一交易(transaction)中完成資料移轉與刪除，以避免重複搬移或資料競爭。
+系統排程與自動作業僅記錄於系統執行記錄。
+系統排程(cron)定義規格表:
+流程編號
+流程名稱
+觸發角色
+排程時間
+條件判斷
+記錄異動動作
+寫入記錄
+Schd-01
+廠商今日施工異動至歷史記錄
+系統
+00:00
+施工日期小於當日
+(copy + delete)廠商今日施工項目→廠商今日施工歷史記錄
+系統執行記錄
+Schd-02
+施工回報異動至歷史記錄
+系統
+00:15
+施工回報日期小於當日
+(copy + delete)施工回報記錄→施工回報歷史記錄
+系統執行記錄
+Schd-03
+工務今日施工異動至歷史記錄
+系統
+00:30
+施工結束日期小於當日
+(copy + delete)工務今日施工項目→工務施工歷史記錄
+系統執行記錄
+Schd-04
+待處理工作異動至工務今日施工
+系統
+00:45
+施工開始日期小於或等於當日
+(copy + delete)待處理工作項目→工務今日施工項目
+系統執行記錄
+Schd-05
+待處理工作異動至歷史記錄
+系統
+01:00
+施工開始日期大於當日
+(copy)待處理工作項目→待處理工作歷史記錄
+系統執行記錄
+Schd-06
+排程重試
+系統
+當次排程時間5分鐘後
+前次排程失敗
+重跑1次
+系統執行記錄
+
+
+C:網站操作方式:
+網站顯示依角色動態決定。任何人開啟首頁後，無須登入，預設顯示廠商今日施工項目、工務今日施工項目、待處理工作項目。
+電子白板網頁首頁連結方式，所有主項目在網頁最上方，按下主項目後，下方顯示子項目: 
+2.1主項目:登入、施工回報、歷史記錄、系統管理，預設只顯示登入，需登入系統後，才顯示:施工回報、歷史記錄、系統管理。
+2.2主項目:登入，按下後顯示輸入帳號密碼的畫面，所需輸入欄位:帳號、密碼、1個登入按鈕、要有建立帳號的連結、要有忘記密碼的連結。
+2.3當使用者按下建立帳號連結時，顯示建立帳號網頁，所需輸入欄位:單位、姓名、帳號、密碼、確認密碼、e-mail和一個建立按鈕、回到登入的連結。後續由管理員決定要將使用者加入哪一個使用者群組:工務室、醫工組、管理員，預設是工務室。
+2.4當使用者按下忘記密碼連結，顯示忘記密碼網頁，所需輸入欄位: e-mail和一個傳送按鈕、回到登入的連結，使用者打開重設密碼的e-mail。
+2.5主項目:施工回報，子項目:施工回報、施工文件。
+2.6主項目:歷史記錄，子項目:廠商今日施工歷史記錄、工務施工歷史記錄、待處理工作歷史記錄、施工回報歷史記錄。
+2.7主項目:系統管理，子項目:帳號管理、系統異動記錄、系統執行記錄。
+當按下電子白板子連結項目時，依據使用者群組檢視對應的資料，詳細資料權限，請參照下面的資料權限規格表。
+廠商人員不需建立帳號，不需登入系統。
+施工相關文件可以上傳(文件、照片、影片、其他文件)，並可以即時瀏覽照片和異動文件。
+所有頁面:以表格方式顯示，每個頁面都要有”新增”、”修改”、”刪除”、”搜尋”、"匯出"功能。
+每筆資料前面有一個選取框，按"匯出"按鈕，可以將單選或全部選取的資料匯出成Excel檔案。
+每筆資料選取框的後面有一個編號欄位，每個表格預設顯示10筆資料，超過10筆，要有下一頁和上一頁按鈕。4個歷史記錄、系統異動記錄、系統執行記錄頁面，需有設定顯示筆數功能(10筆、50筆、100筆)。
+搜尋功能:選擇開始日期、結束日期，輸入條件。
+4個歷史記錄、系統異動記錄、系統執行記錄頁面只有”搜尋”和”匯出”功能。
+按"刪除"按鈕，需跳出確認是否刪除資料的視窗。
+未登入系統，廠商今日施工項目、工務今日施工項目、待處理工作項目只顯示”新增”按鈕。
+登入系統，顯示所有按鈕和功能。
+
+
+D:資料權限和記錄規範：
+使用者可以檢視哪些資料，請參照下面的(資料權限規格表:查詢 / 檢視)。
+使用者可以異動哪些資料，請參照下面的(資料權限規格表:修改 / 刪除)，所有資料和帳號異動，需記錄於系統異動記錄。
+所有系統異動記錄和系統執行記錄，記錄方式請參照下面的(系統異動、執行記錄方式規格表)。
+系統異動記錄僅記錄人工操作。
+歷史資料表為唯讀資料，資料一經移轉即不可回復至原本的資料表。
+歷史資料之刪除僅限於系統維護或法規需求，非一般操作流程。
+資料權限規格表:查詢 / 檢視
+流程編號
+流程名稱
+角色
+是否登入
+可檢視資料
+Proc-01
+檢視廠商今日施工
+全部
+否
+廠商今日施工項目
+Proc-02
+檢視工務今日施工
+單位人員 / 管理員
+否
+工務今日施工項目
+Proc-03
+檢視待處理工作
+單位人員 / 管理員
+否
+待處理工作項目
+Proc-04
+檢視施工回報記錄
+單位人員 / 管理員
+是
+施工回報記錄
+Proc-05
+檢視施工文件
+單位人員 / 管理員
+是
+所有施工文件
+Proc-06
+檢視歷史記錄
+管理員
+是
+所有歷史資料表
+Proc-07
+檢視系統記錄
+管理員
+是
+所有系統資料表
+Proc-08
+檢視帳號
+管理員
+是
+使用者資料表
+
+資料權限規格表:修改 / 刪除
+編號
+名稱
+角色
+影響資料
+記錄於
+Perm-01
+修改施工資料
+單位人員 / 管理員
+今日施工 / 待處理資料 / 施工回報
+系統異動記錄
+Perm-02
+刪除施工資料
+管理員
+今日施工 / 待處理資料 / 施工回報
+系統異動記錄
+Perm-03
+修改施工文件
+單位人員 / 管理員
+施工文件
+系統異動記錄
+Perm-04
+刪除施工文件
+管理員
+施工文件
+系統異動記錄
+Perm-05
+修改帳號
+管理員
+使用者料表
+系統異動記錄
+Perm-06
+刪除帳號
+管理員
+使用者料表
+系統異動記錄
+Perm-07
+刪除歷史資料
+管理員
+歷史資料
+系統異動記錄
+Perm-08
+刪除系統資料
+管理員
+系統資料
+系統異動記錄
+
+系統異動、執行記錄方式規格表:
+類型
+來源
+記錄內容
+系統異動記錄
+使用者操作
+新增 / 修改 / 刪除 / 登入 / 登出
+系統執行記錄
+系統排程
+cron 成功 / 失敗 / 重試
+系統執行記錄
+ScriptErrors系統例外
+例外與錯誤資訊
+
+
+E:網站資料表:
+資料總表（資料表清單）
+資料表（英文）
+備註
+vendor_today_work
+廠商今日施工項目
+vendor_today_work_history
+廠商今日施工歷史記錄
+engineering_today_work
+工務今日施工項目
+engineering_work_history
+工務施工歷史記錄
+pending_work
+待處理工作項目
+pending_work_history
+待處理工作歷史記錄
+work_report
+施工回報記錄
+work_report_history
+施工回報歷史記錄
+users
+帳號管理
+system_change_log
+系統異動記錄
+system_execution_log
+系統執行記錄
+work_file
+施工文件
+
+1.資料表:廠商今日施工項目vendor_today_work，與對應歷史表: vendor_today_work_history 欄位結構相同
+欄位資料類型欄位大小is NULL備註primary keyForeign keyidUUID-NO全域唯一識別碼YES-created_atTIMESTAMPTZ-NO建立時間(預設:now())--entry_statusVARCHAR10NO到院或離院 (Enum: arrival, departure)--work_dateDATE-NO施工日期--arrival_timeTIME-YES到院時間 (離院時可為空)--departure_timeTIME-YES離院時間 (到院時可為空)--vendor_nameVARCHAR20NO廠商名稱--vendor_badge_idINTEGER-YES廠商工作證號--vendor_contactVARCHAR20YES廠商負責人員姓名--vendor_Contact_phoneVARCHAR20YES廠商負責人員電話--buildingVARCHAR10YES棟別--floorVARCHAR10YES樓層--locationVARCHAR20YES施工地點--head_countINTEGER-YES施工人數work_contentTEXT-YES施工內容--noteTEXT-YES備註
+2.資料表:工務今日施工項目engineering_today_work，與對應歷史表:engineering_work_history欄位結構相同
+欄位
+資料類型
+欄位大小
+is NULL
+備註
+primary key
+Foreign key
+id
+UUID
+-
+NO
+全域唯一識別碼
+YES
+-
+created_at
+TIMESTAMPTZ
+-
+NO
+建立時間
+-
+-
+start_date
+DATE
+-
+NO
+施工開始日期
+-
+-
+end_date
+DATE
+-
+NO
+施工結束日期
+-
+-
+time
+TIME
+-
+YES
+時間
+-
+-
+vendor_name
+VARCHAR
+20
+NO
+廠商
+-
+-
+unit
+VARCHAR
+20
+NO
+單位
+-
+-
+engineering_contactVARCHAR20NO工務負責人員-users.full_name (邏輯關聯)
+work_content
+TEXT
+-
+NO
+內容
+
+
+note
+TEXT
+-
+YES
+備註
+-
+-
+
+3. 資料表：待處理工作項目 pending_work，與對應歷史表：pending_work_history欄位結構相同
+欄位
+資料類型
+欄位大小
+is NULL
+備註
+primary key
+Foreign key
+id
+UUID
+-
+NO
+全域唯一識別碼
+YES
+-
+created_at
+TIMESTAMPTZ
+-
+NO
+建立時間
+-
+-
+start_date
+DATE
+-
+NO
+施工開始日期
+-
+-
+end_date
+DATE
+-
+NO
+施工結束日期
+-
+-
+time
+TIME
+-
+YES
+時間
+-
+-
+vendor_name
+VARCHAR
+20
+NO
+廠商
+-
+-
+unit
+VARCHAR
+20
+NO
+單位
+-
+-
+engineering_contactVARCHAR20NO工務負責人員-users.full_name (邏輯關聯)
+work_content
+TEXT
+-
+NO
+內容
+
+
+note
+TEXT
+-
+YES
+備註
+-
+-
+
+4. 資料表：施工回報記錄 work_report ，與對應歷史表：work_report_history欄位結構相同
+欄位
+資料類型
+欄位大小
+is NULL
+備註
+primary key
+Foreign key
+id
+UUID
+-
+NO
+全域唯一識別碼
+YES
+-
+created_at
+TIMESTAMPTZ
+-
+NO
+建立時間
+-
+-
+report_date
+DATE
+-
+NO
+施工回報日期
+-
+-
+report_time
+TIME
+-
+YES
+時間
+-
+-
+vendor_name
+VARCHAR
+20
+NO
+廠商
+-
+-
+work_location
+VARCHAR
+20
+NO
+施工地點
+-
+-
+engineering_contact
+VARCHAR
+20
+NO
+工務室人員
+-
+users.full_name (邏輯關聯)
+work_status
+VARCHAR
+20
+NO
+施工狀態 (完成/未完成/異常)
+-
+-
+work_content
+TEXT
+-
+NO
+工作內容
+
+
+note
+TEXT
+-
+YES
+備註
+-
+-
+
+5. 資料表：帳號管理 users
+欄位
+資料類型
+欄位大小
+is NULL
+備註
+primary key
+Foreign key
+id
+UUID
+-
+NO
+使用者ID (對應auth.users.id)
+YES
+auth.users.id
+created_at
+TIMESTAMPTZ
+-
+NO
+建立時間
+-
+-
+unit
+VARCHAR
+20
+NO
+單位
+-
+-
+user_name
+VARCHAR
+20
+NO
+姓名
+-
+-
+uer_account
+VARCHAR
+20
+NO
+帳號
+-
+-
+password_hash
+TEXT
+-
+NO
+密碼(雜湊值不存明文)
+-
+-
+role
+VARCHAR
+20
+NO
+使用者群組 (admin, staff)
+-
+-
+e-mail
+VARCHAR
+50
+NO
+e-mail
+-
+-
+is_active
+BOOLEAN
+-
+NO
+是否啟用 (預設: false)
+-
+-
+failed_attempts
+INTEGER
+-
+NO
+失敗計次 (Default: 0)
+-
+-
+last_failed_at
+TIMESTAMPTZ
+-
+YES
+最後失敗時間
+-
+-
+locked_until
+TIMESTAMPTZ
+-
+YES
+鎖定解除時間
+-
+-
+reset_token_hash
+TEXT
+-
+YES
+重設密碼 Token Hash
+-
+-
+reset_token_expire
+TIMESTAMPTZ
+-
+YES
+重設密碼Token到期時間
+-
+-
+verify_token_hash
+TEXT
+-
+YES
+驗證Token Hash
+-
+-
+verify_token_expire
+TIMESTAMPTZ
+-
+YES
+驗證Token 到期時間
+-
+-
+
+6. 資料表：系統異動記錄 system_change_log
+欄位
+資料類型
+欄位大小
+is NULL
+備註
+primary key
+Foreign key
+id
+UUID
+-
+NO
+全域唯一識別碼
+YES
+-
+created_at
+TIMESTAMPTZ
+-
+NO
+建立時間
+-
+-
+date
+DATE
+-
+NO
+發生日期
+-
+-
+user_unit
+VARCHAR
+20
+YES
+單位(操作者)
+-
+-
+user_name
+VARCHAR
+20
+YES
+姓名(操作者)
+-
+-
+user_account
+VARCHAR
+20
+YES
+帳號(操作者)
+-
+-
+action_type
+VARCHAR
+20
+NO
+操作方式(Insert/Update/Delete/Login/Logout)
+-
+-
+modify_table
+VARCHAR
+50
+NO
+異動資料表
+-
+-
+modify_record_id
+UUID
+-
+NO
+異動項目的 UUID
+-
+-
+old_datajsonb
+
+YES
+舊資料
+
+
+new_datajsonb
+
+YES
+新資料
+
+
+
+7. 資料表：系統執行記錄 system_execution_log，用於記錄 Cron 排程與系統錯誤
+欄位
+資料類型
+欄位大小
+is NULL
+備註
+primary key
+Foreign key
+id
+UUID
+-
+NO
+全域唯一識別碼
+YES
+-
+created_at
+TIMESTAMPTZ
+-
+NO
+建立時間
+-
+-
+date
+DATE
+-
+NO
+日期
+-
+-
+table_name
+VARCHAR
+30
+YES
+資料表名稱
+-
+-
+log_level
+VARCHAR
+10
+NO
+類別 (Info, Warning, Error)
+-
+-
+message
+TEXT
+-
+YES
+執行內容或錯誤訊息
+-
+-
+old_datajsonb
+
+YES
+舊資料
+
+
+new_datajsonb
+
+YES
+新資料
+
+
+
+8. 資料表：施工文件 work_file
+欄位
+資料類型
+欄位大小
+is NULL
+備註
+primary key
+Foreign key
+id
+UUID
+-
+NO
+全域唯一識別碼
+YES
+-
+created_at
+TIMESTAMPTZ
+-
+NO
+建立時間
+-
+-
+date
+DATE
+-
+NO
+日期(文件上傳)
+-
+-
+vendor_name
+VARCHAR
+20
+YES
+廠商名稱
+-
+-
+work_item
+VARCHAR
+30
+YES
+施工項目(名稱)
+-
+-
+uploader_nameVARCHAR20NO上傳人員(姓名)-users.full_name (邏輯關聯)
+description
+TEXT
+-
+YES
+說明(文件描述)
+-
+-
+file_url
+TEXT
+-
+NO
+文件(Cloudinary URL)
+-
+-
+image_url
+TEXT
+-
+NO
+照片(Cloudinary URL)
+-
+-
+video_urlTEXT
+
+NO
+影片(Cloudinary URL)
+-
+-
+noteTEXT
+
+NO
+備註
+-
+-
+
+
+F:單位人員和廠商人員填寫的表單所需欄位和驗證機制:
+廠商人員新增(廠商今日施工項目)表單所需欄位:到院或離院、日期、到院時間、離院時間、棟別、樓層、地點、廠商、廠商工作證號、廠商負責人員、廠商負責人員電話、人數、施工內容、備註。該表單的”到院或離院”欄位為單選項目，當選擇”到院”，則除了”離院時間”以外，其餘欄位皆為必填。當選擇"離院"，則只需填寫日期、離院時間、廠商、廠商負責人員、施工內容欄位。到院和離院是各自獨立的資料，不用將離院的資料更新至到院那筆。
+廠商人員修改(廠商今日施工項目)表單所需欄位:如果該筆記錄是”離院”，則只顯示日期、離院時間、廠商、廠商負責人員、施工內容欄位，若不是，則顯示全部欄位，到院或離院不能修改。
+單位人員填寫(待處理工作項目)表單所需欄位:施工開始日期、施工結束日期、時間、廠商、單位、工務負責人員、內容、備註。
+單位人員填寫(施工回報記錄)表單所需欄位:施工回報日期、時間、廠商、施工地點、工務負責人員、施工狀態、工作內容、備註。
+單位人員填寫(工務今日施工項目)表單所需欄位:施工開始日期、施工結束日期、時間、廠商、單位、工務負責人員、內容、備註。
+單位人員填寫(施工文件)表單所需欄位:日期、廠商名稱、施工項目、上傳人員、說明、文件(選擇文件)、照片(選擇照片)、影片(選擇影音)、備註。
+管理員新增帳號表單所需欄位:單位、姓名、帳號、密碼、使用者群組、E-mail和啟用此帳號核取框。
+管理員修改表單所需欄位:單位、姓名、帳號、使用者群組、E-mail和啟用此帳號核取框。
+異動完表單，需寫入"id"和"建立時間"。
+所有表單欄位除了"id"、"建立時間"和"備註"以外，預設為必填欄位，欄位另有規定者，以該規定為主。
+所有必填與邏輯驗證需於前後端雙重驗證。
+  G.廠商和單位人員填寫的表單欄位對照資料表的欄位(Frontend Form Mapping)
+1. 廠商今日施工項目表單對應到廠商今日施工項目資料表的欄位
+到院或離院→entry_status
+日期→work_date
+到院時間→arrival_time
+離院時間→departure_time
+棟別→building
+樓層→floor
+地點→location
+廠商→vendor_name
+廠商工作證號→vendor_badge_id
+廠商負責人員→vendor_contact
+廠商負責人員電話→vendor_contact_phone
+人數→head_count
+施工內容→work_content
+備註→note
+2. 待處理工作項目表單對應到待處理工作項目資料表的欄位
+施工開始日期→start_date
+施工結束日期→end_date
+時間→time
+廠商→vendor_name
+單位→unit
+工務負責人員→engineering_contact
+內容→work_content
+備註→note
+3. 施工回報記錄表單對應到施工回報記錄資料表的欄位
+施工回報日期 →report_date
+時間 →report_time
+廠商 →vendor_name
+施工地點→work_location
+工務負責人員→engineering_contact
+施工狀態→work_status
+工作內容→work_content
+備註→note
+4.工務今日施工項目表單對應到工務今日施工項目資料表的欄位
+施工開始日期→start_date
+施工結束日期→end_date
+時間→time
+廠商→vendor_name
+單位→unit
+工務負責人員→engineering_contact
+內容→work_content
+備註→note 
+
+H: 資安需求技術實作機制: 
+前端先做SHA-256 預處理後，再傳送給 Supabase。
+密碼強度檢查(client-side)，密碼最少需符合三種規定: (至少8碼、大小寫英文字、數字、特殊字元)。
+加入 Google reCAPTCHA 伺服端驗證，後端呼叫 Google 驗證 token、檢查 score 與 action(防止前端偽造、防機器人大量註冊)。
+email驗證(註冊後必須驗證才啟用)。
+Session token 存放於 sessionStorage(瀏覽器端)。
+把exception 與偵錯資訊寫入 ScriptErrors，便於追蹤攻擊或異常。
+Key-stretching(把client-hash當作輸入，再做多次 SHA-256)。
+每個帳號使用不同Salt，Salt改由 Supabase 後端託管處理，防止同密碼相同雜湊比對。
+其它機密 key 不會被放到前端程式碼。
+連續登入失敗5次，就鎖定帳號半小時(防暴力破解)。
+後端呼叫 Google 驗證token。
+
+
+I:資安需求安全原則:
+不儲存明文密碼。
+不儲存明文token，僅存tokenHash。
+限制token的可用期間，減少被濫用風險。
+首頁會根據參數回傳不同頁面。
+
+
+J:網站軟體規格:
+Frontend:React.js+next.js
+Framework: Next.js 14+ (App Router) 
+Language: TypeScript 。
+Styling: Tailwind CSS + Framer Motion
+UI Components: shadcn/ui 
+Database: PostgreSQL (Hosted on Supabase)。
+Auth: Supabase Auth (配合 Next.js Middleware 進行路由保護)。
+Media Storage: Cloudinary
+State Management: Zustand 
+Form Management: React Hook Form + Zod 
+
+
+K:系統核心模組劃分:
+模組名稱
+說明
+Auth 模組
+使用者登入、登出、驗證、重設密碼(Supabase Auth）
+表單模組
+廠商今日施工、待處理工作、施工回報表單
+查詢模組
+今日施工、待處理、歷史資料查詢
+排程模組
+cron 排程、資料移轉、重試機制
+記錄模組
+系統異動記錄、系統執行記錄
+檔案模組
+施工文件上傳與瀏覽(Cloudinary)
+
+
+L: API 規格: 
+API權限需完全遵循資料權限規格表，不得另行開放。
+未登入之API僅限新增資料，不得提供修改、刪除或查詢歷史資料之功能。
+API 類型
+Method
+Path
+說明
+權限
+新增廠商施工
+POST
+/api/vendor-work
+新增廠商今日施工
+公開(無登入）
+新增待處理工作
+POST
+/api/pending-work
+新增待處理工作
+單位人員
+新增施工回報
+POST
+/api/work-report
+新增施工回報
+單位人員
+新增工務施工
+POST
+/api/new-today-work
+新增工務今日施工
+單位人員
+查詢今日施工
+GET
+/api/today-work
+查詢今日施工資料
+登入使用者
+查詢歷史資料
+GET
+/api/history
+查詢歷史資料
+管理員
+
+
+
+
+
+
+
+
+
+
+
+
+
