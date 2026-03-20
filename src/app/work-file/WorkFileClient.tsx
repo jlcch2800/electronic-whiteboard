@@ -75,7 +75,7 @@ export default function WorkFileClient() {
             .gte('date', startDate).lte('date', endDate)
             .order('date', { ascending: false }).order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
-        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,date.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,note.ilike.%${keyword}%`)
         const { data: records, count, error } = await q
         if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
         else { setData(records || []); setTotalCount(count || 0) }
@@ -109,7 +109,7 @@ export default function WorkFileClient() {
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
             let q = supabase.from('work_file').select('*').gte('date', startDate).lte('date', endDate).order('date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,date.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,note.ilike.%${keyword}%`)
             const { data: allData } = await q; dataToExport = allData || []
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }

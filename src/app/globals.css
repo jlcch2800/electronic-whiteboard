@@ -80,6 +80,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 215 25% 8%;
     --foreground: 210 15% 95%;
 

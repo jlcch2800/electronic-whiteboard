@@ -6,18 +6,20 @@ import { useRouter, usePathname } from 'next/navigation'
 import { format } from 'date-fns'
 import {
     Users, HardHat, FileClock, ClipboardCheck, History, UserCog, Activity,
-    LogOut, Home, Calendar, ChevronDown, FileText, RefreshCw, Menu, X
+    LogOut, Home, Calendar, ChevronDown, FileText, RefreshCw, Menu, X, Lock,
+    Sun, Moon, User
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { handleLogout as serverHandleLogout } from '@/actions/auth'
 import { useAppStore } from '@/stores/useAppStore'
+import { useTheme } from '@/components/providers/ThemeProvider'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    DropdownMenuSeparator, DropdownMenuLabel
 } from '@/components/ui/dropdown-menu'
-import { ThemeToggle } from '@/components/ThemeToggle'
 
 // 導覽項目定義
 interface NavItem {
@@ -87,6 +89,7 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
     const pathname = usePathname()
     const supabase = createClient()
     const { profile, isLoading: authLoading, logout: storeLogout } = useAppStore()
+    const { theme, setTheme } = useTheme()
 
     // 時鐘
     const [currentTime, setCurrentTime] = useState<Date | null>(null)
@@ -220,7 +223,7 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
             {/* ========== 導覽列 ========== */}
             <header className="glass border-b border-border/50 px-4 lg:px-6 py-3 flex justify-between items-center shadow-card sticky top-0 z-50">
                 {/* 左側：品牌 + 漢堡按鈕 */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                     {/* 漢堡按鈕 — 僅行動版 */}
                     <Button
                         variant="ghost"
@@ -232,29 +235,27 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                     </Button>
 
                     <h1
-                        className="text-xl lg:text-2xl font-black cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-2"
+                        className="text-xl lg:text-2xl font-black cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-2 shrink-0 whitespace-nowrap"
                         onClick={() => router.push('/')}
                     >
                         <span className="text-2xl">🏥</span>
-                        <span className="text-gradient-primary">工務室電子白板</span>
+                        <span className="text-gradient-primary whitespace-nowrap">工務室電子白板</span>
                     </h1>
                 </div>
 
                 {/* 中間：導覽項目 — 僅桌面版 */}
-                <nav className="hidden lg:flex items-center gap-1">
+                <nav className="hidden lg:flex items-center gap-1 overflow-x-auto no-scrollbar mx-2">
                     {allNavItems.map(renderDesktopNavItem)}
                 </nav>
 
-                {/* 右側：時鐘 + 使用者 + 重整 */}
-                <div className="flex items-center gap-3">
+                {/* 右側：時鐘 + 使用者下拉選單 */}
+                <div className="flex items-center gap-2 lg:gap-3 shrink-0">
                     {/* 時鐘 */}
-                    <div className="hidden sm:block text-sm font-medium text-muted-foreground tabular-nums" suppressHydrationWarning>
+                    <div className="hidden sm:block text-sm font-medium text-muted-foreground tabular-nums whitespace-nowrap" suppressHydrationWarning>
                         {currentTime ? format(currentTime, 'yyyy/MM/dd HH:mm') : ''}
                     </div>
 
-                    <div className="hidden sm:block h-5 w-px bg-border" />
-
-                    {/* 使用者資訊 */}
+                    {/* 使用者下拉選單 */}
                     {authLoading ? (
                         <div className="flex items-center gap-2">
                             <div className="animate-pulse">
@@ -263,26 +264,65 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                             </div>
                         </div>
                     ) : profile ? (
-                        <div className="flex items-center gap-2">
-                            <div className="text-right hidden sm:block">
-                                <div className="text-[10px] text-muted-foreground">當前使用者</div>
-                                <div className="text-sm font-bold text-foreground flex items-center gap-1">
-                                    {profile.user_name}
-                                    <Badge variant={profile.role === 'admin' ? 'destructive' : 'secondary'} className="text-[10px] px-1.5">
-                                        {profile.role}
-                                    </Badge>
-                                </div>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleLogout}
-                                className="gap-1 text-destructive border-destructive/20 hover:bg-destructive/5 active:scale-95 transition-transform"
-                            >
-                                <LogOut className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">登出</span>
-                            </Button>
-                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    className="gap-2 active:scale-95 transition-all text-muted-foreground hover:text-foreground"
+                                >
+                                    <User className="w-4 h-4" />
+                                    <span className="hidden sm:inline font-bold text-foreground">
+                                        {profile.user_name}
+                                    </span>
+                                    <ChevronDown className="w-3 h-3" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                {/* 使用者角色資訊 */}
+                                <DropdownMenuLabel className="flex items-center gap-2">
+                                    <UserCog className="w-4 h-4" />
+                                    <span>角色：{profile.role === 'admin' ? '系統管理員' : '一般使用者'}</span>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+
+                                {/* 修改密碼 */}
+                                <DropdownMenuItem onClick={() => router.push('/change-password')}>
+                                    <Lock className="w-4 h-4 mr-2" />
+                                    修改密碼
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+
+                                {/* 淺色模式 */}
+                                <DropdownMenuItem onClick={() => setTheme('light')} className={theme === 'light' ? 'bg-accent font-semibold' : ''}>
+                                    <Sun className="w-4 h-4 mr-2" />
+                                    淺色模式
+                                </DropdownMenuItem>
+
+                                {/* 深色模式 */}
+                                <DropdownMenuItem onClick={() => setTheme('dark')} className={theme === 'dark' ? 'bg-accent font-semibold' : ''}>
+                                    <Moon className="w-4 h-4 mr-2" />
+                                    深色模式
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+
+                                {/* 重新整理 */}
+                                {onRefresh && (
+                                    <>
+                                        <DropdownMenuItem onClick={onRefresh} disabled={loading}>
+                                            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                            重新整理
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                    </>
+                                )}
+
+                                {/* 登出 */}
+                                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                                    <LogOut className="w-4 h-4 mr-2" />
+                                    登出
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     ) : (
                         <Button
                             onClick={() => router.push('/login')}
@@ -290,22 +330,6 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                             className="active:scale-95 transition-transform"
                         >
                             登入
-                        </Button>
-                    )}
-
-                    {/* Dark Mode 切換 */}
-                    <ThemeToggle />
-
-                    {/* 重整按鈕 */}
-                    {onRefresh && (
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={onRefresh}
-                            disabled={loading}
-                            className="h-8 w-8 active:scale-95 transition-transform"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </Button>
                     )}
                 </div>
@@ -337,15 +361,64 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
 
                         {allNavItems.map(renderMobileNavItem)}
 
-                        <div className="pt-4 border-t border-border mt-4">
+                        <div className="pt-4 border-t border-border mt-4 space-y-1">
                             {profile ? (
-                                <button
-                                    onClick={handleLogout}
-                                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/5 w-full text-left transition-colors"
-                                >
-                                    <LogOut className="w-5 h-5" />
-                                    登出
-                                </button>
+                                <>
+                                    {/* 角色資訊 */}
+                                    <div className="flex items-center gap-3 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        <UserCog className="w-4 h-4" />
+                                        角色：{profile.role === 'admin' ? '系統管理員' : '一般使用者'}
+                                    </div>
+
+                                    {/* 修改密碼 */}
+                                    <button
+                                        onClick={() => { router.push('/change-password'); setMobileOpen(false) }}
+                                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground/70 hover:bg-accent w-full text-left transition-colors"
+                                    >
+                                        <Lock className="w-5 h-5" />
+                                        修改密碼
+                                    </button>
+
+                                    {/* 淺色模式 */}
+                                    <button
+                                        onClick={() => { setTheme('light'); setMobileOpen(false) }}
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-colors ${theme === 'light' ? 'bg-primary/10 text-primary font-bold' : 'text-foreground/70 hover:bg-accent'}`}
+                                    >
+                                        <Sun className="w-5 h-5" />
+                                        淺色模式
+                                    </button>
+
+                                    {/* 深色模式 */}
+                                    <button
+                                        onClick={() => { setTheme('dark'); setMobileOpen(false) }}
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-colors ${theme === 'dark' ? 'bg-primary/10 text-primary font-bold' : 'text-foreground/70 hover:bg-accent'}`}
+                                    >
+                                        <Moon className="w-5 h-5" />
+                                        深色模式
+                                    </button>
+
+                                    {/* 重新整理 */}
+                                    {onRefresh && (
+                                        <button
+                                            onClick={() => { onRefresh(); setMobileOpen(false) }}
+                                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground/70 hover:bg-accent w-full text-left transition-colors"
+                                        >
+                                            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                                            重新整理
+                                        </button>
+                                    )}
+
+                                    <div className="border-t border-border my-2" />
+
+                                    {/* 登出 */}
+                                    <button
+                                        onClick={handleLogout}
+                                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/5 w-full text-left transition-colors"
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                        登出
+                                    </button>
+                                </>
                             ) : (
                                 <button
                                     onClick={() => { router.push('/login'); setMobileOpen(false) }}

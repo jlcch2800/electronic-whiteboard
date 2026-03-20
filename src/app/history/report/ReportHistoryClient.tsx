@@ -80,7 +80,7 @@ export default function ReportHistoryClient() {
             .gte('report_date', startDate).lte('report_date', endDate)
             .order('report_date', { ascending: false }).order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
-        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,supervisor.ilike.%${keyword}%,status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
         if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
         const { data: records, count } = await q
         setData(records || []); setTotalCount(count || 0); setSelected(new Set()); setLoading(false)
@@ -94,7 +94,7 @@ export default function ReportHistoryClient() {
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
             let q = supabase.from('work_report_history').select('*').gte('report_date', startDate).lte('report_date', endDate).order('report_date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,supervisor.ilike.%${keyword}%,status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
             if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
             const { data: allData } = await q; dataToExport = allData || []
         }
@@ -161,19 +161,20 @@ export default function ReportHistoryClient() {
                                         <TableHead>施工內容</TableHead><TableHead>備註</TableHead>
                                     </TableRow></TableHeader>
                                     <TableBody>
+                                        {sortedData.length === 0 ? <TableRow><TableCell colSpan={11} className="p-0"><EmptyState icon={ClipboardCheck} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
                                             : sortedData.map((row, index) => (
-                                        <TableRow key={row.id} className={`hover:bg-green-50/50 dark:hover:bg-green-900/20 transition-colors even:bg-muted/20 dark:even:bg-muted/10 ${selected.has(row.id) ? 'bg-green-100 dark:bg-green-900/40' : ''}`}>
-                                            <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
-                                            <TableCell className="text-muted-foreground dark:text-muted-foreground/70 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
-                                            <TableCell className="font-mono text-xs text-muted-foreground dark:text-gray-300 whitespace-nowrap relative pl-6">
-                                                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-400 ring-4 ring-green-50 dark:ring-green-950" />
-                                                {row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-'}
-                                            </TableCell>
-                                            <TableCell className="font-mono dark:text-gray-200">{row.report_date}</TableCell><TableCell className="font-mono dark:text-gray-200">{row.report_time?.slice(0, 5) || '-'}</TableCell>
-                                            <TableCell className="font-bold dark:text-gray-100">{row.vendor_name}</TableCell><TableCell className="dark:text-gray-200">{row.work_location}</TableCell><TableCell className="dark:text-gray-200">{row.engineering_contact}</TableCell>
-                                            <TableCell><Badge variant={statusLabels[row.work_status]?.variant || 'secondary'} className={row.work_status === 'completed' ? 'dark:bg-green-600 dark:text-white' : row.work_status === 'abnormal' ? 'dark:bg-red-600 dark:text-white' : 'dark:bg-gray-800 dark:text-gray-300'}>{statusLabels[row.work_status]?.text || row.work_status}</Badge></TableCell>
-                                            <TableCell className="max-w-xs truncate dark:text-gray-200" title={row.work_content}>{row.work_content}</TableCell><TableCell className="text-muted-foreground dark:text-gray-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
-                                        </TableRow>
+                                                <TableRow key={row.id} className={`hover:bg-green-50/50 dark:hover:bg-green-900/20 transition-colors even:bg-muted/20 dark:even:bg-muted/10 ${selected.has(row.id) ? 'bg-green-100 dark:bg-green-900/40' : ''}`}>
+                                                    <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
+                                                    <TableCell className="text-muted-foreground dark:text-muted-foreground/70 text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-muted-foreground dark:text-gray-300 whitespace-nowrap relative pl-6">
+                                                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-green-400 ring-4 ring-green-50 dark:ring-green-950" />
+                                                        {row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm') : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="font-mono dark:text-gray-200">{row.report_date}</TableCell><TableCell className="font-mono dark:text-gray-200">{row.report_time?.slice(0, 5) || '-'}</TableCell>
+                                                    <TableCell className="font-bold dark:text-gray-100">{row.vendor_name}</TableCell><TableCell className="dark:text-gray-200">{row.work_location}</TableCell><TableCell className="dark:text-gray-200">{row.engineering_contact}</TableCell>
+                                                    <TableCell><Badge variant={statusLabels[row.work_status]?.variant || 'secondary'} className={row.work_status === 'completed' ? 'dark:bg-green-600 dark:text-white' : row.work_status === 'abnormal' ? 'dark:bg-red-600 dark:text-white' : 'dark:bg-gray-800 dark:text-gray-300'}>{statusLabels[row.work_status]?.text || row.work_status}</Badge></TableCell>
+                                                    <TableCell className="max-w-xs truncate dark:text-gray-200" title={row.work_content}>{row.work_content}</TableCell><TableCell className="text-muted-foreground dark:text-gray-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
+                                                </TableRow>
                                             ))}
                                     </TableBody>
                                 </Table>

@@ -308,7 +308,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100">
-            <header className="bg-white/80 backdrop-blur-md border-b border-border sticky top-0 z-10">
+            <header className="glass border-b border-border/50 sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div className="flex items-center justify-between">
@@ -610,10 +610,10 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                                             const oldVal = oldData?.[key]; const newVal = newData?.[key];
                                                                             const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal);
                                                                             return (
-                                                                                <TableRow key={key} className={isChanged ? 'bg-yellow-50' : ''}>
-                                                                                    <TableCell className="font-bold text-foreground/70 text-xs">{FIELD_LABELS[key] || key}</TableCell>
-                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50' : ''}`}>{oldVal !== undefined ? JSON.stringify(oldVal) : '-'}</TableCell>
-                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50' : ''}`}>{newVal !== undefined ? JSON.stringify(newVal) : '-'}</TableCell>
+                                                                                <TableRow key={key} className={isChanged ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}>
+                                                                                    <TableCell className="font-bold text-foreground/70 dark:text-gray-300 text-xs">{FIELD_LABELS[key] || key}</TableCell>
+                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-900/20' : 'dark:text-gray-200'}`}>{oldVal !== undefined ? JSON.stringify(oldVal) : '-'}</TableCell>
+                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20' : 'dark:text-gray-200'}`}>{newVal !== undefined ? JSON.stringify(newVal) : '-'}</TableCell>
                                                                                 </TableRow>
                                                                             )
                                                                         })}

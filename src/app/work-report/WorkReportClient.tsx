@@ -82,7 +82,7 @@ export default function WorkReportClient() {
             .gte('report_date', startDate).lte('report_date', endDate)
             .order('report_date', { ascending: false }).order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
-        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,supervisor.ilike.%${keyword}%,status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
         if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
         const { data: records, count, error } = await q
         if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
@@ -111,7 +111,7 @@ export default function WorkReportClient() {
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
             let q = supabase.from('work_report').select('*').gte('report_date', startDate).lte('report_date', endDate).order('report_date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,supervisor.ilike.%${keyword}%,status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
             if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
             const { data: allData } = await q; dataToExport = allData || []
         }

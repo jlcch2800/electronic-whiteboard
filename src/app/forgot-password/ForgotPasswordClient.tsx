@@ -93,7 +93,7 @@ export default function ForgotPasswordClient() {
                                 {submittedEmail}
                             </p>
                             <p className="text-sm text-muted-foreground mb-6">
-                                請檢查您的信箱（包含垃圾郵件資料夾），點擊信中連結重設密碼。連結有效期為 24 小時。
+                                請檢查您的信箱（包含垃圾郵件資料夾），點擊信中連結重設密碼。連結有效期為 5 分鐘。
                             </p>
                             <Link href="/login">
                                 <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 rounded-xl shadow-lg shadow-blue-200">

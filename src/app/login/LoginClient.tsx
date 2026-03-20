@@ -57,8 +57,8 @@ const FloatingInput = forwardRef<HTMLInputElement, {
                 name={name}
                 type={type}
                 disabled={disabled}
-                className={`w-full pl-10 pr-10 pt-5 pb-2 rounded-xl border bg-white/80 backdrop-blur-sm
-                    text-sm text-foreground outline-none transition-all duration-200
+                className={`w-full pl-10 pr-10 pt-5 pb-2 rounded-xl border bg-white backdrop-blur-sm
+                    text-sm text-gray-900 outline-none transition-all duration-200
                     ${focused ? 'border-blue-400 ring-2 ring-blue-100 shadow-md' : 'border-border hover:border-slate-300'}
                     ${error ? 'border-red-400 ring-2 ring-red-100' : ''}
                     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -224,8 +224,8 @@ export default function LoginClient() {
                         <div className="mx-auto w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-200/70">
                             <LogIn className="w-7 h-7 text-white" />
                         </div>
-                        <h1 className="text-2xl font-black text-foreground mb-1">登入系統</h1>
-                        <p className="text-muted-foreground text-sm">工務室電子白板管理系統</p>
+                        <h1 className="text-2xl font-black text-slate-800 mb-1">登入系統</h1>
+                        <p className="text-slate-600 text-sm font-medium">工務室電子白板管理系統</p>
                     </div>
 
                     <AnimatePresence>
@@ -266,7 +266,7 @@ export default function LoginClient() {
                             <div className="flex items-center gap-2">
                                 <Checkbox id="remember-me" checked={rememberMe} onCheckedChange={(checked) => setRememberMe(checked === true)}
                                     className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600" />
-                                <label htmlFor="remember-me" className="text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground/80 transition-colors">記住我</label>
+                                <label htmlFor="remember-me" className="text-sm text-slate-700 cursor-pointer select-none hover:text-slate-900 transition-colors">記住我</label>
                             </div>
                             <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors">忘記密碼？</Link>
                         </div>
@@ -276,7 +276,7 @@ export default function LoginClient() {
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center text-sm text-muted-foreground">
+                    <div className="mt-6 text-center text-sm text-slate-600 font-medium">
                         還沒有帳號？{' '}
                         <Link href="/register" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold transition-colors">建立帳號</Link>
                     </div>

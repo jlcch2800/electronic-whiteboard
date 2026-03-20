@@ -136,7 +136,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
             .lte('work_date', search.end)
 
         if (search.keyword) {
-            const keywordFilter = `vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,location.ilike.%${search.keyword}%,vendor_contact.ilike.%${search.keyword}%,entry_status.ilike.%${search.keyword}%,work_date.ilike.%${search.keyword}%,building.ilike.%${search.keyword}%,floor.ilike.%${search.keyword}%,vendor_badge_id.ilike.%${search.keyword}%,vendor_phone.ilike.%${search.keyword}%,note.ilike.%${search.keyword}%`
+            const keywordFilter = `vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,location.ilike.%${search.keyword}%,vendor_contact.ilike.%${search.keyword}%,entry_status.ilike.%${search.keyword}%,building.ilike.%${search.keyword}%,floor.ilike.%${search.keyword}%,vendor_badge_id.ilike.%${search.keyword}%,vendor_phone.ilike.%${search.keyword}%,note.ilike.%${search.keyword}%`
             countQuery = countQuery.or(keywordFilter)
             dataQuery = dataQuery.or(keywordFilter)
         }

@@ -123,7 +123,7 @@ export default function VendorHistoryClient() {
 
         // Keyword search (search in vendor_name, work_content, note)
         if (keyword.trim()) {
-            query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,work_date.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%,head_count.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
+            query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
         }
 
         const { data: records, count, error } = await query
@@ -167,7 +167,7 @@ export default function VendorHistoryClient() {
                 .order('work_date', { ascending: false })
 
             if (keyword.trim()) {
-                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,work_date.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%,head_count.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
+                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
             }
 
             const { data: allData } = await query

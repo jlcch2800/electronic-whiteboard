@@ -36,7 +36,7 @@ const FloatingInput = forwardRef<HTMLInputElement, {
                 {label}{required && <span className="text-red-500 ml-0.5">*</span>}
             </label>
             <input ref={ref} id={id} name={name} type={type} disabled={disabled}
-                className={`w-full pl-10 pr-10 pt-5 pb-2 rounded-xl border bg-white/80 backdrop-blur-sm text-sm text-foreground outline-none transition-all duration-200
+                className={`w-full pl-10 pr-10 pt-5 pb-2 rounded-xl border bg-white backdrop-blur-sm text-sm text-gray-900 outline-none transition-all duration-200
                     ${focused ? 'border-emerald-400 ring-2 ring-emerald-100 shadow-md' : 'border-border hover:border-slate-300'}
                     ${error ? 'border-red-400 ring-2 ring-red-100' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onFocus={() => setFocused(true)}
@@ -77,13 +77,13 @@ function PasswordStrength({ password }: { password: string }) {
             </div>
             <div className="grid grid-cols-2 gap-1 text-xs">
                 {checks.map((check, i) => (
-                    <div key={i} className={`flex items-center gap-1 ${check.test ? 'text-green-600' : 'text-muted-foreground'}`}>
+                    <div key={i} className={`flex items-center gap-1 ${check.test ? 'text-green-600' : 'text-slate-500'}`}>
                         {check.test ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
                         <span>{check.label}</span>
                     </div>
                 ))}
             </div>
-            <p className="text-xs text-muted-foreground"><AlertCircle className="w-3 h-3 inline mr-1" />需符合至少 3 項條件</p>
+            <p className="text-xs text-slate-500"><AlertCircle className="w-3 h-3 inline mr-1" />需符合至少 3 項條件</p>
         </motion.div>
     )
 }
@@ -184,8 +184,8 @@ export default function RegisterClient() {
                         <div className="mx-auto w-14 h-14 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-emerald-200/70">
                             <UserPlus className="w-7 h-7 text-white" />
                         </div>
-                        <h1 className="text-2xl font-black text-foreground mb-1">建立帳號</h1>
-                        <p className="text-muted-foreground text-sm">工務室電子白板管理系統</p>
+                        <h1 className="text-2xl font-black text-slate-800 mb-1">建立帳號</h1>
+                        <p className="text-slate-600 text-sm font-medium">工務室電子白板管理系統</p>
                     </div>
 
                     <AnimatePresence>
@@ -218,7 +218,7 @@ export default function RegisterClient() {
                         </Button>
                     </form>
 
-                    <div className="mt-5 text-center text-sm text-muted-foreground">
+                    <div className="mt-5 text-center text-sm text-slate-600 font-medium">
                         已經有帳號？{' '}<Link href="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold transition-colors">登入</Link>
                     </div>
                 </motion.div>

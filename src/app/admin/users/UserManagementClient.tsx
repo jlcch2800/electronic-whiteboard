@@ -221,7 +221,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     return (
         <div className="min-h-screen bg-muted">
             {/* Header */}
-            <header className="bg-white border-b border-border px-4 md:px-6 py-4 sticky top-0 z-10 shadow-sm">
+            <header className="bg-background border-b border-border px-4 md:px-6 py-4 sticky top-0 z-10 shadow-sm">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 max-w-7xl mx-auto">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -314,7 +314,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                     paginatedUsers.map((user, index) => (
                                         <TableRow
                                             key={user.id}
-                                            className={`cursor-pointer transition-colors ${selectedId === user.id ? 'bg-blue-50' : 'hover:bg-muted'}`}
+                                            className={`cursor-pointer transition-colors ${selectedId === user.id ? 'bg-blue-50 dark:bg-blue-900/40' : 'hover:bg-muted dark:hover:bg-slate-800/50'}`}
                                             onClick={() => setSelectedId(selectedId === user.id ? null : user.id)}
                                         >
                                             <TableCell>
