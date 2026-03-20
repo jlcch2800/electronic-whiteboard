@@ -28,6 +28,8 @@ yarn-error.log*
 # local env files
 .env*.local
 .env.test
+.env.example
+.env.example.local
 
 # vercel
 .vercel
@@ -43,3 +45,12 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+/系統使用相關文件
+/參考文件
+/sql
+src/__tests__
+/tests
+vitest.config.ts
+playwright.config.ts
+test-results
