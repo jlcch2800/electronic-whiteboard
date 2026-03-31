@@ -9,6 +9,7 @@ import { format } from 'date-fns'
 import { motion } from 'framer-motion'
 
 import { createClient } from '@/lib/supabase/client'
+import { sendTelegramNotify, formatCreateMessage, ENGINEERING_WORK_LABELS } from '@/lib/telegram-notify'
 import { engineeringWorkSchema, type EngineeringWorkFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -77,6 +78,10 @@ export default function EngineeringWorkNewPage() {
         try {
             const { error } = await supabase.from('engineering_today_work').insert(pendingData)
             if (error) throw error
+
+            // 發送 Telegram 通知
+            sendTelegramNotify(formatCreateMessage('工務今日施工項目', pendingData, ENGINEERING_WORK_LABELS))
+
             setIsSuccess(true)
             toast({ title: '新增成功', description: '工務今日施工項目已新增' })
             setTimeout(() => router.push('/'), 1500)

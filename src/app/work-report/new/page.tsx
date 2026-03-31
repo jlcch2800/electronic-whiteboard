@@ -9,6 +9,7 @@ import { format } from 'date-fns'
 import { motion } from 'framer-motion'
 
 import { createClient } from '@/lib/supabase/client'
+import { sendTelegramNotify, formatCreateMessage, WORK_REPORT_LABELS } from '@/lib/telegram-notify'
 import { workReportSchema, type WorkReportFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -86,6 +87,10 @@ export default function WorkReportNewPage() {
         try {
             const { error } = await (supabase.from('work_report') as any).insert(pendingData)
             if (error) throw error
+
+            // 發送 Telegram 通知
+            sendTelegramNotify(formatCreateMessage('工務今日施工項目', pendingData, WORK_REPORT_LABELS))
+
             setIsSuccess(true)
             toast({ title: '回報成功', description: '施工回報已記錄' })
             setTimeout(() => router.push('/'), 1500)

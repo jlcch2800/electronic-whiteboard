@@ -11,6 +11,7 @@ import { ClipboardCheck, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import { createClient } from '@/lib/supabase/client'
+import { sendTelegramNotify, formatDeleteMessage, WORK_REPORT_LABELS } from '@/lib/telegram-notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -93,10 +94,17 @@ export default function WorkReportClient() {
     const handleDelete = async (id?: string) => {
         const ids = id ? [id] : Array.from(selected)
         if (ids.length === 0) return
+
+        // 在刪除前收集被刪除項目的資料（供通知使用）
+        const deletedItems = data.filter(item => ids.includes(item.id))
+
         const { error } = await supabase.from('work_report').delete().in('id', ids)
         if (error) {
             toast({ title: '刪除失敗', description: error.message, variant: 'destructive' })
         } else {
+            // 發送 Telegram 刪除通知
+            sendTelegramNotify(formatDeleteMessage('工務今日施工項目', deletedItems, WORK_REPORT_LABELS))
+
             toast({ title: '刪除成功' })
             fetchData()
         }

@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 import { MapPin } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
+import { sendTelegramNotify, formatCreateMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
 import { vendorWorkSchema, type VendorWorkFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -116,6 +117,9 @@ export default function VendorWorkNewPage() {
 
             const { error } = await supabase.from('vendor_today_work').insert(payload)
             if (error) throw error
+
+            // 發送 Telegram 通知
+            sendTelegramNotify(formatCreateMessage('廠商今日施工項目', payload, VENDOR_WORK_LABELS))
 
             // 成功動畫
             setIsSuccess(true)

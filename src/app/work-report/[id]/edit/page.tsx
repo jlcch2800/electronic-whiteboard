@@ -9,6 +9,7 @@ import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
+import { sendTelegramNotify, formatUpdateMessage, WORK_REPORT_LABELS } from '@/lib/telegram-notify'
 import { workReportSchema, type WorkReportFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -41,6 +42,7 @@ export default function WorkReportEditPage() {
     const [isSuccess, setIsSuccess] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const [pendingData, setPendingData] = useState<WorkReportFormValues | null>(null)
+    const [originalData, setOriginalData] = useState<Record<string, any> | null>(null)
     const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
 
     const { register, handleSubmit, watch, trigger, reset, formState: { errors, isSubmitting } } = useForm<WorkReportFormValues>({
@@ -64,7 +66,7 @@ export default function WorkReportEditPage() {
                 router.push('/work-report')
                 return
             }
-            reset({
+            const resetData = {
                 report_date: data.report_date,
                 report_time: data.report_time?.slice(0, 5) || '',
                 vendor_name: data.vendor_name,
@@ -73,7 +75,9 @@ export default function WorkReportEditPage() {
                 work_status: data.work_status,
                 work_content: data.work_content,
                 note: data.note || '',
-            })
+            }
+            setOriginalData(resetData)
+            reset(resetData)
             setLoading(false)
         }
         fetchData()
@@ -87,6 +91,12 @@ export default function WorkReportEditPage() {
         try {
             const { error } = await (supabase.from('work_report') as any).update(pendingData).eq('id', id)
             if (error) throw error
+
+            // 發送 Telegram 通知（修改前後對照）
+            if (originalData) {
+                sendTelegramNotify(formatUpdateMessage('工務今日施工項目', originalData, pendingData, WORK_REPORT_LABELS))
+            }
+
             setIsSuccess(true)
             toast({ title: '更新成功', description: '施工回報已更新' })
             setTimeout(() => router.push('/work-report'), 1500)

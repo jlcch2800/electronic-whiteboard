@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
+import { sendTelegramNotify, formatDeleteMessage, PENDING_WORK_LABELS } from '@/lib/telegram-notify'
 import { useAppStore } from '@/stores/useAppStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -110,6 +111,9 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
     const handleDelete = async () => {
         if (deleteDialog.ids.length === 0) return
 
+        // 在刪除前收集被刪除項目的資料（供通知使用）
+        const deletedItems = data.filter(item => deleteDialog.ids.includes(item.id))
+
         try {
             const { error } = await supabase
                 .from('pending_work')
@@ -117,6 +121,9 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                 .in('id', deleteDialog.ids)
 
             if (error) throw error
+
+            // 發送 Telegram 刪除通知
+            sendTelegramNotify(formatDeleteMessage('待處理工作項目', deletedItems, PENDING_WORK_LABELS))
 
             toast({ title: '刪除成功', description: `已刪除 ${deleteDialog.ids.length} 筆資料` })
             setData(data.filter(item => !deleteDialog.ids.includes(item.id)))

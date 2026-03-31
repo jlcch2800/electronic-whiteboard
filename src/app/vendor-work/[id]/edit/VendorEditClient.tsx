@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 import { MapPin } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
+import { sendTelegramNotify, formatUpdateMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
 import { vendorWorkSchema, type VendorWorkFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -84,6 +85,9 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
 
             const { error } = await supabase.from('vendor_today_work').update(payload).eq('id', initialData.id)
             if (error) throw error
+
+            // 發送 Telegram 通知（修改前後對照）
+            sendTelegramNotify(formatUpdateMessage('廠商今日施工項目', initialData, payload, VENDOR_WORK_LABELS))
 
             setIsSuccess(true)
             toast({ title: '修改成功', description: '廠商施工項目已更新' })
