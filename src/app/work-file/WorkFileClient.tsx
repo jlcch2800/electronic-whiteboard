@@ -175,7 +175,7 @@ export default function WorkFileClient() {
                                     <TableBody>
                                         {sortedData.length === 0 ? <TableRow><TableCell colSpan={11} className="p-0"><EmptyState icon={FolderOpen} title="尚無施工檔案" description="目前沒有施工檔案記錄，您可以點擊右上方新增。" /></TableCell></TableRow>
                                             : sortedData.map((row, index) => (
-                                                <TableRow key={row.id} className={`hover:bg-teal-50/50 transition-colors even:bg-muted/20 ${selected.has(row.id) ? 'bg-teal-100' : ''}`}>
+                                                <TableRow key={row.id} className={`hover:bg-teal-50/50 dark:hover:bg-teal-900/30 transition-colors even:bg-muted/20 ${selected.has(row.id) ? 'bg-teal-100 dark:bg-teal-900/40' : ''}`}>
                                                     <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
                                                     <TableCell className="font-mono">{row.date}</TableCell><TableCell className="font-bold">{row.vendor_name || '-'}</TableCell><TableCell>{row.work_item || '-'}</TableCell><TableCell>{row.uploader_name}</TableCell>
