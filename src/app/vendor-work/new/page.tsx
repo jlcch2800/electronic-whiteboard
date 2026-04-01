@@ -133,7 +133,7 @@ export default function VendorWorkNewPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
             {/* Header + 進度條 */}
             <FormHeader
                 title="廠商今日施工項目 - 新增"
@@ -155,11 +155,11 @@ export default function VendorWorkNewPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="flex gap-4">
-                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'arrival' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border hover:border-slate-300'}`}>
+                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'arrival' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'border-border hover:border-slate-300 dark:hover:border-slate-700'}`}>
                                         <input type="radio" value="arrival" {...register('entry_status')} className="sr-only" />
                                         <span className="font-bold">到院 (Arrival)</span>
                                     </label>
-                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border hover:border-slate-300'}`}>
+                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'border-border hover:border-slate-300 dark:hover:border-slate-700'}`}>
                                         <input type="radio" value="departure" {...register('entry_status')} className="sr-only" />
                                         <span className="font-bold">離院 (Departure)</span>
                                     </label>
@@ -215,9 +215,9 @@ export default function VendorWorkNewPage() {
                         {/* 施工位置 - 僅到院 */}
                         {entryStatus === 'arrival' && (
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                                <Card className="border-blue-200 bg-blue-50/50">
+                                <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20">
                                     <CardHeader>
-                                        <CardTitle className="text-base flex items-center gap-2 text-blue-700">
+                                        <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
                                             <MapPin className="w-4 h-4" />
                                             施工位置資訊
                                         </CardTitle>
