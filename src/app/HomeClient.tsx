@@ -14,6 +14,8 @@ import Navbar from '@/components/Navbar'
 
 // Cloudinary 背景圖 URL
 const HERO_BG_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1771733639/SCR-20260222-kxyc-_dzo3aj.png'
+// 手機版背景圖 URL
+const HERO_BG_MOBILE_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1775028875/SCR-20260401-nhqa-_ycra9y.png'
 
 interface HomeClientProps {
     initialCounts: {
@@ -241,16 +243,23 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
             <Navbar onRefresh={refreshCounts} />
 
             {/* ===== Hero Section ===== */}
-            <section className="relative overflow-hidden" style={{ height: '40vh' }}>
-                {/* 背景圖片 — 完整呈現 */}
-                <div className="absolute inset-0">
+            <section className="relative overflow-hidden bg-background">
+                {/* 背景圖片容器 — 根據裝置寬度切換專用圖片 */}
+                <div className="relative w-full h-[35vh] md:h-[40vh] lg:h-[45vh] overflow-hidden">
+                    {/* 手機版背景圖 */}
+                    <img
+                        src={HERO_BG_MOBILE_URL}
+                        alt="工務室電子白板背景-行動版"
+                        className="block md:hidden w-full h-full object-cover object-center"
+                    />
+                    {/* 桌面版背景圖 */}
                     <img
                         src={HERO_BG_URL}
-                        alt="工務室電子白板背景"
-                        className="w-full h-full object-cover object-top"
+                        alt="工務室電子白板背景-區域版"
+                        className="hidden md:block w-full h-full object-cover object-top"
                     />
                     {/* 底部漸層過渡 */}
-                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 h-16 md:h-24 bg-gradient-to-t from-background to-transparent" />
                 </div>
             </section>
 
