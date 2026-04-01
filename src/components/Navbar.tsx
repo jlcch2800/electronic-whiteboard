@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import {
     Users, HardHat, FileClock, ClipboardCheck, History, UserCog, Activity,
     LogOut, Home, Calendar, ChevronDown, FileText, RefreshCw, Menu, X, Lock,
-    Sun, Moon, User
+    Sun, Moon, User, Settings
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -324,13 +324,39 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     ) : (
-                        <Button
-                            onClick={() => router.push('/login')}
-                            size="sm"
-                            className="active:scale-95 transition-transform"
-                        >
-                            登入
-                        </Button>
+                        <div className="flex items-center gap-1">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="active:scale-95 transition-all text-muted-foreground hover:text-foreground mr-1">
+                                        <Settings className="w-4 h-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => setTheme('light')} className={theme === 'light' ? 'bg-accent font-semibold' : ''}>
+                                        <Sun className="w-4 h-4 mr-2" />
+                                        淺色模式
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setTheme('dark')} className={theme === 'dark' ? 'bg-accent font-semibold' : ''}>
+                                        <Moon className="w-4 h-4 mr-2" />
+                                        深色模式
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {onRefresh && (
+                                        <DropdownMenuItem onClick={onRefresh} disabled={loading}>
+                                            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                            重新整理
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Button
+                                onClick={() => router.push('/login')}
+                                size="sm"
+                                className="active:scale-95 transition-transform"
+                            >
+                                登入
+                            </Button>
+                        </div>
                     )}
                 </div>
             </header>
@@ -362,7 +388,7 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                         {allNavItems.map(renderMobileNavItem)}
 
                         <div className="pt-4 border-t border-border mt-4 space-y-1">
-                            {profile ? (
+                            {profile && (
                                 <>
                                     {/* 角色資訊 */}
                                     <div className="flex items-center gap-3 px-4 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -378,47 +404,48 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                                         <Lock className="w-5 h-5" />
                                         修改密碼
                                     </button>
-
-                                    {/* 淺色模式 */}
-                                    <button
-                                        onClick={() => { setTheme('light'); setMobileOpen(false) }}
-                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-colors ${theme === 'light' ? 'bg-primary/10 text-primary font-bold' : 'text-foreground/70 hover:bg-accent'}`}
-                                    >
-                                        <Sun className="w-5 h-5" />
-                                        淺色模式
-                                    </button>
-
-                                    {/* 深色模式 */}
-                                    <button
-                                        onClick={() => { setTheme('dark'); setMobileOpen(false) }}
-                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-colors ${theme === 'dark' ? 'bg-primary/10 text-primary font-bold' : 'text-foreground/70 hover:bg-accent'}`}
-                                    >
-                                        <Moon className="w-5 h-5" />
-                                        深色模式
-                                    </button>
-
-                                    {/* 重新整理 */}
-                                    {onRefresh && (
-                                        <button
-                                            onClick={() => { onRefresh(); setMobileOpen(false) }}
-                                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground/70 hover:bg-accent w-full text-left transition-colors"
-                                        >
-                                            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                                            重新整理
-                                        </button>
-                                    )}
-
-                                    <div className="border-t border-border my-2" />
-
-                                    {/* 登出 */}
-                                    <button
-                                        onClick={handleLogout}
-                                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/5 w-full text-left transition-colors"
-                                    >
-                                        <LogOut className="w-5 h-5" />
-                                        登出
-                                    </button>
                                 </>
+                            )}
+
+                            {/* 淺色模式 */}
+                            <button
+                                onClick={() => { setTheme('light'); setMobileOpen(false) }}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-colors ${theme === 'light' ? 'bg-primary/10 text-primary font-bold' : 'text-foreground/70 hover:bg-accent'}`}
+                            >
+                                <Sun className="w-5 h-5" />
+                                淺色模式
+                            </button>
+
+                            {/* 深色模式 */}
+                            <button
+                                onClick={() => { setTheme('dark'); setMobileOpen(false) }}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl w-full text-left transition-colors ${theme === 'dark' ? 'bg-primary/10 text-primary font-bold' : 'text-foreground/70 hover:bg-accent'}`}
+                            >
+                                <Moon className="w-5 h-5" />
+                                深色模式
+                            </button>
+
+                            {/* 重新整理 */}
+                            {onRefresh && (
+                                <button
+                                    onClick={() => { onRefresh(); setMobileOpen(false) }}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground/70 hover:bg-accent w-full text-left transition-colors"
+                                >
+                                    <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                                    重新整理
+                                </button>
+                            )}
+
+                            <div className="border-t border-border my-2" />
+
+                            {profile ? (
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/5 w-full text-left transition-colors"
+                                >
+                                    <LogOut className="w-5 h-5" />
+                                    登出
+                                </button>
                             ) : (
                                 <button
                                     onClick={() => { router.push('/login'); setMobileOpen(false) }}
