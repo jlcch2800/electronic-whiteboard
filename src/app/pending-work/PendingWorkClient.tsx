@@ -298,8 +298,8 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                             tableData.paginatedData.map((e: any, index: number) => {
                                                 const actualIndex = (tableData.page - 1) * tableData.perPage + index + 1
                                                 return (
-                                                    <TableRow key={e.id} className={`hover:bg-purple-50/50 transition-colors even:bg-muted/20 ${selected.has(e.id) ? 'bg-purple-50' : ''}`}>
-                                                        <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-purple-50/50">
+                                                    <TableRow key={e.id} className={`hover:bg-purple-50/50 dark:hover:bg-purple-900/40 transition-colors even:bg-muted/20 ${selected.has(e.id) ? 'bg-purple-50 dark:bg-purple-900/40' : ''}`}>
+                                                        <TableCell className={`sticky left-0 bg-card z-10 ${selected.has(e.id) ? 'bg-purple-50 dark:bg-purple-900/40' : 'group-hover:bg-purple-50/50 dark:group-hover:bg-purple-900/40'}`}>
                                                             <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>

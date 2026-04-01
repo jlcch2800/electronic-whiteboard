@@ -307,16 +307,7 @@ export default function WhiteboardClient({
                             </Button>
                         </div>
                         <div className={`flex-col xl:flex-row w-full xl:w-auto items-stretch xl:items-center gap-4 ${isVendorFiltersOpen ? 'flex' : 'hidden xl:flex'}`}>
-                            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 mr-auto">
-                                <Input type="date" value={vendorSearch.start} onChange={(e) => setVendorSearch(s => ({ ...s, start: e.target.value }))} className="w-full md:w-36 h-9" />
-                                <span className="text-muted-foreground hidden md:inline">-</span>
-                                <Input type="date" value={vendorSearch.end} onChange={(e) => setVendorSearch(s => ({ ...s, end: e.target.value }))} className="w-full md:w-36 h-9" />
-                                <Input placeholder="搜尋關鍵字..." value={vendorSearch.keyword} onChange={(e) => setVendorSearch(s => ({ ...s, keyword: e.target.value }))} className="w-full md:w-48 h-9" />
-                                <Button size="sm" onClick={searchVendor} variant="secondary" className="h-9 w-full md:w-auto">
-                                    <Search className="w-4 h-4 mr-1" /> 搜尋
-                                </Button>
-                            </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 ml-auto">
                                 <Button size="sm" variant="outline" className="h-9" onClick={() => {
                                     const id = Array.from(vendorSelected)[0]
                                     if (id) router.push(`/vendor-work/${id}/edit`)
@@ -470,16 +461,7 @@ export default function WhiteboardClient({
                             </Button>
                         </div>
                         <div className={`flex-col xl:flex-row w-full xl:w-auto items-stretch xl:items-center gap-4 ${isEngFiltersOpen ? 'flex' : 'hidden xl:flex'}`}>
-                            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 mr-auto">
-                                <Input type="date" value={engSearch.start} onChange={(e) => setEngSearch(s => ({ ...s, start: e.target.value }))} className="w-full md:w-36 h-9" />
-                                <span className="text-muted-foreground hidden md:inline">-</span>
-                                <Input type="date" value={engSearch.end} onChange={(e) => setEngSearch(s => ({ ...s, end: e.target.value }))} className="w-full md:w-36 h-9" />
-                                <Input placeholder="搜尋關鍵字..." value={engSearch.keyword} onChange={(e) => setEngSearch(s => ({ ...s, keyword: e.target.value }))} className="w-full md:w-48 h-9" />
-                                <Button size="sm" onClick={searchEngineering} variant="secondary" className="h-9 w-full md:w-auto">
-                                    <Search className="w-4 h-4 mr-1" /> 搜尋
-                                </Button>
-                            </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 ml-auto">
                                 <Button size="sm" variant="outline" className="h-9" onClick={() => {
                                     const id = Array.from(engSelected)[0]
                                     if (id) router.push(`/engineering-work/${id}/edit`)

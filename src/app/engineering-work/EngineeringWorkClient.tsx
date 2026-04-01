@@ -7,14 +7,13 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
-    HardHat, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw, MoreHorizontal, Filter
+    HardHat, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatDeleteMessage, ENGINEERING_WORK_LABELS } from '@/lib/telegram-notify'
 import { useAppStore } from '@/stores/useAppStore'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -24,10 +23,6 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
-} from "@/components/ui/dropdown-menu"
 import { useToast } from '@/hooks/use-toast'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { EmptyState } from '@/components/EmptyState'
@@ -51,13 +46,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
     const [loading, setLoading] = useState(false)
     const [selected, setSelected] = useState<Set<string>>(new Set())
 
-    // Search state
-    const [search, setSearch] = useState({
-        start: format(new Date(), 'yyyy-MM-dd'),
-        end: format(new Date(), 'yyyy-MM-dd'),
-        keyword: ''
-    })
-    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+
 
     // Delete dialog
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, ids: string[] }>({
@@ -66,31 +55,14 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
 
     const refreshData = async () => {
         setLoading(true)
+        const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
         const { data: result } = await supabase
             .from('engineering_today_work')
             .select('*')
-            .lte('start_date', search.end)
-            .gte('end_date', search.start)
+            .lte('start_date', today)
+            .gte('end_date', today)
             .order('start_date', { ascending: false })
 
-        setData(result || [])
-        setSelected(new Set())
-        setLoading(false)
-    }
-
-    const handleSearch = async () => {
-        setLoading(true)
-        let query = supabase
-            .from('engineering_today_work')
-            .select('*')
-            .lte('start_date', search.end)
-            .gte('end_date', search.start)
-
-        if (search.keyword) {
-            query = query.or(`vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,note.ilike.%${search.keyword}%,unit.ilike.%${search.keyword}%,engineering_contact.ilike.%${search.keyword}%`)
-        }
-
-        const { data: result } = await query.order('start_date', { ascending: false })
         setData(result || [])
         setSelected(new Set())
         setLoading(false)
@@ -197,40 +169,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-between items-center gap-4">
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-                            <div className="flex w-full md:hidden justify-between items-center mb-2">
-                                <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
-                                    <Filter className="w-4 h-4 mr-2" />
-                                    {isFiltersOpen ? '隱藏篩選' : '顯示篩選'}
-                                </Button>
-                            </div>
-
-                            <div className={`flex-col md:flex-row items-stretch md:items-center gap-2 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <Input
-                                    type="date"
-                                    value={search.start}
-                                    onChange={(e) => setSearch(s => ({ ...s, start: e.target.value }))}
-                                    className="w-full md:w-36"
-                                />
-                                <span className="text-muted-foreground hidden md:inline">~</span>
-                                <Input
-                                    type="date"
-                                    value={search.end}
-                                    onChange={(e) => setSearch(s => ({ ...s, end: e.target.value }))}
-                                    className="w-full md:w-36"
-                                />
-                                <Input
-                                    placeholder="搜尋關鍵字..."
-                                    value={search.keyword}
-                                    onChange={(e) => setSearch(s => ({ ...s, keyword: e.target.value }))}
-                                    className="w-full md:w-40"
-                                />
-                                <Button size="sm" onClick={handleSearch} disabled={loading} className="w-full md:w-auto">
-                                    <Search className="w-4 h-4 mr-1" /> 搜尋
-                                </Button>
-                            </div>
-                        </div>
+                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-end items-center gap-4">
 
                         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                             <Button size="sm" onClick={() => router.push('/engineering-work/new')} className="bg-amber-600 hover:bg-amber-700">
@@ -297,16 +236,16 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                             tableData.paginatedData.map((e: any, index: number) => {
                                                 const actualIndex = (tableData.page - 1) * tableData.perPage + index + 1
                                                 return (
-                                                    <TableRow key={e.id} className={`hover:bg-amber-50/50 transition-colors even:bg-muted/20 ${selected.has(e.id) ? 'bg-amber-50' : ''}`}>
-                                                        <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-amber-50/50">
+                                                    <TableRow key={e.id} className={`hover:bg-amber-50/50 dark:hover:bg-amber-900/40 transition-colors even:bg-muted/20 ${selected.has(e.id) ? 'bg-amber-50 dark:bg-amber-900/40' : ''}`}>
+                                                        <TableCell className={`sticky left-0 bg-card z-10 ${selected.has(e.id) ? 'bg-amber-50 dark:bg-amber-900/40' : 'group-hover:bg-amber-50/50 dark:group-hover:bg-amber-900/40'}`}>
                                                             <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
                                                         <TableCell className="font-mono">{e.start_date}</TableCell>
                                                         <TableCell className="font-mono">{e.end_date}</TableCell>
                                                         <TableCell className="font-mono">{e.time?.slice(0, 5) || '-'}</TableCell>
-                                                        <TableCell className="font-bold text-amber-600">{e.vendor_name}</TableCell>
-                                                        <TableCell><Badge variant="outline" className="bg-amber-50 text-amber-700 hover:bg-amber-100">{e.unit}</Badge></TableCell>
+                                                        <TableCell className="font-bold text-amber-600 dark:text-amber-500">{e.vendor_name}</TableCell>
+                                                        <TableCell><Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-200 dark:border-amber-800">{e.unit}</Badge></TableCell>
                                                         <TableCell>{e.engineering_contact}</TableCell>
                                                         <TableCell className="max-w-[200px] truncate" title={e.work_content}>{e.work_content}</TableCell>
                                                         <TableCell className="text-muted-foreground text-xs">{e.note || '-'}</TableCell>

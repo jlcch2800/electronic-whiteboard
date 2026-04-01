@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
-    Users, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw, Filter
+    Users, Plus, Edit, Trash2, Download, ArrowLeft, RefreshCw
 } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
 
@@ -15,7 +15,6 @@ import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatDeleteMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
 import { useAppStore } from '@/stores/useAppStore'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -51,13 +50,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
     const [totalItems, setTotalItems] = useState(0)
     const [totalPages, setTotalPages] = useState(0)
 
-    // Search state
-    const [search, setSearch] = useState({
-        start: format(new Date(), 'yyyy-MM-dd'),
-        end: format(new Date(), 'yyyy-MM-dd'),
-        keyword: ''
-    })
-    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+
 
     // 排序狀態
     const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
@@ -91,13 +84,13 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
 
     const refreshData = async () => {
         setLoading(true)
+        const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
 
         // 取得總筆數
         const { count } = await supabase
             .from('vendor_today_work')
             .select('*', { count: 'exact', head: true })
-            .gte('work_date', search.start)
-            .lte('work_date', search.end)
+            .eq('work_date', today)
 
         const total = count || 0
         setTotalItems(total)
@@ -107,51 +100,9 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
         const { data: result } = await supabase
             .from('vendor_today_work')
             .select('*')
-            .gte('work_date', search.start)
-            .lte('work_date', search.end)
+            .eq('work_date', today)
             .order('work_date', { ascending: false })
             .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1)
-
-        setData(result || [])
-        setSelected(new Set())
-        setLoading(false)
-    }
-
-    const handleSearch = async () => {
-        // 重設為第一頁
-        setCurrentPage(1)
-
-        setLoading(true)
-
-        // 建立查詢條件
-        let countQuery = supabase
-            .from('vendor_today_work')
-            .select('*', { count: 'exact', head: true })
-            .gte('work_date', search.start)
-            .lte('work_date', search.end)
-
-        let dataQuery = supabase
-            .from('vendor_today_work')
-            .select('*')
-            .gte('work_date', search.start)
-            .lte('work_date', search.end)
-
-        if (search.keyword) {
-            const keywordFilter = `vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,location.ilike.%${search.keyword}%,vendor_contact.ilike.%${search.keyword}%,entry_status.ilike.%${search.keyword}%,building.ilike.%${search.keyword}%,floor.ilike.%${search.keyword}%,vendor_badge_id.ilike.%${search.keyword}%,vendor_phone.ilike.%${search.keyword}%,note.ilike.%${search.keyword}%`
-            countQuery = countQuery.or(keywordFilter)
-            dataQuery = dataQuery.or(keywordFilter)
-        }
-
-        // 取得總筆數
-        const { count } = await countQuery
-        const total = count || 0
-        setTotalItems(total)
-        setTotalPages(Math.ceil(total / itemsPerPage))
-
-        // 取得第一頁資料
-        const { data: result } = await dataQuery
-            .order('work_date', { ascending: false })
-            .range(0, itemsPerPage - 1)
 
         setData(result || [])
         setSelected(new Set())
@@ -263,40 +214,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-between items-center gap-4">
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-                            <div className="flex w-full md:hidden justify-between items-center mb-2">
-                                <Button size="sm" variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)} className="w-full">
-                                    <Filter className="w-4 h-4 mr-2" />
-                                    {isFiltersOpen ? '隱藏篩選' : '顯示篩選'}
-                                </Button>
-                            </div>
-
-                            <div className={`flex-col md:flex-row items-stretch md:items-center gap-2 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <Input
-                                    type="date"
-                                    value={search.start}
-                                    onChange={(e) => setSearch(s => ({ ...s, start: e.target.value }))}
-                                    className="w-full md:w-36"
-                                />
-                                <span className="text-muted-foreground hidden md:inline">~</span>
-                                <Input
-                                    type="date"
-                                    value={search.end}
-                                    onChange={(e) => setSearch(s => ({ ...s, end: e.target.value }))}
-                                    className="w-full md:w-36"
-                                />
-                                <Input
-                                    placeholder="搜尋關鍵字..."
-                                    value={search.keyword}
-                                    onChange={(e) => setSearch(s => ({ ...s, keyword: e.target.value }))}
-                                    className="w-full md:w-40"
-                                />
-                                <Button size="sm" onClick={handleSearch} disabled={loading} className="w-full md:w-auto">
-                                    <Search className="w-4 h-4 mr-1" /> 搜尋
-                                </Button>
-                            </div>
-                        </div>
+                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-end items-center gap-4">
 
                         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                             <Button size="sm" onClick={() => router.push('/vendor-work/new')} className="bg-green-600 hover:bg-green-700">
@@ -366,20 +284,20 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                             sortedData.map((v: any, index: number) => {
                                                 const actualIndex = (currentPage - 1) * itemsPerPage + index + 1
                                                 return (
-                                                    <TableRow key={v.id} className={`table-row-hover hover:bg-primary/5 transition-all duration-200 even:bg-muted/20 ${selected.has(v.id) ? 'bg-primary/5' : ''}`}>
-                                                        <TableCell className="sticky left-0 bg-card z-10">
+                                                    <TableRow key={v.id} className={`table-row-hover hover:bg-primary/5 dark:hover:bg-primary/20 transition-all duration-200 even:bg-muted/20 ${selected.has(v.id) ? 'bg-primary/5 dark:bg-primary/20' : ''}`}>
+                                                        <TableCell className={`sticky left-0 bg-card z-10 ${selected.has(v.id) ? 'bg-primary/5 dark:bg-primary/20' : 'group-hover:bg-primary/5 dark:group-hover:bg-primary/20'}`}>
                                                             <Checkbox checked={selected.has(v.id)} onCheckedChange={() => toggleSelect(v.id)} />
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
                                                         <TableCell>
-                                                            <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-muted text-foreground/80 hover:bg-slate-200'}>
+                                                            <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 border-blue-200 dark:border-blue-800' : 'bg-muted text-foreground/80 hover:bg-slate-200 dark:hover:bg-slate-700'}>
                                                                 {v.entry_status === 'arrival' ? '到院' : '離院'}
                                                             </Badge>
                                                         </TableCell>
                                                         <TableCell className="font-mono">{v.work_date}</TableCell>
                                                         <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
                                                         <TableCell className="font-mono">{v.departure_time?.slice(0, 5) || '-'}</TableCell>
-                                                        <TableCell className="font-bold text-blue-600">{v.vendor_name}</TableCell>
+                                                        <TableCell className="font-bold text-blue-600 dark:text-blue-400">{v.vendor_name}</TableCell>
                                                         <TableCell>{v.vendor_badge_id || '-'}</TableCell>
                                                         <TableCell>{v.vendor_contact}</TableCell>
                                                         <TableCell className="font-mono">{v.vendor_contact_phone || '-'}</TableCell>

@@ -139,10 +139,24 @@ export default function LoginClient() {
         setError(null)
         setIsLockedOut(false)
         try {
-            const recaptchaToken = await executeRecaptcha('login')
+            const recaptchaToken = await executeRecaptcha('login').catch(err => {
+                console.error('[Login] reCAPTCHA 執行失敗:', err)
+                return null
+            })
+
             if (recaptchaToken) {
                 const captchaResult = await verifyRecaptchaToken(recaptchaToken, 'login')
-                if (!captchaResult.success) { setError('人機驗證失敗，請重試'); return }
+                if (!captchaResult.success) {
+                    setError('人機驗證失敗，請重新嘗試。若問題持續，請檢查網路或聯繫管理員。')
+                    return
+                }
+            } else {
+                // 如果無法取得 token，可能 Site Key 有問題或是網域未授權
+                console.warn('[Login] 未能取得 reCAPTCHA Token，請確認 Site Key 網域授權')
+                // 為了不阻擋開發環境或其他異常情況，這裡可以選擇是否強制阻擋
+                // 但依照使用者回報，目前是強制阻擋且顯示錯誤
+                setError('無法初始化人機驗證，請確認您的網域已授權並排除 Site Key 錯誤。')
+                return
             }
             const lockStatus = await checkUserLockStatus(data.email)
             if (lockStatus.isLocked) { setError('帳號或密碼錯誤次數過多，目前無法輸入'); setIsLockedOut(true); return }

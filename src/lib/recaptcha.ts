@@ -12,11 +12,18 @@ declare global {
     }
 }
 
-/** 檢查 site key 是否為有效值（排除 placeholder） */
+/** 檢查 site key 是否為有效值（排除已知的預設佔位符） */
 function isValidSiteKey(key: string | undefined): key is string {
-    if (!key) return false
-    const placeholders = ['your-site-key', 'your_site_key', 'your-recaptcha-site-key', 'placeholder']
-    return !placeholders.includes(key.toLowerCase())
+    if (!key || typeof key !== 'string') return false
+    const placeholders = [
+        'your-site-key',
+        'your_site_key',
+        'your-recaptcha-site-key',
+        'placeholder',
+        '6leixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    ]
+    const trimmedKey = key.trim().toLowerCase()
+    return trimmedKey.length > 10 && !placeholders.includes(trimmedKey)
 }
 
 /** reCAPTCHA script 是否已載入 */
@@ -30,7 +37,7 @@ export function loadRecaptchaScript(): Promise<void> {
 
     const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
     if (!isValidSiteKey(siteKey)) {
-        console.warn('[reCAPTCHA] NEXT_PUBLIC_RECAPTCHA_SITE_KEY 未設定或為 placeholder，跳過載入')
+        console.warn('[reCAPTCHA] NEXT_PUBLIC_RECAPTCHA_SITE_KEY 未設定或為佔位符，目前網域可能不支援')
         return Promise.resolve()
     }
 
@@ -50,7 +57,10 @@ export function loadRecaptchaScript(): Promise<void> {
             scriptLoaded = true
             resolve()
         }
-        script.onerror = () => reject(new Error('reCAPTCHA script 載入失敗'))
+        script.onerror = () => {
+            console.error('[reCAPTCHA] Script 載入失敗，請檢查網路連接或 Site Key 設定')
+            reject(new Error('reCAPTCHA script 載入失敗'))
+        }
         document.head.appendChild(script)
     })
 }
@@ -63,22 +73,35 @@ export function loadRecaptchaScript(): Promise<void> {
 export async function executeRecaptcha(action: string): Promise<string | null> {
     const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
     if (!isValidSiteKey(siteKey)) {
-        console.warn('[reCAPTCHA] NEXT_PUBLIC_RECAPTCHA_SITE_KEY 未設定或為 placeholder，跳過驗證')
+        console.warn('[reCAPTCHA] 未偵測到有效的 NEXT_PUBLIC_RECAPTCHA_SITE_KEY，請確認 Vercel 環境變數')
         return null
     }
 
-    await loadRecaptchaScript()
+    try {
+        await loadRecaptchaScript()
 
-    return new Promise((resolve, reject) => {
-        window.grecaptcha.ready(async () => {
-            try {
-                const token = await window.grecaptcha.execute(siteKey, { action })
-                resolve(token)
-            } catch (err) {
-                reject(err)
+        return await new Promise((resolve, reject) => {
+            if (!window.grecaptcha || !window.grecaptcha.ready) {
+                return reject(new Error('reCAPTCHA 未能正確初始化'))
             }
+
+            window.grecaptcha.ready(async () => {
+                try {
+                    const token = await window.grecaptcha.execute(siteKey, { action })
+                    if (!token) {
+                        return reject(new Error('未能取得驗證 Token，可能是網域限制或金鑰錯誤'))
+                    }
+                    resolve(token)
+                } catch (err: any) {
+                    console.error('[reCAPTCHA] 執行失敗:', err)
+                    reject(new Error(err.message || '驗證執行中斷'))
+                }
+            })
         })
-    })
+    } catch (err: any) {
+        console.error('[reCAPTCHA] 流程錯誤:', err.message)
+        throw err
+    }
 }
 
 /**

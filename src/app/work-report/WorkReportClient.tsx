@@ -192,11 +192,13 @@ export default function WorkReportClient() {
                                     <TableBody>
                                         {sortedData.length === 0 ? <TableRow><TableCell colSpan={10} className="p-0"><EmptyState icon={FileText} title="尚無施工回報" description="目前沒有施工回報記錄，您可以點擊右上方新增。" /></TableCell></TableRow>
                                             : sortedData.map((row, index) => (
-                                                <TableRow key={row.id} className={`hover:bg-indigo-50/50 transition-colors even:bg-muted/20 ${selected.has(row.id) ? 'bg-indigo-100' : ''}`}>
-                                                    <TableCell><Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} /></TableCell>
+                                                <TableRow key={row.id} className={`hover:bg-indigo-50/50 dark:hover:bg-indigo-900/40 transition-colors even:bg-muted/20 ${selected.has(row.id) ? 'bg-indigo-100 dark:bg-indigo-900/40' : ''}`}>
+                                                    <TableCell className={`sticky left-0 bg-card z-10 ${selected.has(row.id) ? 'bg-indigo-100 dark:bg-indigo-900/40' : 'group-hover:bg-indigo-50/50 dark:group-hover:bg-indigo-900/40'}`}>
+                                                        <Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} />
+                                                    </TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
                                                     <TableCell className="font-mono">{row.report_date}</TableCell><TableCell className="font-mono">{row.report_time?.slice(0, 5) || '-'}</TableCell>
-                                                    <TableCell className="font-bold">{row.vendor_name}</TableCell><TableCell>{row.work_location}</TableCell><TableCell>{row.engineering_contact}</TableCell>
+                                                    <TableCell className="font-bold text-indigo-600 dark:text-indigo-400">{row.vendor_name}</TableCell><TableCell>{row.work_location}</TableCell><TableCell>{row.engineering_contact}</TableCell>
                                                     <TableCell><Badge variant={statusLabels[row.work_status]?.variant || 'secondary'}>{statusLabels[row.work_status]?.text || row.work_status}</Badge></TableCell>
                                                     <TableCell className="max-w-xs truncate" title={row.work_content}>{row.work_content}</TableCell><TableCell className="text-muted-foreground text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
                                                 </TableRow>

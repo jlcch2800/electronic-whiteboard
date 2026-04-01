@@ -719,3 +719,17 @@ html {
 .auth-submit-btn-green:active {
   transform: translateY(0);
 }
+/* ============================================
+   reCAPTCHA 徽章樣式優化
+   ============================================ */
+.grecaptcha-badge {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 8px 0 0 8px !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease !important;
+}
+
+@media (max-width: 640px) {
+  .grecaptcha-badge {
+    bottom: 14px !important;
+  }
+}
