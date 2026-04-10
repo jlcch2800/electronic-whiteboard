@@ -364,7 +364,7 @@ export default function WhiteboardClient({
                                         {vendorTable.paginatedData.map((v: any, index: number) => {
                                             const actualIndex = (vendorTable.page - 1) * vendorTable.perPage + index + 1
                                             return (
-                                                <TableRow key={v.id} className={`table-row-hover hover:bg-primary/5 transition-all duration-200 even:bg-muted/20 ${vendorSelected.has(v.id) ? 'bg-blue-50' : ''}`}>
+                                                <TableRow key={v.id} className={`hover:bg-primary/5 transition-all duration-200 even:bg-muted/20 ${vendorSelected.has(v.id) ? 'bg-blue-50' : ''}`}>
                                                     <TableCell className="sticky left-0 bg-card z-10">
                                                         <Checkbox checked={vendorSelected.has(v.id)} onCheckedChange={() => toggleSelect(v.id, vendorSelected, setVendorSelected)} />
                                                     </TableCell>

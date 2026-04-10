@@ -179,7 +179,7 @@ export default function WorkReportClient() {
                             <div className="overflow-x-auto">
                                 <Table className="hidden md:table">
                                     <TableHeader><TableRow>
-                                        <TableHead className="w-12"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
+                                        <TableHead className="w-12 sticky left-0 bg-card z-20"><Checkbox checked={selected.size === data.length && data.length > 0} onCheckedChange={toggleSelectAll} /></TableHead>
                                         <TableHead className="w-12">#</TableHead>
                                         <SortableTableHead label="日期" sortKey="report_date" currentSort={sort} onSort={handleSort} />
                                         <SortableTableHead label="時間" sortKey="report_time" currentSort={sort} onSort={handleSort} />
@@ -193,7 +193,7 @@ export default function WorkReportClient() {
                                         {sortedData.length === 0 ? <TableRow><TableCell colSpan={10} className="p-0"><EmptyState icon={FileText} title="尚無施工回報" description="目前沒有施工回報記錄，您可以點擊右上方新增。" /></TableCell></TableRow>
                                             : sortedData.map((row, index) => (
                                                 <TableRow key={row.id} className={`hover:bg-indigo-50/50 dark:hover:bg-indigo-900/40 transition-colors even:bg-muted/20 ${selected.has(row.id) ? 'bg-indigo-100 dark:bg-indigo-900/40' : ''}`}>
-                                                    <TableCell className={`sticky left-0 bg-card z-10 ${selected.has(row.id) ? 'bg-indigo-100 dark:bg-indigo-900/40' : 'group-hover:bg-indigo-50/50 dark:group-hover:bg-indigo-900/40'}`}>
+                                                    <TableCell className={`sticky left-0 z-10 ${selected.has(row.id) ? 'bg-indigo-100 dark:bg-indigo-900/40' : 'bg-card group-hover:bg-indigo-50/50 dark:group-hover:bg-indigo-900/40'}`}>
                                                         <Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggleSelect(row.id)} />
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">{(page - 1) * pageSize + index + 1}</TableCell>

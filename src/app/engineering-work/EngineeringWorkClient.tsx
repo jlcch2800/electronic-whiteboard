@@ -204,7 +204,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                 <Table className="hidden md:table">
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-12">
+                                            <TableHead className="w-12 sticky left-0 bg-card z-20">
                                                 <Checkbox
                                                     checked={selected.size === tableData.paginatedData.length && tableData.paginatedData.length > 0}
                                                     onCheckedChange={toggleSelectAll}
@@ -237,7 +237,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                                 const actualIndex = (tableData.page - 1) * tableData.perPage + index + 1
                                                 return (
                                                     <TableRow key={e.id} className={`hover:bg-amber-50/50 dark:hover:bg-amber-900/40 transition-colors even:bg-muted/20 ${selected.has(e.id) ? 'bg-amber-50 dark:bg-amber-900/40' : ''}`}>
-                                                        <TableCell className={`sticky left-0 bg-card z-10 ${selected.has(e.id) ? 'bg-amber-50 dark:bg-amber-900/40' : 'group-hover:bg-amber-50/50 dark:group-hover:bg-amber-900/40'}`}>
+                                                        <TableCell className={`sticky left-0 z-10 ${selected.has(e.id) ? 'bg-amber-50 dark:bg-amber-900/40' : 'bg-card group-hover:bg-amber-50/50 dark:group-hover:bg-amber-900/40'}`}>
                                                             <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>

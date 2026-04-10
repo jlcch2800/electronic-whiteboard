@@ -250,7 +250,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                 <Table className="hidden md:table">
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-12">
+                                            <TableHead className="w-12 sticky left-0 bg-card z-20">
                                                 <Checkbox
                                                     checked={selected.size === data.length && data.length > 0}
                                                     onCheckedChange={toggleSelectAll}
@@ -284,8 +284,8 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                             sortedData.map((v: any, index: number) => {
                                                 const actualIndex = (currentPage - 1) * itemsPerPage + index + 1
                                                 return (
-                                                    <TableRow key={v.id} className={`table-row-hover hover:bg-primary/5 dark:hover:bg-primary/20 transition-all duration-200 even:bg-muted/20 ${selected.has(v.id) ? 'bg-primary/5 dark:bg-primary/20' : ''}`}>
-                                                        <TableCell className={`sticky left-0 bg-card z-10 ${selected.has(v.id) ? 'bg-primary/5 dark:bg-primary/20' : 'group-hover:bg-primary/5 dark:group-hover:bg-primary/20'}`}>
+                                                    <TableRow key={v.id} className={`hover:bg-primary/5 dark:hover:bg-primary/20 transition-all duration-200 even:bg-muted/20 ${selected.has(v.id) ? 'bg-primary/5 dark:bg-primary/20' : ''}`}>
+                                                        <TableCell className={`sticky left-0 z-10 ${selected.has(v.id) ? 'bg-primary/5 dark:bg-primary/20' : 'bg-card group-hover:bg-primary/5 dark:group-hover:bg-primary/20'}`}>
                                                             <Checkbox checked={selected.has(v.id)} onCheckedChange={() => toggleSelect(v.id)} />
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
@@ -331,7 +331,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                                     className: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
                                                 }}
                                                 date={v.work_date}
-                                                time={v.time?.slice(0, 5) || '-'}
+                                                time={v.entry_status === 'arrival' ? (v.arrival_time?.slice(0, 5) || '-') : (v.departure_time?.slice(0, 5) || '-')}
                                                 isSelected={selected.has(v.id)}
                                                 onSelect={() => toggleSelect(v.id)}
                                                 onClick={() => router.push(`/vendor-work/${v.id}/edit`)}

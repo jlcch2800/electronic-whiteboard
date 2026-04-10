@@ -265,7 +265,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                 <Table className="hidden md:table">
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-12">
+                                            <TableHead className="w-12 sticky left-0 bg-card z-20">
                                                 <Checkbox
                                                     checked={selected.size === data.length && data.length > 0}
                                                     onCheckedChange={toggleSelectAll}
@@ -299,7 +299,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                                 const actualIndex = (tableData.page - 1) * tableData.perPage + index + 1
                                                 return (
                                                     <TableRow key={e.id} className={`hover:bg-purple-50/50 dark:hover:bg-purple-900/40 transition-colors even:bg-muted/20 ${selected.has(e.id) ? 'bg-purple-50 dark:bg-purple-900/40' : ''}`}>
-                                                        <TableCell className={`sticky left-0 bg-card z-10 ${selected.has(e.id) ? 'bg-purple-50 dark:bg-purple-900/40' : 'group-hover:bg-purple-50/50 dark:group-hover:bg-purple-900/40'}`}>
+                                                        <TableCell className={`sticky left-0 z-10 ${selected.has(e.id) ? 'bg-purple-50 dark:bg-purple-900/40' : 'bg-card group-hover:bg-purple-50/50 dark:group-hover:bg-purple-900/40'}`}>
                                                             <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
                                                         </TableCell>
                                                         <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
