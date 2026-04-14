@@ -9,7 +9,7 @@ import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
     Users, HardHat, FileClock,
-    Plus, Search, Edit, Trash2, Download, MoreHorizontal, Copy, Filter
+    Plus, Edit, Trash2, Download, MoreHorizontal, Copy, Filter
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -59,11 +59,6 @@ export default function WhiteboardClient({
     const [engineering, setEngineering] = useState(initialEngineering)
     const [pendingWork, setPendingWork] = useState(initialPending)
     const [loading, setLoading] = useState(false)
-
-    // 表格狀態 Hook
-    const vendorTable = useTableData(vendors, 'work_date')
-    const engTable = useTableData(engineering, 'start_date')
-    const pendingTable = useTableData(pendingWork, 'start_date')
 
     // 選取狀態
     const [vendorSelected, setVendorSelected] = useState<Set<string>>(new Set())
