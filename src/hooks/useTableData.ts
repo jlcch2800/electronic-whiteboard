@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 type ExtractStringKey<T> = Extract<keyof T, string>
 type SortConfig<T> = { key: ExtractStringKey<T>; direction: 'asc' | 'desc' } | null
@@ -33,9 +33,11 @@ export function useTableData<T>(data: T[], initialSortKey?: ExtractStringKey<T>)
     }, [sortedData, page, perPage])
 
     // 確保頁籤不會超出範圍
-    if (page > 1 && totalPages > 0 && page > totalPages) {
-        setPage(totalPages)
-    }
+    useEffect(() => {
+        if (page > 1 && totalPages > 0 && page > totalPages) {
+            setPage(totalPages)
+        }
+    }, [page, totalPages])
 
     return {
         page,

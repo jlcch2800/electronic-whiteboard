@@ -1,7 +1,7 @@
 // Whiteboard Client Component — Dashboard（三表合一）
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, subDays, addDays } from 'date-fns'
 import * as XLSX from 'xlsx'
@@ -85,43 +85,6 @@ export default function WhiteboardClient({
     // 是否已登入
     const isLoggedIn = !!profile
 
-    const refreshAll = async () => {
-        setLoading(true)
-        const today = format(new Date(), 'yyyy-MM-dd')
-
-        // 重置搜尋日期為今天
-        setVendorSearch(s => ({ ...s, start: today, end: today }))
-        setEngSearch(s => ({ ...s, start: today, end: today }))
-        setPendingSearch(s => ({ ...s, start: today, end: format(addDays(new Date(), 180), 'yyyy-MM-dd') }))
-
-        const [v, e, p] = await Promise.all([
-            supabase.from('vendor_today_work').select('*').eq('work_date', today),
-            supabase.from('engineering_today_work').select('*').lte('start_date', today).gte('end_date', today),
-            supabase.from('pending_work').select('*').lte('start_date', today).gte('end_date', today),
-        ])
-
-        setVendors(v.data || [])
-        setEngineering(e.data || [])
-        setPendingWork(p.data || [])
-        setVendorSelected(new Set())
-        setEngSelected(new Set())
-        setPendingSelected(new Set())
-        setLoading(false)
-    }
-
-    // 自動抓取資料 (當日期範圍變更時)
-    useEffect(() => {
-        searchVendor()
-    }, [vendorSearch.start, vendorSearch.end])
-
-    useEffect(() => {
-        searchEngineering()
-    }, [engSearch.start, engSearch.end])
-
-    useEffect(() => {
-        searchPending()
-    }, [pendingSearch.start, pendingSearch.end])
-
     // 即時過濾邏輯
     const filteredVendors = useMemo(() => {
         const kw = vendorSearch.keyword.toLowerCase().trim()
@@ -166,6 +129,45 @@ export default function WhiteboardClient({
     const vendorTable = useTableData(filteredVendors, 'work_date')
     const engTable = useTableData(filteredEngineering, 'start_date')
     const pendingTable = useTableData(filteredPending, 'start_date')
+
+
+    const refreshAll = async () => {
+        setLoading(true)
+        const today = format(new Date(), 'yyyy-MM-dd')
+
+        // 重置搜尋日期為今天
+        setVendorSearch(s => ({ ...s, start: today, end: today }))
+        setEngSearch(s => ({ ...s, start: today, end: today }))
+        setPendingSearch(s => ({ ...s, start: today, end: format(addDays(new Date(), 180), 'yyyy-MM-dd') }))
+
+        const [v, e, p] = await Promise.all([
+            supabase.from('vendor_today_work').select('*').eq('work_date', today),
+            supabase.from('engineering_today_work').select('*').lte('start_date', today).gte('end_date', today),
+            supabase.from('pending_work').select('*').lte('start_date', today).gte('end_date', today),
+        ])
+
+        setVendors(v.data || [])
+        setEngineering(e.data || [])
+        setPendingWork(p.data || [])
+        setVendorSelected(new Set())
+        setEngSelected(new Set())
+        setPendingSelected(new Set())
+        setLoading(false)
+    }
+
+    // 自動抓取資料 (當日期範圍變更時)
+    useEffect(() => {
+        searchVendor()
+    }, [vendorSearch.start, vendorSearch.end])
+
+    useEffect(() => {
+        searchEngineering()
+    }, [engSearch.start, engSearch.end])
+
+    useEffect(() => {
+        searchPending()
+    }, [pendingSearch.start, pendingSearch.end])
+
 
     const searchVendor = async () => {
         const { data } = await supabase
