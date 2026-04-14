@@ -138,13 +138,35 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         // 排除 System (依據需求：系統執行記錄只存放 cron job，異動記錄存放使用者操作)
         if (log.user_name === 'System' || log.user_account === 'System') return false;
 
+        const searchTermLower = searchTerm.toLowerCase()
+
+        // 取得動作類型的中文顯示名稱以便搜尋
+        let displayActionType = log.action_type
+        if (log.action_type === 'Insert') displayActionType = '新增'
+        else if (log.action_type === 'Update') displayActionType = '修改'
+        else if (log.action_type === 'Delete') displayActionType = '刪除'
+        else if (log.action_type === 'Logout') displayActionType = '登出'
+        else if (log.action_type === 'Login') {
+            try {
+                const newData = typeof log.new_data === 'string' ? JSON.parse(log.new_data) : log.new_data
+                if (newData?.status === 'Login Failed' || newData?.status?.includes('Account Locked')) {
+                    displayActionType = '密碼錯誤'
+                } else {
+                    displayActionType = '登入'
+                }
+            } catch (e) {
+                displayActionType = '登入'
+            }
+        }
+
         return (
-            log.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.user_account?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.user_unit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            getTranslatedTableName(log.modify_table)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.modify_table?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.action_type?.toLowerCase().includes(searchTerm.toLowerCase())
+            log.user_name?.toLowerCase().includes(searchTermLower) ||
+            log.user_account?.toLowerCase().includes(searchTermLower) ||
+            log.user_unit?.toLowerCase().includes(searchTermLower) ||
+            getTranslatedTableName(log.modify_table)?.toLowerCase().includes(searchTermLower) ||
+            log.modify_table?.toLowerCase().includes(searchTermLower) ||
+            log.action_type?.toLowerCase().includes(searchTermLower) ||
+            displayActionType?.toLowerCase().includes(searchTermLower)
         )
     })
 
