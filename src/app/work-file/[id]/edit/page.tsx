@@ -6,7 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion } from 'framer-motion'
-import { Loader2, UploadCloud, ExternalLink } from 'lucide-react'
+import { Loader2, UploadCloud, ExternalLink, CheckCircle2 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { workFileSchema, type WorkFileFormValues } from '@/lib/validations/schemas'
@@ -49,7 +49,7 @@ export default function WorkFileEditPage() {
     const [existingImageUrl, setExistingImageUrl] = useState('')
     const [existingVideoUrl, setExistingVideoUrl] = useState('')
 
-    const { register, handleSubmit, trigger, reset, formState: { errors, isSubmitting } } = useForm<WorkFileFormValues>({
+    const { register, handleSubmit, trigger, reset, setValue, formState: { errors, isSubmitting } } = useForm<WorkFileFormValues>({
         resolver: zodResolver(workFileSchema),
         mode: 'onBlur',
     })
@@ -145,7 +145,7 @@ export default function WorkFileEditPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-slate-100">
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 transition-colors duration-500">
             <FormHeader title="施工文件 - 編輯" currentStep={3} totalSteps={3} themeColor="bg-teal-600">
                 <BackButton />
             </FormHeader>
@@ -184,63 +184,108 @@ export default function WorkFileEditPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="border-teal-200 bg-teal-50/50">
+                        <Card className="border-teal-200 dark:border-teal-800 bg-teal-50/80 dark:bg-teal-900/20 shadow-sm">
                             <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-2 text-teal-700">
+                                <CardTitle className="text-base flex items-center gap-2 text-teal-700 dark:text-teal-400">
                                     <UploadCloud className="w-5 h-5" /> 檔案上傳
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label className="flex items-center justify-between">
-                                        <span>文件 (PDF/DOC)</span>
-                                        {selectedFile && <span className="text-xs text-teal-600 font-bold">{selectedFile.name}</span>}
-                                    </Label>
-                                    <Input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                                        className="cursor-pointer file:cursor-pointer file:text-teal-700 file:bg-teal-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-teal-100" />
-                                    {existingFileUrl && !selectedFile && (
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                            現有檔案: <a href={existingFileUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline flex items-center gap-1"><ExternalLink className="w-3 h-3" />{shortenUrl(existingFileUrl)}</a>
-                                        </p>
-                                    )}
-                                    <input type="hidden" {...register('file_url')} />
-                                </div>
+                            <CardContent className="space-y-4">
+                                <p className="text-[11px] text-amber-600 dark:text-amber-300 font-bold px-1 -mt-2">
+                                    提示：文件與照片請至少擇一上傳
+                                </p>
+                                <FormField 
+                                    label="文件 (PDF/DOC)" 
+                                    error={errors.file_url?.message} 
+                                    touched={touchedFields.file_url}
+                                >
+                                    <div className="space-y-1.5">
+                                        <Input
+                                            type="file"
+                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] || null
+                                                setSelectedFile(file)
+                                                setValue('file_url', file ? 'selected' : (existingFileUrl || ''))
+                                            }}
+                                            className="cursor-pointer file:cursor-pointer file:text-teal-700 dark:file:text-teal-300 file:bg-teal-100/50 dark:file:bg-teal-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-teal-100"
+                                        />
+                                        {selectedFile ? (
+                                            <p className="text-[11px] text-teal-700 dark:text-teal-300 font-bold px-2 py-1 bg-teal-100/50 dark:bg-teal-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedFile.name}
+                                            </p>
+                                        ) : existingFileUrl && (
+                                            <div className="px-2 py-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg">
+                                                <p className="text-[10px] text-muted-foreground flex items-center gap-1 mb-1">現有檔案:</p>
+                                                <a href={existingFileUrl} target="_blank" rel="noopener noreferrer" className="text-teal-700 dark:text-teal-400 hover:underline flex items-center gap-1.5 font-bold text-[11px] truncate">
+                                                    <ExternalLink className="w-3 h-3 flex-shrink-0" /> {shortenUrl(existingFileUrl)}
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </FormField>
 
-                                <div className="space-y-2">
-                                    <Label className="flex items-center justify-between">
-                                        <span>照片 (Image)</span>
-                                        {selectedImage && <span className="text-xs text-blue-600 font-bold">{selectedImage.name}</span>}
-                                    </Label>
-                                    <Input type="file" accept="image/*"
-                                        onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
-                                        className="cursor-pointer file:cursor-pointer file:text-blue-700 file:bg-blue-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-blue-100" />
-                                    {existingImageUrl && !selectedImage && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-muted-foreground">現有照片:</span>
-                                            <a href={existingImageUrl} target="_blank" rel="noopener noreferrer">
-                                                <img src={existingImageUrl} alt="Current" className="w-16 h-16 object-cover rounded-md border border-border shadow-sm" />
-                                            </a>
-                                        </div>
-                                    )}
-                                    <input type="hidden" {...register('image_url')} />
-                                </div>
+                                <FormField 
+                                    label="照片 (Image)" 
+                                    error={errors.image_url?.message} 
+                                    touched={touchedFields.image_url}
+                                >
+                                    <div className="space-y-1.5">
+                                        <Input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] || null
+                                                setSelectedImage(file)
+                                                setValue('image_url', file ? 'selected' : (existingImageUrl || ''))
+                                            }}
+                                            className="cursor-pointer file:cursor-pointer file:text-blue-700 dark:file:text-blue-300 file:bg-blue-100/50 dark:file:bg-blue-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-blue-100"
+                                        />
+                                         {selectedImage ? (
+                                            <p className="text-[11px] text-blue-700 dark:text-blue-300 font-bold px-2 py-1 bg-blue-100/50 dark:bg-blue-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedImage.name}
+                                            </p>
+                                        ) : existingImageUrl && (
+                                            <div className="flex items-center gap-3 px-2 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg">
+                                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">現有照片:</span>
+                                                <a href={existingImageUrl} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+                                                    <img src={existingImageUrl} alt="Current" className="w-10 h-10 object-cover rounded shadow-sm border border-teal-200 dark:border-teal-800" />
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </FormField>
 
-                                <div className="space-y-2">
-                                    <Label className="flex items-center justify-between">
-                                        <span>影片 (Video) (選填)</span>
-                                        {selectedVideo && <span className="text-xs text-purple-600 font-bold">{selectedVideo.name}</span>}
-                                    </Label>
-                                    <Input type="file" accept="video/*"
-                                        onChange={(e) => setSelectedVideo(e.target.files?.[0] || null)}
-                                        className="cursor-pointer file:cursor-pointer file:text-purple-700 file:bg-purple-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-purple-100" />
-                                    {existingVideoUrl && !selectedVideo && (
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                            現有影片: <a href={existingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center gap-1"><ExternalLink className="w-3 h-3" />{shortenUrl(existingVideoUrl)}</a>
-                                        </p>
-                                    )}
-                                    <input type="hidden" {...register('video_url')} />
-                                </div>
+                                <FormField 
+                                    label="影片 (Video) (選填)" 
+                                    error={errors.video_url?.message} 
+                                    touched={touchedFields.video_url}
+                                >
+                                    <div className="space-y-1.5">
+                                        <Input
+                                            type="file"
+                                            accept="video/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] || null
+                                                setSelectedVideo(file)
+                                                setValue('video_url', file ? 'selected' : (existingVideoUrl || ''))
+                                            }}
+                                            className="cursor-pointer file:cursor-pointer file:text-purple-700 dark:file:text-purple-300 file:bg-purple-100/50 dark:file:bg-purple-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-purple-100"
+                                        />
+                                        {selectedVideo ? (
+                                            <p className="text-[11px] text-purple-700 dark:text-purple-300 font-bold px-2 py-1 bg-purple-100/50 dark:bg-purple-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedVideo.name}
+                                            </p>
+                                        ) : existingVideoUrl && (
+                                            <div className="px-2 py-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg">
+                                                <p className="text-[10px] text-muted-foreground flex items-center gap-1 mb-1">現有影片:</p>
+                                                <a href={existingVideoUrl} target="_blank" rel="noopener noreferrer" className="text-purple-700 dark:text-purple-400 hover:underline flex items-center gap-1.5 font-bold text-[11px] truncate">
+                                                    <ExternalLink className="w-3 h-3 flex-shrink-0" /> {shortenUrl(existingVideoUrl)}
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </FormField>
                             </CardContent>
                         </Card>
 

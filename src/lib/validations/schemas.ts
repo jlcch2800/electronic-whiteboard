@@ -188,5 +188,8 @@ export const workFileSchema = z.object({
     image_url: z.string().optional(),
     video_url: z.string().optional(),
     note: z.string().optional(),
+}).refine(data => (data.file_url && data.file_url.length > 0) || (data.image_url && data.image_url.length > 0), {
+    message: '文件與照片請至少擇一上傳',
+    path: ['file_url'], // 優先顯示在文件欄位，或兩者都顯示
 })
 export type WorkFileFormValues = z.infer<typeof workFileSchema>

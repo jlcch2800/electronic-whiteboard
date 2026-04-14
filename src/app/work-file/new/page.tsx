@@ -53,8 +53,8 @@ export default function WorkFileNewPage() {
         mode: 'onBlur',
         defaultValues: {
             date: format(new Date(), 'yyyy-MM-dd'),
-            file_url: 'pending...',
-            image_url: 'pending...',
+            file_url: '',
+            image_url: '',
             uploader_name: '',
         }
     })
@@ -153,7 +153,7 @@ export default function WorkFileNewPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-slate-100">
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 transition-colors duration-500">
             <FormHeader title="施工文件 - 新增 (上傳)" currentStep={getFilledSteps()} totalSteps={totalSteps} themeColor="bg-teal-600">
                 <BackButton />
             </FormHeader>
@@ -195,56 +195,91 @@ export default function WorkFileNewPage() {
                         </Card>
 
                         {/* 檔案上傳 */}
-                        <Card className="border-teal-200 bg-teal-50/50">
+                        <Card className="border-teal-200 dark:border-teal-800 bg-teal-50/80 dark:bg-teal-900/20 shadow-sm">
                             <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-2 text-teal-700">
+                                <CardTitle className="text-base flex items-center gap-2 text-teal-700 dark:text-teal-400">
                                     <UploadCloud className="w-5 h-5" />
                                     檔案上傳
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label className="flex items-center justify-between">
-                                        <span>文件 (PDF/DOC) <span className="text-red-500">*</span></span>
-                                        {selectedFile && <span className="text-xs text-teal-600 font-bold">{selectedFile.name}</span>}
-                                    </Label>
-                                    <Input
-                                        type="file"
-                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                                        className="cursor-pointer file:cursor-pointer file:text-teal-700 file:bg-teal-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-teal-100"
-                                    />
-                                    <input type="hidden" {...register('file_url')} />
-                                    <p className="text-xs text-muted-foreground">支援 PDF, Word, Excel 等文件格式</p>
-                                </div>
+                            <CardContent className="space-y-4">
+                                <p className="text-[11px] text-amber-600 dark:text-amber-300 font-bold px-1 -mt-2">
+                                    提示：文件與照片請至少擇一上傳
+                                </p>
+                                <FormField 
+                                    label="文件 (PDF/DOC)" 
+                                    error={errors.file_url?.message} 
+                                    touched={touchedFields.file_url}
+                                >
+                                    <div className="space-y-1.5">
+                                        <Input
+                                            type="file"
+                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] || null
+                                                setSelectedFile(file)
+                                                setValue('file_url', file ? 'selected' : '', { shouldValidate: true })
+                                                setTouchedFields(prev => ({ ...prev, file_url: true }))
+                                            }}
+                                            className="cursor-pointer file:cursor-pointer file:text-teal-700 dark:file:text-teal-300 file:bg-teal-100/50 dark:file:bg-teal-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-teal-100"
+                                        />
+                                        {selectedFile && (
+                                            <p className="text-[11px] text-teal-700 dark:text-teal-300 font-bold px-2 py-1 bg-teal-100/50 dark:bg-teal-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedFile.name}
+                                            </p>
+                                        )}
+                                        <p className="text-xs text-muted-foreground px-1">支援 PDF, Word, Excel 等文件格式</p>
+                                    </div>
+                                </FormField>
 
-                                <div className="space-y-2">
-                                    <Label className="flex items-center justify-between">
-                                        <span>照片 (Image) <span className="text-red-500">*</span></span>
-                                        {selectedImage && <span className="text-xs text-blue-600 font-bold">{selectedImage.name}</span>}
-                                    </Label>
-                                    <Input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
-                                        className="cursor-pointer file:cursor-pointer file:text-blue-700 file:bg-blue-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-blue-100"
-                                    />
-                                    <input type="hidden" {...register('image_url')} />
-                                </div>
+                                <FormField 
+                                    label="照片 (Image)" 
+                                    error={errors.image_url?.message} 
+                                    touched={touchedFields.image_url}
+                                >
+                                    <div className="space-y-1.5">
+                                        <Input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] || null
+                                                setSelectedImage(file)
+                                                setValue('image_url', file ? 'selected' : '', { shouldValidate: true })
+                                                setTouchedFields(prev => ({ ...prev, image_url: true }))
+                                            }}
+                                            className="cursor-pointer file:cursor-pointer file:text-blue-700 dark:file:text-blue-300 file:bg-blue-100/50 dark:file:bg-blue-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-blue-100"
+                                        />
+                                        {selectedImage && (
+                                            <p className="text-[11px] text-blue-700 dark:text-blue-300 font-bold px-2 py-1 bg-blue-100/50 dark:bg-blue-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedImage.name}
+                                            </p>
+                                        )}
+                                    </div>
+                                </FormField>
 
-                                <div className="space-y-2">
-                                    <Label className="flex items-center justify-between">
-                                        <span>影片 (Video) (選填)</span>
-                                        {selectedVideo && <span className="text-xs text-purple-600 font-bold">{selectedVideo.name}</span>}
-                                    </Label>
-                                    <Input
-                                        type="file"
-                                        accept="video/*"
-                                        onChange={(e) => setSelectedVideo(e.target.files?.[0] || null)}
-                                        className="cursor-pointer file:cursor-pointer file:text-purple-700 file:bg-purple-100/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-purple-100"
-                                    />
-                                    <input type="hidden" {...register('video_url')} />
-                                </div>
+                                <FormField 
+                                    label="影片 (Video) (選填)" 
+                                    error={errors.video_url?.message} 
+                                    touched={touchedFields.video_url}
+                                >
+                                    <div className="space-y-1.5">
+                                        <Input
+                                            type="file"
+                                            accept="video/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] || null
+                                                setSelectedVideo(file)
+                                                setValue('video_url', file ? 'selected' : '')
+                                            }}
+                                            className="cursor-pointer file:cursor-pointer file:text-purple-700 dark:file:text-purple-300 file:bg-purple-100/50 dark:file:bg-purple-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-purple-100"
+                                        />
+                                        {selectedVideo && (
+                                            <p className="text-[11px] text-purple-700 dark:text-purple-300 font-bold px-2 py-1 bg-purple-100/50 dark:bg-purple-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedVideo.name}
+                                            </p>
+                                        )}
+                                    </div>
+                                </FormField>
                             </CardContent>
                         </Card>
 
