@@ -121,10 +121,9 @@ export default function VendorHistoryClient() {
             .order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
 
-        // Keyword search (search in vendor_name, work_content, note)
-        if (keyword.trim()) {
-            query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
-        }
+            if (keyword.trim()) {
+                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,vendor_contact.ilike.%${keyword}%,vendor_contact_phone.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%`)
+            }
 
         const { data: records, count, error } = await query
 

@@ -119,7 +119,7 @@ export default function WhiteboardClient({
             .lte('work_date', vendorSearch.end)
 
         if (vendorSearch.keyword) {
-            query = query.or(`vendor_name.ilike.%${vendorSearch.keyword}%,work_content.ilike.%${vendorSearch.keyword}%,location.ilike.%${vendorSearch.keyword}%,vendor_contact.ilike.%${vendorSearch.keyword}%,entry_status.ilike.%${vendorSearch.keyword}%,building.ilike.%${vendorSearch.keyword}%,floor.ilike.%${vendorSearch.keyword}%,vendor_badge_id.ilike.%${vendorSearch.keyword}%,vendor_phone.ilike.%${vendorSearch.keyword}%,note.ilike.%${vendorSearch.keyword}%`)
+            query = query.or(`vendor_name.ilike.%${vendorSearch.keyword}%,work_content.ilike.%${vendorSearch.keyword}%,note.ilike.%${vendorSearch.keyword}%,vendor_contact.ilike.%${vendorSearch.keyword}%,vendor_contact_phone.ilike.%${vendorSearch.keyword}%,building.ilike.%${vendorSearch.keyword}%,floor.ilike.%${vendorSearch.keyword}%,location.ilike.%${vendorSearch.keyword}%`)
         }
 
         const { data } = await query.order('work_date', { ascending: false })
