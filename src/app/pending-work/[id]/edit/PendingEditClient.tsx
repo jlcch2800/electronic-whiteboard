@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatUpdateMessage, PENDING_WORK_LABELS } from '@/lib/telegram-notify'
+import { logChangeRecord } from '@/lib/change-log'
 import { engineeringWorkSchema, type EngineeringWorkFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -59,6 +60,9 @@ export default function PendingEditClient({ initialData }: { initialData: any })
 
             // 發送 Telegram 通知（修改前後對照）
             sendTelegramNotify(formatUpdateMessage('待處理工作項目', initialData, pendingData, PENDING_WORK_LABELS))
+
+            // 寫入系統異動紀錄
+            logChangeRecord({ actionType: 'Update', modifyTable: 'pending_work', modifyRecordId: initialData.id, oldData: initialData, newData: pendingData })
 
             setIsSuccess(true)
             toast({ title: '修改成功', description: '待處理工作項目已更新' })

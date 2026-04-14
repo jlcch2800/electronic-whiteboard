@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatCreateMessage, ENGINEERING_WORK_LABELS } from '@/lib/telegram-notify'
+import { logChangeRecord } from '@/lib/change-log'
 import { engineeringWorkSchema, type EngineeringWorkFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -76,11 +77,14 @@ export default function EngineeringWorkNewPage() {
         if (!pendingData) return
         setShowConfirm(false)
         try {
-            const { error } = await supabase.from('engineering_today_work').insert(pendingData)
+            const { data: inserted, error } = await supabase.from('engineering_today_work').insert(pendingData).select('id').single()
             if (error) throw error
 
             // 發送 Telegram 通知
             sendTelegramNotify(formatCreateMessage('工務今日施工項目', pendingData, ENGINEERING_WORK_LABELS))
+
+            // 寫入系統異動紀錄
+            logChangeRecord({ actionType: 'Insert', modifyTable: 'engineering_today_work', modifyRecordId: inserted?.id || '', newData: pendingData })
 
             setIsSuccess(true)
             toast({ title: '新增成功', description: '工務今日施工項目已新增' })

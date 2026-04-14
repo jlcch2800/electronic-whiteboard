@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatUpdateMessage, WORK_REPORT_LABELS } from '@/lib/telegram-notify'
+import { logChangeRecord } from '@/lib/change-log'
 import { workReportSchema, type WorkReportFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -94,7 +95,9 @@ export default function WorkReportEditPage() {
 
             // 發送 Telegram 通知（修改前後對照）
             if (originalData) {
-                sendTelegramNotify(formatUpdateMessage('工務今日施工項目', originalData, pendingData, WORK_REPORT_LABELS))
+                sendTelegramNotify(formatUpdateMessage('施工回報記錄', originalData, pendingData, WORK_REPORT_LABELS))
+                // 寫入系統異動紀錄
+                logChangeRecord({ actionType: 'Update', modifyTable: 'work_report', modifyRecordId: id as string, oldData: originalData, newData: pendingData })
             }
 
             setIsSuccess(true)

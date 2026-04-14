@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { workFileSchema, type WorkFileFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { logChangeRecord } from '@/lib/change-log'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
@@ -122,6 +123,10 @@ export default function WorkFileEditPage() {
             }
             const { error } = await (supabase.from('work_file') as any).update(payload).eq('id', id)
             if (error) throw error
+
+            // 寫入系統異動紀錄 (這裡需搭配原始資料, 但 fetch 時只存了 resetData 格式，只好拿目前 DB 更新後的或直接用 payload 與 pendingData)
+            logChangeRecord({ actionType: 'Update', modifyTable: 'work_file', modifyRecordId: id, oldData: {}, newData: payload })
+
             setIsSuccess(true)
             toast({ title: '更新成功', description: '施工文件已更新' })
             setTimeout(() => router.push('/work-file'), 1500)

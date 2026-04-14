@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
+import { logBatchDeleteRecords } from '@/lib/change-log'
 import { useAppStore } from '@/stores/useAppStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -185,6 +186,12 @@ export default function WhiteboardClient({
             : deleteDialog.type === 'engineering' ? 'engineering_today_work'
                 : 'pending_work'
 
+        // 在刪除前收集被刪除項目的資料（供異動紀錄使用）
+        const sourceData = deleteDialog.type === 'vendor' ? vendors
+            : deleteDialog.type === 'engineering' ? engineering
+                : pendingWork
+        const deletedItems = sourceData.filter(item => deleteDialog.ids.includes(item.id))
+
         try {
             const { error } = await supabase
                 .from(tableName)
@@ -192,6 +199,9 @@ export default function WhiteboardClient({
                 .in('id', deleteDialog.ids)
 
             if (error) throw error
+
+            // 寫入系統異動紀錄
+            logBatchDeleteRecords(tableName, deletedItems)
 
             toast({ title: '刪除成功', description: `已刪除 ${deleteDialog.ids.length} 筆資料` })
 

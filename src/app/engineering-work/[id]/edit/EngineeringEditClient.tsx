@@ -9,6 +9,7 @@ import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { engineeringWorkSchema, type EngineeringWorkFormValues } from '@/lib/validations/schemas'
 import { sendTelegramNotify, formatUpdateMessage, ENGINEERING_WORK_LABELS } from '@/lib/telegram-notify'
+import { logChangeRecord } from '@/lib/change-log'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -58,6 +59,9 @@ export default function EngineeringEditClient({ initialData }: { initialData: an
 
             // 發送 Telegram 通知（修改前後對照）
             sendTelegramNotify(formatUpdateMessage('工務今日施工項目', initialData, pendingData, ENGINEERING_WORK_LABELS))
+
+            // 寫入系統異動紀錄
+            logChangeRecord({ actionType: 'Update', modifyTable: 'engineering_today_work', modifyRecordId: initialData.id, oldData: initialData, newData: pendingData })
 
             setIsSuccess(true)
             toast({ title: '修改成功', description: '工務施工項目已更新' })

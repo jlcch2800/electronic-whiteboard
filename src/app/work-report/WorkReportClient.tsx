@@ -12,6 +12,7 @@ import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatDeleteMessage, WORK_REPORT_LABELS } from '@/lib/telegram-notify'
+import { logBatchDeleteRecords } from '@/lib/change-log'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -103,7 +104,10 @@ export default function WorkReportClient() {
             toast({ title: '刪除失敗', description: error.message, variant: 'destructive' })
         } else {
             // 發送 Telegram 刪除通知
-            sendTelegramNotify(formatDeleteMessage('工務今日施工項目', deletedItems, WORK_REPORT_LABELS))
+            sendTelegramNotify(formatDeleteMessage('施工回報記錄', deletedItems, WORK_REPORT_LABELS))
+
+            // 寫入系統異動紀錄
+            logBatchDeleteRecords('work_report', deletedItems)
 
             toast({ title: '刪除成功' })
             fetchData()

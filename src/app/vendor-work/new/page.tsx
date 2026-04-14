@@ -11,6 +11,7 @@ import { MapPin } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatCreateMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
+import { logChangeRecord } from '@/lib/change-log'
 import { vendorWorkSchema, type VendorWorkFormValues } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -115,11 +116,14 @@ export default function VendorWorkNewPage() {
                 payload.vendor_contact_phone = null
             }
 
-            const { error } = await supabase.from('vendor_today_work').insert(payload)
+            const { data: inserted, error } = await supabase.from('vendor_today_work').insert(payload).select('id').single()
             if (error) throw error
 
             // 發送 Telegram 通知
             sendTelegramNotify(formatCreateMessage('廠商今日施工項目', payload, VENDOR_WORK_LABELS))
+
+            // 寫入系統異動紀錄
+            logChangeRecord({ actionType: 'Insert', modifyTable: 'vendor_today_work', modifyRecordId: inserted?.id || '', newData: payload })
 
             // 成功動畫
             setIsSuccess(true)

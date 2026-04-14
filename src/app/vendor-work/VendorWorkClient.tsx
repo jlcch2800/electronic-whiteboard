@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/EmptyState'
 
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatDeleteMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
+import { logBatchDeleteRecords } from '@/lib/change-log'
 import { useAppStore } from '@/stores/useAppStore'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -137,6 +138,9 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
 
             // 發送 Telegram 刪除通知
             sendTelegramNotify(formatDeleteMessage('廠商今日施工項目', deletedItems, VENDOR_WORK_LABELS))
+
+            // 寫入系統異動紀錄
+            logBatchDeleteRecords('vendor_today_work', deletedItems)
 
             toast({ title: '刪除成功', description: `已刪除 ${deleteDialog.ids.length} 筆資料` })
             setData(data.filter(item => !deleteDialog.ids.includes(item.id)))

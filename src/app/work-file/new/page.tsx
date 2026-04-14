@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { format } from 'date-fns'
+import { Download, UploadCloud, File as FileIcon, X, CheckCircle2, ChevronRight, HardHat } from 'lucide-react'
+import { logChangeRecord } from '@/lib/change-log'
 import { motion } from 'framer-motion'
-import { UploadCloud } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { workFileSchema, type WorkFileFormValues } from '@/lib/validations/schemas'
@@ -119,8 +120,11 @@ export default function WorkFileNewPage() {
                 video_url: videoUrl || null,
             }
 
-            const { error } = await (supabase.from('work_file') as any).insert(payload)
+            const { data: inserted, error } = await (supabase.from('work_file') as any).insert(payload).select('id').single()
             if (error) throw error
+
+            // 寫入系統異動紀錄
+            logChangeRecord({ actionType: 'Insert', modifyTable: 'work_file', modifyRecordId: inserted?.id || '', newData: payload })
 
             setIsSuccess(true)
             toast({ title: '新增成功', description: '施工文件已上傳並記錄' })
