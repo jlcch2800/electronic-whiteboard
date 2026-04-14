@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
-    HardHat, Plus, Search, Edit, Trash2, Download, ArrowLeft, RefreshCw
+    HardHat, Plus, Edit, Trash2, Download, ArrowLeft, RefreshCw
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -15,6 +15,7 @@ import { sendTelegramNotify, formatDeleteMessage, ENGINEERING_WORK_LABELS } from
 import { logBatchDeleteRecords } from '@/lib/change-log'
 import { useAppStore } from '@/stores/useAppStore'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -173,7 +174,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-end items-center gap-4">
+                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-between items-center gap-4">
 
                         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                             <Button size="sm" onClick={() => router.push('/engineering-work/new')} className="bg-amber-600 hover:bg-amber-700">

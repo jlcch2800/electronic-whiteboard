@@ -218,7 +218,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-card rounded-2xl shadow-card border border-border"
                 >
-                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-end items-center gap-4">
+                    <div className="p-4 border-b border-border/50 flex flex-wrap justify-between items-center gap-4">
 
                         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                             <Button size="sm" onClick={() => router.push('/vendor-work/new')} className="bg-green-600 hover:bg-green-700">

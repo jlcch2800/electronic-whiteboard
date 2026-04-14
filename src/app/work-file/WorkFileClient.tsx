@@ -56,27 +56,45 @@ export default function WorkFileClient() {
             return { key, direction: 'asc' }
         })
     }
+    // 即時過濾資料
+    const filteredData = useMemo(() => {
+        const kw = keyword.toLowerCase().trim()
+        if (!kw) return data
+        return data.filter(row => 
+            row.vendor_name?.toLowerCase().includes(kw) ||
+            row.work_item?.toLowerCase().includes(kw) ||
+            row.uploader_name?.toLowerCase().includes(kw) ||
+            row.description?.toLowerCase().includes(kw) ||
+            row.note?.toLowerCase().includes(kw)
+        )
+    }, [data, keyword])
+
     const sortedData = useMemo(() => {
-        if (!sort) return data
-        return [...data].sort((a, b) => {
+        const source = filteredData
+        if (!sort) return source
+        return [...source].sort((a, b) => {
             const valA = (a as any)[sort.key] ?? ''
             const valB = (b as any)[sort.key] ?? ''
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1
             return 0
         })
-    }, [data, sort])
+    }, [filteredData, sort])
 
     const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
     const toggleSelectAll = () => { selected.size === data.length && data.length > 0 ? setSelected(new Set()) : setSelected(new Set(data.map(i => i.id))) }
 
     const fetchData = async () => {
         setLoading(true)
+        // 為了支援即時過濾，我們抓取該日期區間的所有資料 (或較大的數量)
+        // 注意：不帶關鍵字查詢，因為關鍵字過濾改在前端處理
         let q = supabase.from('work_file').select('*', { count: 'exact' })
             .gte('date', startDate).lte('date', endDate)
             .order('date', { ascending: false }).order('created_at', { ascending: false })
+            // 如果資料量非常大，才需要分頁。這裡先配合即時化，若要搜尋全部則不設 range 或設大一點
+            // 但考量原本就有對齊分頁邏輯，這裡維持日期內的分頁或直接抓取分頁量
             .range((page - 1) * pageSize, page * pageSize - 1)
-        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            
         const { data: records, count, error } = await q
         if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
         else { setData(records || []); setTotalCount(count || 0) }
@@ -103,8 +121,7 @@ export default function WorkFileClient() {
         setDeleteDialogOpen(false)
     }
 
-    useEffect(() => { fetchData() }, [page, pageSize])
-    const handleSearch = () => { setPage(1); fetchData() }
+    useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate])
 
     const shortenUrl = (url: string | null) => {
         if (!url) return null
@@ -152,10 +169,9 @@ export default function WorkFileClient() {
                                 </Button>
                             </div>
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、項目、上傳人..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-52" /></div>
-                                <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、項目、上傳人..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-52" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>

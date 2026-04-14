@@ -1,7 +1,7 @@
 // 系統執行記錄 Client Component
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
@@ -127,6 +127,10 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
         if (data) setLogs(data)
         setCurrentPage(1); setSelected(new Set()); setLoading(false)
     }
+
+    useEffect(() => {
+        fetchLogs()
+    }, [startDate, endDate])
 
     const filteredLogs = logs.filter(log => (
         (getTranslatedTableName(log.table_name)?.toLowerCase().includes(searchTerm.toLowerCase()) || log.table_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -324,11 +328,37 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                             </Button>
                         </div>
                         <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                            <div className="flex items-center gap-2"><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-36" /><span className="text-muted-foreground">~</span><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-36" /></div>
-                            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="搜尋..." className="pl-10 w-full md:w-48" /></div>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" onClick={fetchLogs} disabled={loading} className="flex-1 md:flex-none"><RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />查詢</Button>
-                                <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none"><Download className="w-4 h-4 mr-2" /> 匯出</Button>
+                                <Input 
+                                    type="date" 
+                                    value={startDate} 
+                                    onChange={(e) => setStartDate(e.target.value)} 
+                                    className="w-full md:w-36" 
+                                />
+                                <span className="text-muted-foreground">~</span>
+                                <Input 
+                                    type="date" 
+                                    value={endDate} 
+                                    onChange={(e) => setEndDate(e.target.value)} 
+                                    className="w-full md:w-36" 
+                                />
+                            </div>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input 
+                                    value={searchTerm} 
+                                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} 
+                                    placeholder="搜尋..." 
+                                    className="pl-10 w-full md:w-48" 
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none">
+                                    <Download className="w-4 h-4 mr-2" /> 匯出
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={fetchLogs} disabled={loading} className="hidden md:flex">
+                                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                                </Button>
                             </div>
                         </div>
                     </div>

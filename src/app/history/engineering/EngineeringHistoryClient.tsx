@@ -72,16 +72,30 @@ export default function EngineeringHistoryClient() {
             return { key, direction: 'asc' }
         })
     }
+    // 即時過濾資料
+    const filteredData = useMemo(() => {
+        const kw = keyword.toLowerCase().trim()
+        if (!kw) return data
+        return data.filter(row => 
+            row.vendor_name?.toLowerCase().includes(kw) ||
+            row.work_content?.toLowerCase().includes(kw) ||
+            row.unit?.toLowerCase().includes(kw) ||
+            row.engineering_contact?.toLowerCase().includes(kw) ||
+            row.note?.toLowerCase().includes(kw)
+        )
+    }, [data, keyword])
+
     const sortedData = useMemo(() => {
-        if (!sort) return data
-        return [...data].sort((a, b) => {
+        const source = filteredData
+        if (!sort) return source
+        return [...source].sort((a, b) => {
             const valA = (a as any)[sort.key] ?? ''
             const valB = (b as any)[sort.key] ?? ''
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1
             return 0
         })
-    }, [data, sort])
+    }, [filteredData, sort])
 
     // 選取功能
     const toggleSelect = (id: string) => {
@@ -111,10 +125,7 @@ export default function EngineeringHistoryClient() {
             .order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
 
-        if (keyword.trim()) {
-            query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,unit.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,note.ilike.%${keyword}%`)
-        }
-
+        // 關鍵字搜尋改在前端處理，這裡不帶 or 條件
         const { data: records, count, error } = await query
 
         if (error) {
@@ -130,12 +141,9 @@ export default function EngineeringHistoryClient() {
 
     useEffect(() => {
         fetchData()
-    }, [page, pageSize])
+    }, [page, pageSize, startDate, endDate])
 
-    const handleSearch = () => {
-        setPage(1)
-        fetchData()
-    }
+    // handleSearch 已經不需要，改為偵測關鍵字變動
 
     // 匯出 Excel
     const handleExport = async () => {
@@ -222,10 +230,9 @@ export default function EngineeringHistoryClient() {
                                 </Button>
                             </div>
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、單位、施工內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-60" /></div>
-                                <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、單位、施工內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-60" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>

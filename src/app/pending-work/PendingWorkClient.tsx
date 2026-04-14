@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, addDays } from 'date-fns'
 import * as XLSX from 'xlsx'
@@ -60,6 +60,10 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
     })
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
+    useEffect(() => {
+        refreshData()
+    }, [search.start, search.end])
+
     // Delete dialog
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, ids: string[] }>({
         open: false, ids: []
@@ -79,23 +83,19 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
         setLoading(false)
     }
 
-    const handleSearch = async () => {
-        setLoading(true)
-        let query = supabase
-            .from('pending_work')
-            .select('*')
-            .lte('start_date', search.end)
-            .gte('end_date', search.start)
+    const filteredData = useMemo(() => {
+        const kw = search.keyword.toLowerCase().trim()
+        if (!kw) return data
+        return data.filter(item => 
+            item.vendor_name?.toLowerCase().includes(kw) ||
+            item.work_content?.toLowerCase().includes(kw) ||
+            item.unit?.toLowerCase().includes(kw) ||
+            item.engineering_contact?.toLowerCase().includes(kw) ||
+            item.note?.toLowerCase().includes(kw)
+        )
+    }, [data, search.keyword])
 
-        if (search.keyword) {
-            query = query.or(`vendor_name.ilike.%${search.keyword}%,work_content.ilike.%${search.keyword}%,note.ilike.%${search.keyword}%,unit.ilike.%${search.keyword}%,engineering_contact.ilike.%${search.keyword}%`)
-        }
-
-        const { data: result } = await query.order('start_date', { ascending: false })
-        setData(result || [])
-        setSelected(new Set())
-        setLoading(false)
-    }
+    const tableData = useTableData(filteredData, 'start_date')
 
     const toggleSelect = (id: string) => {
         const newSet = new Set(selected)
@@ -175,7 +175,6 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
 
-    const tableData = useTableData(data, 'start_date')
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -225,14 +224,17 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                     className="w-full md:w-36"
                                 />
                                 <Input
-                                    placeholder="搜尋關鍵字..."
+                                    placeholder="搜尋廠商、內容、單位..."
                                     value={search.keyword}
-                                    onChange={(e) => setSearch(s => ({ ...s, keyword: e.target.value }))}
-                                    className="w-full md:w-40"
+                                    onChange={(e) => {
+                                        setSearch(s => ({ ...s, keyword: e.target.value }))
+                                        tableData.setPage(1)
+                                    }}
+                                    className="w-full md:w-64 pl-9"
                                 />
-                                <Button size="sm" onClick={handleSearch} disabled={loading} className="w-full md:w-auto">
-                                    <Search className="w-4 h-4 mr-1" /> 搜尋
-                                </Button>
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 hidden md:block">
+                                    <Search className="w-4 h-4 text-muted-foreground" />
+                                </div>
                             </div>
                         </div>
 

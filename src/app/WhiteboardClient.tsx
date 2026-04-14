@@ -90,11 +90,14 @@ export default function WhiteboardClient({
     // 是否已登入
     const isLoggedIn = !!profile
 
-
-
     const refreshAll = async () => {
         setLoading(true)
         const today = format(new Date(), 'yyyy-MM-dd')
+
+        // 重置搜尋日期為今天
+        setVendorSearch(s => ({ ...s, start: today, end: today }))
+        setEngSearch(s => ({ ...s, start: today, end: today }))
+        setPendingSearch(s => ({ ...s, start: today, end: format(addDays(new Date(), 180), 'yyyy-MM-dd') }))
 
         const [v, e, p] = await Promise.all([
             supabase.from('vendor_today_work').select('*').eq('work_date', today),
@@ -111,50 +114,93 @@ export default function WhiteboardClient({
         setLoading(false)
     }
 
+    // 自動抓取資料 (當日期範圍變更時)
+    useEffect(() => {
+        searchVendor()
+    }, [vendorSearch.start, vendorSearch.end])
+
+    useEffect(() => {
+        searchEngineering()
+    }, [engSearch.start, engSearch.end])
+
+    useEffect(() => {
+        searchPending()
+    }, [pendingSearch.start, pendingSearch.end])
+
+    // 即時過濾邏輯
+    const filteredVendors = useMemo(() => {
+        const kw = vendorSearch.keyword.toLowerCase().trim()
+        if (!kw) return vendors
+        return vendors.filter(v => 
+            v.vendor_name?.toLowerCase().includes(kw) ||
+            v.work_content?.toLowerCase().includes(kw) ||
+            v.note?.toLowerCase().includes(kw) ||
+            v.vendor_contact?.toLowerCase().includes(kw) ||
+            v.vendor_contact_phone?.toLowerCase().includes(kw) ||
+            v.building?.toLowerCase().includes(kw) ||
+            v.floor?.toLowerCase().includes(kw) ||
+            v.location?.toLowerCase().includes(kw)
+        )
+    }, [vendors, vendorSearch.keyword])
+
+    const filteredEngineering = useMemo(() => {
+        const kw = engSearch.keyword.toLowerCase().trim()
+        if (!kw) return engineering
+        return engineering.filter(e => 
+            e.vendor_name?.toLowerCase().includes(kw) ||
+            e.work_content?.toLowerCase().includes(kw) ||
+            e.note?.toLowerCase().includes(kw) ||
+            e.unit?.toLowerCase().includes(kw) ||
+            e.engineering_contact?.toLowerCase().includes(kw)
+        )
+    }, [engineering, engSearch.keyword])
+
+    const filteredPending = useMemo(() => {
+        const kw = pendingSearch.keyword.toLowerCase().trim()
+        if (!kw) return pendingWork
+        return pendingWork.filter(p => 
+            p.vendor_name?.toLowerCase().includes(kw) ||
+            p.work_content?.toLowerCase().includes(kw) ||
+            p.note?.toLowerCase().includes(kw) ||
+            p.unit?.toLowerCase().includes(kw) ||
+            p.engineering_contact?.toLowerCase().includes(kw)
+        )
+    }, [pendingWork, pendingSearch.keyword])
+
+    // 表格狀態 Hook - 使用過濾後的資料
+    const vendorTable = useTableData(filteredVendors, 'work_date')
+    const engTable = useTableData(filteredEngineering, 'start_date')
+    const pendingTable = useTableData(filteredPending, 'start_date')
+
     const searchVendor = async () => {
-        let query = supabase
+        const { data } = await supabase
             .from('vendor_today_work')
             .select('*')
             .gte('work_date', vendorSearch.start)
             .lte('work_date', vendorSearch.end)
-
-        if (vendorSearch.keyword) {
-            query = query.or(`vendor_name.ilike.%${vendorSearch.keyword}%,work_content.ilike.%${vendorSearch.keyword}%,note.ilike.%${vendorSearch.keyword}%,vendor_contact.ilike.%${vendorSearch.keyword}%,vendor_contact_phone.ilike.%${vendorSearch.keyword}%,building.ilike.%${vendorSearch.keyword}%,floor.ilike.%${vendorSearch.keyword}%,location.ilike.%${vendorSearch.keyword}%`)
-        }
-
-        const { data } = await query.order('work_date', { ascending: false })
+            .order('work_date', { ascending: false })
         setVendors(data || [])
         setVendorSelected(new Set())
     }
 
     const searchEngineering = async () => {
-        let query = supabase
+        const { data } = await supabase
             .from('engineering_today_work')
             .select('*')
             .lte('start_date', engSearch.end)
             .gte('end_date', engSearch.start)
-
-        if (engSearch.keyword) {
-            query = query.or(`vendor_name.ilike.%${engSearch.keyword}%,work_content.ilike.%${engSearch.keyword}%,note.ilike.%${engSearch.keyword}%,unit.ilike.%${engSearch.keyword}%,engineering_contact.ilike.%${engSearch.keyword}%`)
-        }
-
-        const { data } = await query.order('start_date', { ascending: false })
+            .order('start_date', { ascending: false })
         setEngineering(data || [])
         setEngSelected(new Set())
     }
 
     const searchPending = async () => {
-        let query = supabase
+        const { data } = await supabase
             .from('pending_work')
             .select('*')
             .lte('start_date', pendingSearch.end)
             .gte('end_date', pendingSearch.start)
-
-        if (pendingSearch.keyword) {
-            query = query.or(`vendor_name.ilike.%${pendingSearch.keyword}%,work_content.ilike.%${pendingSearch.keyword}%,note.ilike.%${pendingSearch.keyword}%,unit.ilike.%${pendingSearch.keyword}%,engineering_contact.ilike.%${pendingSearch.keyword}%`)
-        }
-
-        const { data } = await query.order('start_date', { ascending: false })
+            .order('start_date', { ascending: false })
         setPendingWork(data || [])
         setPendingSelected(new Set())
     }
@@ -612,10 +658,7 @@ export default function WhiteboardClient({
                                 <Input type="date" value={pendingSearch.start} onChange={(e) => setPendingSearch(s => ({ ...s, start: e.target.value }))} className="w-full md:w-36 h-9" />
                                 <span className="text-muted-foreground hidden md:inline">-</span>
                                 <Input type="date" value={pendingSearch.end} onChange={(e) => setPendingSearch(s => ({ ...s, end: e.target.value }))} className="w-full md:w-36 h-9" />
-                                <Input placeholder="搜尋關鍵字..." value={pendingSearch.keyword} onChange={(e) => setPendingSearch(s => ({ ...s, keyword: e.target.value }))} className="w-full md:w-48 h-9" />
-                                <Button size="sm" onClick={searchPending} variant="secondary" className="h-9 w-full md:w-auto">
-                                    <Search className="w-4 h-4 mr-1" /> 搜尋
-                                </Button>
+                                <Input placeholder="搜尋關鍵字..." value={pendingSearch.keyword} onChange={(e) => { setPendingSearch(s => ({ ...s, keyword: e.target.value })); pendingTable.setPage(1); }} className="w-full md:w-48 h-9" />
                             </div>
                             <div className="flex items-center gap-2">
                                 <Button size="sm" variant="outline" className="h-9" onClick={() => {

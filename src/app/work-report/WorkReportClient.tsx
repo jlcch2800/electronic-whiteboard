@@ -64,16 +64,31 @@ export default function WorkReportClient() {
             return { key, direction: 'asc' }
         })
     }
+    // 即時過濾資料
+    const filteredData = useMemo(() => {
+        const kw = keyword.toLowerCase().trim()
+        if (!kw) return data
+        return data.filter(row => 
+            row.vendor_name?.toLowerCase().includes(kw) ||
+            row.work_content?.toLowerCase().includes(kw) ||
+            row.work_location?.toLowerCase().includes(kw) ||
+            row.engineering_contact?.toLowerCase().includes(kw) ||
+            row.note?.toLowerCase().includes(kw) ||
+            statusLabels[row.work_status]?.text.toLowerCase().includes(kw)
+        )
+    }, [data, keyword])
+
     const sortedData = useMemo(() => {
-        if (!sort) return data
-        return [...data].sort((a, b) => {
+        const source = filteredData
+        if (!sort) return source
+        return [...source].sort((a, b) => {
             const valA = (a as any)[sort.key] ?? ''
             const valB = (b as any)[sort.key] ?? ''
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1
             return 0
         })
-    }, [data, sort])
+    }, [filteredData, sort])
 
     const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
     const toggleSelectAll = () => { selected.size === data.length && data.length > 0 ? setSelected(new Set()) : setSelected(new Set(data.map(i => i.id))) }
@@ -84,8 +99,10 @@ export default function WorkReportClient() {
             .gte('report_date', startDate).lte('report_date', endDate)
             .order('report_date', { ascending: false }).order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
-        if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+        
+        // 關鍵字搜尋改在前端處理，這裡不帶 or 條件
         if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
+        
         const { data: records, count, error } = await q
         if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
         else { setData(records || []); setTotalCount(count || 0) }
@@ -115,8 +132,7 @@ export default function WorkReportClient() {
         setDeleteDialogOpen(false)
     }
 
-    useEffect(() => { fetchData() }, [page, pageSize])
-    const handleSearch = () => { setPage(1); fetchData() }
+    useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate, statusFilter])
 
     const handleExport = async () => {
         let dataToExport: WorkReportRecord[] = []
@@ -162,11 +178,10 @@ export default function WorkReportClient() {
                                 </Button>
                             </div>
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">狀態</Label><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部</SelectItem><SelectItem value="completed">完成</SelectItem><SelectItem value="incomplete">未完成</SelectItem><SelectItem value="abnormal">異常</SelectItem></SelectContent></Select></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、地點、內容..." value={keyword} onChange={(e) => setKeyword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full md:w-52" /></div>
-                                <Button onClick={handleSearch} disabled={loading} className="w-full md:w-auto"><Search className="w-4 h-4 mr-1" />搜尋</Button>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">狀態</Label><Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}><SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部</SelectItem><SelectItem value="completed">完成</SelectItem><SelectItem value="incomplete">未完成</SelectItem><SelectItem value="abnormal">異常</SelectItem></SelectContent></Select></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、地點、內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-52" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
