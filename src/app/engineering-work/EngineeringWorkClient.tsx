@@ -267,11 +267,11 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                             查無工務施工項目
                                         </div>
                                     ) : (
-                                        tableData.paginatedData.map((e: any) => (
+                                        tableData.paginatedData.map((e: any, index: number) => (
                                             <MobileTableCard
                                                 key={e.id}
                                                 id={e.id}
-                                                title={e.vendor_name}
+                                                title={`#${(tableData.page - 1) * tableData.perPage + index + 1} ${e.vendor_name}`}
                                                 subtitle={e.unit || '無單位'}
                                                 status={{
                                                     label: '工務',

@@ -235,6 +235,13 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
     // 每次進入首頁時自動重新查詢最新數據，避免 Router Cache 導致舊數據
     useEffect(() => {
         refreshCounts()
+
+        // 設定每 5 分鐘自動更新一次筆數
+        const interval = setInterval(() => {
+            refreshCounts()
+        }, 300000)
+
+        return () => clearInterval(interval)
     }, [])
 
     return (

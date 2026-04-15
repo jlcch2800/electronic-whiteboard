@@ -131,8 +131,8 @@ export default function WhiteboardClient({
     const pendingTable = useTableData(filteredPending, 'start_date')
 
 
-    const refreshAll = async () => {
-        setLoading(true)
+    const refreshAll = async (isBackground = false) => {
+        if (!isBackground) setLoading(true)
         const today = format(new Date(), 'yyyy-MM-dd')
 
         // 重置搜尋日期為今天
@@ -149,11 +149,24 @@ export default function WhiteboardClient({
         setVendors(v.data || [])
         setEngineering(e.data || [])
         setPendingWork(p.data || [])
-        setVendorSelected(new Set())
-        setEngSelected(new Set())
-        setPendingSelected(new Set())
-        setLoading(false)
+
+        if (!isBackground || typeof isBackground !== 'boolean') {
+            setVendorSelected(new Set())
+            setEngSelected(new Set())
+            setPendingSelected(new Set())
+        }
+        if (!isBackground) setLoading(false)
     }
+
+    // 自動刷新 (每 5 分鐘)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            // 背景自動刷新
+            refreshAll(true)
+        }, 300000)
+
+        return () => clearInterval(interval)
+    }, [])
 
     // 自動抓取資料 (當日期範圍變更時)
     useEffect(() => {
@@ -339,7 +352,7 @@ export default function WhiteboardClient({
     return (
         <div className="min-h-screen bg-background flex flex-col">
             {/* ===== 共用導覽列 ===== */}
-            <Navbar onRefresh={refreshAll} loading={loading} />
+            <Navbar onRefresh={() => refreshAll(false)} loading={loading} />
 
             {/* Main Content */}
             <main className="flex-1 p-6 space-y-6 overflow-auto">
@@ -417,16 +430,20 @@ export default function WhiteboardClient({
                                         {vendorTable.paginatedData.map((v: any, index: number) => {
                                             const actualIndex = (vendorTable.page - 1) * vendorTable.perPage + index + 1
                                             return (
-                                                <TableRow key={v.id} className={`hover:bg-primary/5 transition-all duration-200 even:bg-muted/20 ${vendorSelected.has(v.id) ? 'bg-blue-50' : ''}`}>
-                                                    <TableCell className="sticky left-0 bg-card z-10">
+                                                <TableRow key={v.id} className={`hover:bg-primary/5 dark:hover:bg-primary/20 transition-all duration-200 even:bg-muted/20 ${vendorSelected.has(v.id) ? 'bg-primary/5 dark:bg-primary/20' : ''}`}>
+                                                    <TableCell className={`sticky left-0 z-10 ${vendorSelected.has(v.id) ? 'bg-primary/5 dark:bg-primary/20' : 'bg-card group-hover:bg-primary/5 dark:group-hover:bg-primary/20'}`}>
                                                         <Checkbox checked={vendorSelected.has(v.id)} onCheckedChange={() => toggleSelect(v.id, vendorSelected, setVendorSelected)} />
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
-                                                    <TableCell><Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-[var(--primary)]' : ''}>{v.entry_status === 'arrival' ? '到院' : '離院'}</Badge></TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={v.entry_status === 'arrival' ? 'default' : 'secondary'} className={v.entry_status === 'arrival' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 border-blue-200 dark:border-blue-800' : 'bg-muted text-foreground/80 hover:bg-slate-200 dark:hover:bg-slate-700'}>
+                                                            {v.entry_status === 'arrival' ? '到院' : '離院'}
+                                                        </Badge>
+                                                    </TableCell>
                                                     <TableCell className="font-mono">{v.work_date}</TableCell>
                                                     <TableCell className="font-mono">{v.arrival_time?.slice(0, 5) || '-'}</TableCell>
                                                     <TableCell className="font-mono">{v.departure_time?.slice(0, 5) || '-'}</TableCell>
-                                                    <TableCell className="font-bold text-[var(--primary)]">{v.vendor_name}</TableCell>
+                                                    <TableCell className="font-bold text-blue-600 dark:text-blue-400">{v.vendor_name}</TableCell>
                                                     <TableCell>{v.vendor_badge_id || '-'}</TableCell>
                                                     <TableCell>{v.vendor_contact}</TableCell>
                                                     <TableCell className="font-mono">{v.vendor_contact_phone || '-'}</TableCell>
@@ -450,11 +467,11 @@ export default function WhiteboardClient({
                                             目前無廠商施工項目
                                         </div>
                                     ) : (
-                                        vendorTable.paginatedData.map((v: any) => (
+                                        vendorTable.paginatedData.map((v: any, index: number) => (
                                             <MobileTableCard
                                                 key={v.id}
                                                 id={v.id}
-                                                title={v.vendor_name}
+                                                title={`#${(vendorTable.page - 1) * vendorTable.perPage + index + 1} ${v.vendor_name}`}
                                                 subtitle={v.location || '無地點'}
                                                 status={{
                                                     label: v.entry_status === 'arrival' ? '到院' : '離院',
@@ -565,8 +582,8 @@ export default function WhiteboardClient({
                                         {engTable.paginatedData.map((e: any, index: number) => {
                                             const actualIndex = (engTable.page - 1) * engTable.perPage + index + 1
                                             return (
-                                                <TableRow key={e.id} className={`hover:bg-amber-50/50 transition-colors even:bg-muted/20 ${engSelected.has(e.id) ? 'bg-amber-50' : ''}`}>
-                                                    <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-amber-50/50">
+                                                <TableRow key={e.id} className={`hover:bg-amber-50/50 dark:hover:bg-amber-900/40 transition-colors even:bg-muted/20 ${engSelected.has(e.id) ? 'bg-amber-50 dark:bg-amber-900/40' : ''}`}>
+                                                    <TableCell className={`sticky left-0 z-10 ${engSelected.has(e.id) ? 'bg-amber-50 dark:bg-amber-900/40' : 'bg-card group-hover:bg-amber-50/50 dark:group-hover:bg-amber-900/40'}`}>
                                                         <Checkbox checked={engSelected.has(e.id)} onCheckedChange={() => toggleSelect(e.id, engSelected, setEngSelected)} />
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
@@ -592,11 +609,11 @@ export default function WhiteboardClient({
                                             目前無工務施工項目
                                         </div>
                                     ) : (
-                                        engTable.paginatedData.map((e: any) => (
+                                        engTable.paginatedData.map((e: any, index: number) => (
                                             <MobileTableCard
                                                 key={e.id}
                                                 id={e.id}
-                                                title={e.vendor_name}
+                                                title={`#${(engTable.page - 1) * engTable.perPage + index + 1} ${e.vendor_name}`}
                                                 subtitle={e.unit || '無單位'}
                                                 status={{
                                                     label: '工務',
@@ -708,8 +725,8 @@ export default function WhiteboardClient({
                                         {pendingTable.paginatedData.map((p: any, index: number) => {
                                             const actualIndex = (pendingTable.page - 1) * pendingTable.perPage + index + 1
                                             return (
-                                                <TableRow key={p.id} className={`hover:bg-purple-50/50 transition-colors even:bg-muted/20 ${pendingSelected.has(p.id) ? 'bg-purple-50' : ''}`}>
-                                                    <TableCell className="sticky left-0 bg-white z-10 group-hover:bg-purple-50/50">
+                                                <TableRow key={p.id} className={`hover:bg-purple-50/50 dark:hover:bg-purple-900/40 transition-colors even:bg-muted/20 ${pendingSelected.has(p.id) ? 'bg-purple-50 dark:bg-purple-900/40' : ''}`}>
+                                                    <TableCell className={`sticky left-0 z-10 ${pendingSelected.has(p.id) ? 'bg-purple-50 dark:bg-purple-900/40' : 'bg-card group-hover:bg-purple-50/50 dark:group-hover:bg-purple-900/40'}`}>
                                                         <Checkbox checked={pendingSelected.has(p.id)} onCheckedChange={() => toggleSelect(p.id, pendingSelected, setPendingSelected)} />
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground text-sm">{actualIndex}</TableCell>
@@ -735,11 +752,11 @@ export default function WhiteboardClient({
                                             目前無待辦事項
                                         </div>
                                     ) : (
-                                        pendingTable.paginatedData.map((p: any) => (
+                                        pendingTable.paginatedData.map((p: any, index: number) => (
                                             <MobileTableCard
                                                 key={p.id}
                                                 id={p.id}
-                                                title={p.vendor_name}
+                                                title={`#${(pendingTable.page - 1) * pendingTable.perPage + index + 1} ${p.vendor_name}`}
                                                 subtitle={p.engineering_contact || '無負責人'}
                                                 status={{
                                                     label: '待處理',

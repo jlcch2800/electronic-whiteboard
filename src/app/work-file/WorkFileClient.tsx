@@ -218,11 +218,11 @@ export default function WorkFileClient() {
                                     {sortedData.length === 0 ? (
                                         <EmptyState icon={FolderOpen} title="尚無施工檔案" description="目前沒有施工檔案記錄，您可以點擊右上方新增。" />
                                     ) : (
-                                        sortedData.map((row: WorkFileRecord) => (
+                                        sortedData.map((row: WorkFileRecord, index) => (
                                             <MobileTableCard
                                                 key={row.id}
                                                 id={row.id}
-                                                title={row.vendor_name || '未指定廠商'}
+                                                title={`#${(page - 1) * pageSize + index + 1} ${row.vendor_name || '未指定廠商'}`}
                                                 subtitle={row.uploader_name}
                                                 status={{
                                                     label: '文件',

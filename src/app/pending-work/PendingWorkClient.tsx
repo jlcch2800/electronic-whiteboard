@@ -331,11 +331,11 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                             查無待處理工作
                                         </div>
                                     ) : (
-                                        tableData.paginatedData.map((e: any) => (
+                                        tableData.paginatedData.map((e: any, index: number) => (
                                             <MobileTableCard
                                                 key={e.id}
                                                 id={e.id}
-                                                title={e.vendor_name}
+                                                title={`#${(tableData.page - 1) * tableData.perPage + index + 1} ${e.vendor_name}`}
                                                 subtitle={e.engineering_contact || '無負責人'}
                                                 status={e.status === '待處理' ? {
                                                     label: '待處理',

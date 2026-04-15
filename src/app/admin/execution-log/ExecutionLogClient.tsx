@@ -380,7 +380,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                             <TableBody>
                                 {paginatedLogs.length === 0 ? <TableRow><TableCell colSpan={8} className="p-0"><EmptyState icon={Terminal} title="沒有找到紀錄" description="目前沒有符合條件的執行紀錄，請調整篩選條件。" /></TableCell></TableRow>
                                     : paginatedLogs.map((log, index) => (
-                                        <TableRow key={log.id} className={`hover:bg-muted dark:hover:bg-indigo-900/20 ${selected.has(log.id) ? 'bg-indigo-100 dark:bg-indigo-900/40' : ''}`}>
+                                        <TableRow key={log.id} className={`hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-colors even:bg-muted/20 dark:even:bg-muted/10 ${selected.has(log.id) ? 'bg-indigo-100 dark:bg-indigo-900/40' : ''}`}>
                                             <TableCell><Checkbox checked={selected.has(log.id)} onCheckedChange={() => toggleSelect(log.id)} /></TableCell>
                                             <TableCell className="text-muted-foreground dark:text-muted-foreground/70 text-sm">{(currentPage - 1) * pageSize + index + 1}</TableCell>
                                             <TableCell className="font-mono text-xs text-muted-foreground dark:text-gray-300 whitespace-nowrap">{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}</TableCell>

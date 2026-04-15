@@ -337,11 +337,11 @@ export default function VendorHistoryClient() {
                                     {sortedData.length === 0 ? (
                                         <EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" />
                                     ) : (
-                                        sortedData.map((row: VendorHistoryRecord) => (
+                                        sortedData.map((row: VendorHistoryRecord, index) => (
                                             <MobileTableCard
                                                 key={row.id}
                                                 id={row.id}
-                                                title={row.vendor_name}
+                                                title={`#${(page - 1) * pageSize + index + 1} ${row.vendor_name}`}
                                                 subtitle={row.vendor_contact || undefined}
                                                 status={{
                                                     label: row.entry_status === 'arrival' ? '到院' : '離院',

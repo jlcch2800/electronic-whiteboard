@@ -185,11 +185,11 @@ export default function PendingHistoryClient() {
                                     {sortedData.length === 0 ? (
                                         <EmptyState icon={FileClock} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" />
                                     ) : (
-                                        sortedData.map((row: PendingHistoryRecord) => (
+                                        sortedData.map((row: PendingHistoryRecord, index) => (
                                             <MobileTableCard
                                                 key={row.id}
                                                 id={row.id}
-                                                title={row.vendor_name}
+                                                title={`#${(page - 1) * pageSize + index + 1} ${row.vendor_name}`}
                                                 subtitle={row.engineering_contact}
                                                 status={{
                                                     label: row.unit,

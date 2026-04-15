@@ -230,11 +230,11 @@ export default function WorkReportClient() {
                                     {sortedData.length === 0 ? (
                                         <EmptyState icon={FileText} title="尚無施工回報" description="目前沒有施工回報記錄，您可以點擊右上方新增。" />
                                     ) : (
-                                        sortedData.map((row: WorkReportRecord) => (
+                                        sortedData.map((row: WorkReportRecord, index) => (
                                             <MobileTableCard
                                                 key={row.id}
                                                 id={row.id}
-                                                title={row.vendor_name}
+                                                title={`#${(page - 1) * pageSize + index + 1} ${row.vendor_name}`}
                                                 subtitle={row.engineering_contact}
                                                 status={{
                                                     label: statusLabels[row.work_status]?.text || row.work_status,

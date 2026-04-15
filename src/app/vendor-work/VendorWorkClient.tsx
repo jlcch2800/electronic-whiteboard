@@ -323,11 +323,11 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                     {sortedData.length === 0 ? (
                                         <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
                                     ) : (
-                                        sortedData.map((v: any) => (
+                                        sortedData.map((v: any, index: number) => (
                                             <MobileTableCard
                                                 key={v.id}
                                                 id={v.id}
-                                                title={v.vendor_name}
+                                                title={`#${(currentPage - 1) * itemsPerPage + index + 1} ${v.vendor_name}`}
                                                 subtitle={v.vendor_contact}
                                                 status={{
                                                     label: '廠商',
