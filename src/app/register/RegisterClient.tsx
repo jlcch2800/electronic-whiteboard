@@ -22,7 +22,8 @@ const FloatingInput = forwardRef<HTMLInputElement, {
     endAdornment?: React.ReactNode; disabled?: boolean; name: string
     onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
-}>(({ id, label, type = 'text', icon: Icon, error, required, endAdornment, disabled, name, onBlur, onChange }, ref) => {
+    [key: string]: any
+}>(({ id, label, type = 'text', icon: Icon, error, required, endAdornment, disabled, name, onBlur, onChange, ...rest }, ref) => {
     const [focused, setFocused] = useState(false)
     const [hasValue, setHasValue] = useState(false)
     const isFloating = focused || hasValue
@@ -32,14 +33,14 @@ const FloatingInput = forwardRef<HTMLInputElement, {
             <Icon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 z-10 transition-colors duration-200 ${focused ? 'text-emerald-500' : 'text-muted-foreground'}`} />
             <label htmlFor={id}
                 className={`absolute left-10 z-10 pointer-events-none transition-all duration-200 ease-out origin-left
-                    ${isFloating ? 'top-1 text-[11px] font-semibold ' + (focused ? 'text-emerald-500' : 'text-muted-foreground') : 'top-1/2 -translate-y-1/2 text-sm text-muted-foreground'}`}>
+                    ${isFloating ? 'top-1 text-[11px] font-semibold ' + (focused ? 'text-emerald-500' : 'text-slate-600') : 'top-1/2 -translate-y-1/2 text-sm text-slate-500'}`}>
                 {label}{required && <span className="text-red-500 ml-0.5">*</span>}
             </label>
-            <input ref={ref} id={id} name={name} type={type} disabled={disabled}
+            <input ref={ref} id={id} name={name} type={type} disabled={disabled} {...rest}
                 className={`w-full pl-10 pr-10 pt-5 pb-2 rounded-xl border bg-white backdrop-blur-sm text-sm text-gray-900 outline-none transition-all duration-200
                     ${focused ? 'border-emerald-400 ring-2 ring-emerald-100 shadow-md' : 'border-border hover:border-slate-300'}
                     ${error ? 'border-red-400 ring-2 ring-red-100' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onFocus={() => setFocused(true)}
+                onFocus={(e) => { setFocused(true); setHasValue(!!e.target.value) }}
                 onBlur={(e) => { setFocused(false); setHasValue(!!e.target.value); onBlur?.(e) }}
                 onChange={(e) => { setHasValue(!!e.target.value); onChange?.(e) }}
             />
@@ -121,11 +122,12 @@ export default function RegisterClient() {
             })
             if (authError) { setError(authError.message.includes('already registered') ? '此 Email 已被註冊' : authError.message); return }
             if (authData.user) {
-                const { error: insertError } = await supabase.from('users').insert({
+                // 使用 upsert 以防 Supabase 觸發器已預先建立該筆資料（主鍵衝突）
+                const { error: upsertError } = await supabase.from('users').upsert({
                     id: authData.user.id, unit: data.unit, user_name: data.user_name,
                     user_account: data.user_account, email: data.email, role: 'staff', is_active: true, failed_login_attempts: 0,
-                })
-                if (insertError) console.error('Insert user error:', insertError)
+                }, { onConflict: 'id' })
+                if (upsertError) console.error('Upsert user error:', upsertError)
             }
             setSuccess(true)
         } catch (err: any) { setError(err.message || '註冊失敗，請稍後再試') }
@@ -139,9 +141,13 @@ export default function RegisterClient() {
                         <div className="mx-auto w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-700 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-green-200/70">
                             <CheckCircle2 className="w-8 h-8 text-white" />
                         </div>
-                        <h2 className="text-2xl font-black text-foreground mb-2">註冊成功！</h2>
-                        <p className="text-muted-foreground text-sm mb-2">我們已發送驗證信至您的 Email，請點擊信中連結完成驗證。</p>
-                        <p className="text-xs text-muted-foreground mb-6">若未收到驗證信，請檢查垃圾郵件資料夾。</p>
+                        <h2 className="text-2xl font-black text-slate-800 mb-2">註冊成功！</h2>
+                        <p className="text-slate-600 text-sm mb-2">我們已發送驗證信至您的 Email，請點擊信中連結完成驗證。</p>
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-left">
+                            <p className="text-amber-700 text-xs font-semibold mb-1">⚠️ 請注意驗證期限</p>
+                            <p className="text-amber-600 text-xs">驗證連結有效期限為 <span className="font-bold">30 分鐘</span>，請盡快完成驗證。逾期需重新註冊。</p>
+                        </div>
+                        <p className="text-xs text-slate-400 mb-6">若未收到驗證信，請檢查垃圾郵件資料夾。</p>
                         <Button onClick={() => router.push('/login')} className="auth-submit-btn w-full text-white font-bold py-6 rounded-xl shadow-lg shadow-blue-200/70 text-base">前往登入頁面</Button>
                     </div>
                 </motion.div>
