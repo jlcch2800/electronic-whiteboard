@@ -34,10 +34,9 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     // Protected routes - require authentication
-    // 廠商施工、工務施工、待處理工作的新增/修改/刪除為公開（無需登入）
+    // 廠商施工、工務施工、待處理工作、施工文件的新增/修改/刪除為公開（無需登入）
     const isProtectedRoute = request.nextUrl.pathname.startsWith('/admin') ||
         request.nextUrl.pathname.startsWith('/history') ||
-        request.nextUrl.pathname.startsWith('/work-file') ||
         request.nextUrl.pathname.startsWith('/work-report/manage')
 
     if (isProtectedRoute && !user) {
