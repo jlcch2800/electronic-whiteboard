@@ -125,7 +125,9 @@ export default function RegisterClient() {
                 // 使用 upsert 以防 Supabase 觸發器已預先建立該筆資料（主鍵衝突）
                 const { error: upsertError } = await supabase.from('users').upsert({
                     id: authData.user.id, unit: data.unit, user_name: data.user_name,
-                    user_account: data.user_account, email: data.email, role: 'staff', is_active: true, failed_login_attempts: 0,
+                    user_account: data.user_account, email: data.email,
+                    password_hash: hashedPassword,  // 必填欄位，否則 INSERT 因 NOT NULL 失敗
+                    role: 'staff', is_active: true, failed_login_attempts: 0,
                 }, { onConflict: 'id' })
                 if (upsertError) console.error('Upsert user error:', upsertError)
             }
@@ -145,7 +147,7 @@ export default function RegisterClient() {
                         <p className="text-slate-600 text-sm mb-2">我們已發送驗證信至您的 Email，請點擊信中連結完成驗證。</p>
                         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-left">
                             <p className="text-amber-700 text-xs font-semibold mb-1">⚠️ 請注意驗證期限</p>
-                            <p className="text-amber-600 text-xs">驗證連結有效期限為 <span className="font-bold">30 分鐘</span>，請盡快完成驗證。逾期需重新註冊。</p>
+                            <p className="text-amber-600 text-xs">驗證連結有效期限為 <span className="font-bold">5 分鐘</span>，請盡快完成驗證。逾期需重新註冊。</p>
                         </div>
                         <p className="text-xs text-slate-400 mb-6">若未收到驗證信，請檢查垃圾郵件資料夾。</p>
                         <Button onClick={() => router.push('/login')} className="auth-submit-btn w-full text-white font-bold py-6 rounded-xl shadow-lg shadow-blue-200/70 text-base">前往登入頁面</Button>
