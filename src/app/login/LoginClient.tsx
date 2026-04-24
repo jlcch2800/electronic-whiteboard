@@ -290,9 +290,14 @@ export default function LoginClient() {
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center text-sm text-slate-600 font-medium">
-                        還沒有帳號？{' '}
-                        <Link href="/register" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold transition-colors">建立帳號</Link>
+                    <div className="mt-6 flex flex-col gap-3 text-center text-sm text-slate-600 font-medium">
+                        <div>
+                            <Link href="/" className="text-slate-500 hover:text-slate-700 hover:underline transition-colors">回到首頁</Link>
+                        </div>
+                        <div>
+                            還沒有帳號？{' '}
+                            <Link href="/register" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold transition-colors">建立帳號</Link>
+                        </div>
                     </div>
                 </motion.div>
             </div>
