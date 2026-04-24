@@ -122,14 +122,23 @@ export default function RegisterClient() {
             })
             if (authError) { setError(authError.message.includes('already registered') ? '此 Email 已被註冊' : authError.message); return }
             if (authData.user) {
-                // 使用 upsert 以防 Supabase 觸發器已預先建立該筆資料（主鍵衝突）
-                const { error: upsertError } = await supabase.from('users').upsert({
-                    id: authData.user.id, unit: data.unit, user_name: data.user_name,
-                    user_account: data.user_account, email: data.email,
-                    password_hash: hashedPassword,  // 必填欄位，否則 INSERT 因 NOT NULL 失敗
-                    role: 'staff', is_active: true, failed_login_attempts: 0,
-                }, { onConflict: 'id' })
-                if (upsertError) console.error('Upsert user error:', upsertError)
+                // 呼叫 server-side API（使用 Service Role Key 繞過 RLS）寫入 public.users
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: authData.user.id,
+                        unit: data.unit,
+                        user_name: data.user_name,
+                        user_account: data.user_account,
+                        email: data.email,
+                        password_hash: hashedPassword,
+                    }),
+                })
+                if (!res.ok) {
+                    const { error: apiError } = await res.json()
+                    console.error('Register API error:', apiError)
+                }
             }
             setSuccess(true)
         } catch (err: any) { setError(err.message || '註冊失敗，請稍後再試') }
