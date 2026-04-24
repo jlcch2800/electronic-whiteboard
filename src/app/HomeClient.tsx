@@ -12,6 +12,12 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import Navbar from '@/components/Navbar'
 
+interface RecentItem {
+    id: string
+    date_label: string // 廠商用 work_date，工務/待處理用 start_date
+    work_content: string
+}
+
 // Cloudinary 背景圖 URL
 const HERO_BG_URL = 'https://res.cloudinary.com/dzup404bt/image/upload/v1771733639/SCR-20260222-kxyc-_dzo3aj.png'
 // 手機版背景圖 URL
@@ -23,6 +29,9 @@ interface HomeClientProps {
         engineering: number
         pending: number
     }
+    initialPendingRecent: RecentItem[]
+    initialVendorRecent: RecentItem[]
+    initialEngineeringRecent: RecentItem[]
 }
 
 // 計數動畫 Hook
@@ -67,7 +76,8 @@ function StatCard({
     href,
     newHref,
     delay,
-    className
+    className,
+    recentItems
 }: {
     icon: any
     label: string
@@ -77,6 +87,8 @@ function StatCard({
     newHref: string
     delay: number
     className?: string
+    /** 最近資料條列 */
+    recentItems?: RecentItem[]
 }) {
     const router = useRouter()
     const animatedCount = useCountUp(count, 1500)
@@ -172,23 +184,45 @@ function StatCard({
                 <div className={`p-3 rounded-xl ${c.iconBg} ${c.iconColor} shadow-sm`}>
                     <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-semibold text-foreground/80">{label}</h3>
+                <h3 className="text-base font-semibold text-gray-700">{label}</h3>
             </div>
 
             {/* 數字 / 空狀態 */}
             {isEmpty ? (
                 <div className="mb-1">
-                    <span className="text-4xl font-black text-muted-foreground/50 tabular-nums tracking-tight">0</span>
-                    <span className="text-base font-medium text-muted-foreground/50 ml-2">筆</span>
-                    <p className="text-sm text-muted-foreground mt-2">{EMPTY_STATE_MESSAGES[color]}</p>
+                    <span className="text-4xl font-black text-gray-300 tabular-nums tracking-tight">0</span>
+                    <span className="text-base font-medium text-gray-400 ml-2">筆</span>
+                    <p className="text-sm text-gray-500 mt-2">{EMPTY_STATE_MESSAGES[color]}</p>
                 </div>
             ) : (
                 <div className="flex items-baseline gap-2 mb-1">
                     <span className={`text-5xl font-black ${c.countColor} tabular-nums tracking-tight`}>
                         {animatedCount}
                     </span>
-                    <span className="text-base font-medium text-muted-foreground">筆</span>
+                    <span className="text-base font-medium text-gray-500">筆</span>
                 </div>
+            )}
+
+            {/* 最近7天條列清單（僅待處理卡片顯示） */}
+            {recentItems && recentItems.length > 0 && (
+                <ul className="mt-3 mb-1 space-y-1.5">
+                    {recentItems.map((item) => (
+                        <li
+                            key={item.id}
+                            className="flex items-start gap-2 text-xs text-gray-600 leading-snug"
+                        >
+                            {/* 小圓點裝飾 */}
+                            <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${c.badge}`} />
+                            <span>
+                                <span className="font-mono text-gray-500 mr-1.5">{item.date_label}</span>
+                                <span className="break-all text-gray-700">{item.work_content}</span>
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {recentItems && recentItems.length === 0 && (
+                <p className="mt-2 text-xs text-gray-400">近7天無新增事項</p>
             )}
 
             {/* 底部操作列：查看詳情 + 新增按鈕 */}
@@ -212,24 +246,40 @@ function StatCard({
     )
 }
 
-export default function HomeClient({ initialCounts }: HomeClientProps) {
+export default function HomeClient({ initialCounts, initialPendingRecent, initialVendorRecent, initialEngineeringRecent }: HomeClientProps) {
     const supabase = createClient()
     const [counts, setCounts] = useState(initialCounts)
+    const [pendingRecent, setPendingRecent] = useState<RecentItem[]>(initialPendingRecent)
+    const [vendorRecent, setVendorRecent] = useState<RecentItem[]>(initialVendorRecent)
+    const [engineeringRecent, setEngineeringRecent] = useState<RecentItem[]>(initialEngineeringRecent)
 
     // 重新整理統計數據
     const refreshCounts = async () => {
         // 使用台灣時區取得今天日期
         const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
-        const [v, e, p] = await Promise.all([
+        // 最近7天起始日
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+        const sevenDaysAgoStr = sevenDaysAgo.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+
+        const [v, e, p, pRecent, vRecent, eRecent] = await Promise.all([
             supabase.from('vendor_today_work').select('*', { count: 'exact', head: true }).eq('work_date', today),
             supabase.from('engineering_today_work').select('*', { count: 'exact', head: true }).lte('start_date', today).gte('end_date', today),
-            supabase.from('pending_work').select('*', { count: 'exact', head: true }).lte('start_date', today).gte('end_date', today),
+            // pending_work 只看 end_date >= today（尚未過期），不限 start_date
+            supabase.from('pending_work').select('*', { count: 'exact', head: true }).gte('end_date', today),
+            // 最近7天內開始的事項
+            supabase.from('pending_work').select('id, start_date, work_content').gte('start_date', sevenDaysAgoStr).order('start_date', { ascending: false }).limit(10),
+            supabase.from('vendor_today_work').select('id, work_date, work_content').eq('work_date', today).order('created_at', { ascending: true }).limit(10),
+            supabase.from('engineering_today_work').select('id, start_date, work_content').lte('start_date', today).gte('end_date', today).order('start_date', { ascending: true }).limit(10),
         ])
         setCounts({
             vendor: v.count ?? 0,
             engineering: e.count ?? 0,
             pending: p.count ?? 0,
         })
+        setPendingRecent(pRecent.data?.map(i => ({ id: i.id, date_label: i.start_date, work_content: i.work_content })) ?? [])
+        setVendorRecent(vRecent.data?.map(i => ({ id: i.id, date_label: i.work_date, work_content: i.work_content })) ?? [])
+        setEngineeringRecent(eRecent.data?.map(i => ({ id: i.id, date_label: i.start_date, work_content: i.work_content })) ?? [])
     }
 
     // 每次進入首頁時自動重新查詢最新數據，避免 Router Cache 導致舊數據
@@ -283,6 +333,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         newHref="/vendor-work/new"
                         delay={0.3}
                         className="w-[85vw] shrink-0 snap-center md:w-auto"
+                        recentItems={vendorRecent}
                     />
                     <StatCard
                         icon={HardHat}
@@ -293,6 +344,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         newHref="/engineering-work/new"
                         delay={0.45}
                         className="w-[85vw] shrink-0 snap-center md:w-auto"
+                        recentItems={engineeringRecent}
                     />
                     <StatCard
                         icon={FileClock}
@@ -303,6 +355,7 @@ export default function HomeClient({ initialCounts }: HomeClientProps) {
                         newHref="/pending-work/new"
                         delay={0.6}
                         className="w-[85vw] shrink-0 snap-center md:w-auto"
+                        recentItems={pendingRecent}
                     />
                 </div>
             </section>

@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
 import {
-    HardHat, Plus, Edit, Trash2, Download, ArrowLeft, RefreshCw
+    HardHat, Plus, Edit, Trash2, Download, ArrowLeft, RefreshCw, Search
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'

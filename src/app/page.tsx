@@ -9,9 +9,20 @@ export default async function HomePage() {
   const supabase = await createClient()
   // 使用台灣時區取得今天日期，避免 UTC 時差導致查錯日期
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+  // 最近7天的起始日期（含今天往前推6天）
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+  const sevenDaysAgoStr = sevenDaysAgo.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
 
-  // 查詢三張表的 count（使用 head: true 只取筆數，不取資料）
-  const [vendorCount, engineeringCount, pendingCount] = await Promise.all([
+  // 查詢三張表的 count + 條列資料，全部併行
+  const [
+    vendorCount,
+    engineeringCount,
+    pendingCount,
+    pendingRecent,
+    vendorRecent,
+    engineeringRecent,
+  ] = await Promise.all([
     supabase
       .from('vendor_today_work')
       .select('*', { count: 'exact', head: true })
@@ -21,13 +32,34 @@ export default async function HomePage() {
       .select('*', { count: 'exact', head: true })
       .lte('start_date', today)
       .gte('end_date', today),
+    // pending_work 只檢查 end_date >= today（尚未過期的待辦），不限制 start_date
     supabase
       .from('pending_work')
       .select('*', { count: 'exact', head: true })
-      .lte('start_date', today)
       .gte('end_date', today),
+    // 最近7天內開始的待處理事項（供首頁條列顯示）
+    supabase
+      .from('pending_work')
+      .select('id, start_date, work_content')
+      .gte('start_date', sevenDaysAgoStr)
+      .order('start_date', { ascending: false })
+      .limit(10),
+    // 廠商今日施工條列
+    supabase
+      .from('vendor_today_work')
+      .select('id, work_date, work_content')
+      .eq('work_date', today)
+      .order('created_at', { ascending: true })
+      .limit(10),
+    // 工務今日施工條列（今日有效中）
+    supabase
+      .from('engineering_today_work')
+      .select('id, start_date, work_content')
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .order('start_date', { ascending: true })
+      .limit(10),
   ])
-
 
   return (
     <HomeClient
@@ -36,6 +68,9 @@ export default async function HomePage() {
         engineering: engineeringCount.count ?? 0,
         pending: pendingCount.count ?? 0,
       }}
+      initialPendingRecent={pendingRecent.data ?? []}
+      initialVendorRecent={vendorRecent.data ?? []}
+      initialEngineeringRecent={engineeringRecent.data ?? []}
     />
   )
 }
