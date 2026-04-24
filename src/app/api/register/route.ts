@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
             password_hash: password_hash || 'MANAGED_BY_SUPABASE_AUTH',
             role: 'staff',
             is_active: true,
-            failed_login_attempts: 0,
+            failed_attempts: 0,  // 正確欄位名（非 failed_login_attempts）
         }, { onConflict: 'id' })
 
         if (error) {
