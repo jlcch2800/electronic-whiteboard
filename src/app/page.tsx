@@ -42,14 +42,14 @@ export default async function HomePage() {
       .from('pending_work')
       .select('id, start_date, work_content')
       .gte('start_date', sevenDaysAgoStr)
-      .order('start_date', { ascending: false })
+      .order('start_date', { ascending: true })
       .limit(10),
     // 廠商今日施工條列
     supabase
       .from('vendor_today_work')
       .select('id, work_date, work_content')
       .eq('work_date', today)
-      .order('created_at', { ascending: true })
+      .order('work_date', { ascending: true })
       .limit(10),
     // 工務今日施工條列（今日有效中）
     supabase

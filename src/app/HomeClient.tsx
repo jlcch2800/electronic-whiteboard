@@ -268,8 +268,8 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
             // pending_work 只看 end_date >= today（尚未過期），不限 start_date
             supabase.from('pending_work').select('*', { count: 'exact', head: true }).gte('end_date', today),
             // 最近7天內開始的事項
-            supabase.from('pending_work').select('id, start_date, work_content').gte('start_date', sevenDaysAgoStr).order('start_date', { ascending: false }).limit(10),
-            supabase.from('vendor_today_work').select('id, work_date, work_content').eq('work_date', today).order('created_at', { ascending: true }).limit(10),
+            supabase.from('pending_work').select('id, start_date, work_content').gte('start_date', sevenDaysAgoStr).order('start_date', { ascending: true }).limit(10),
+            supabase.from('vendor_today_work').select('id, work_date, work_content').eq('work_date', today).order('work_date', { ascending: true }).limit(10),
             supabase.from('engineering_today_work').select('id, start_date, work_content').lte('start_date', today).gte('end_date', today).order('start_date', { ascending: true }).limit(10),
         ])
         setCounts({
