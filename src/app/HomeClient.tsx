@@ -288,10 +288,10 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
     useEffect(() => {
         refreshCounts()
 
-        // 設定每 5 分鐘自動更新一次筆數
+        // 設定每 3 分鐘自動更新一次筆數
         const interval = setInterval(() => {
             refreshCounts()
-        }, 300000)
+        }, 180000)
 
         return () => clearInterval(interval)
     }, [])
