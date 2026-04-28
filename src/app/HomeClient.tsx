@@ -206,13 +206,15 @@ function StatCard({
             {/* 最近7天條列清單（僅待處理卡片顯示） */}
             {recentItems && recentItems.length > 0 && (
                 <ul className="mt-3 mb-1 space-y-1.5">
-                    {recentItems.map((item) => (
+                    {recentItems.map((item, index) => (
                         <li
                             key={item.id}
                             className="flex items-start gap-2 text-xs text-gray-600 leading-snug"
                         >
-                            {/* 小圓點裝飾 */}
-                            <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${c.badge}`} />
+                            {/* 流水號編號 */}
+                            <span className={`mt-0.5 font-bold shrink-0 ${c.accent} w-4`}>
+                                {index + 1}.
+                            </span>
                             <span>
                                 <span className="font-mono text-gray-500 mr-1.5">{item.date_label}</span>
                                 <span className="break-all text-gray-700">{item.work_content}</span>
@@ -369,7 +371,7 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
             >
                 <div className="text-center text-sm text-muted-foreground space-y-1">
                     <p>佳里奇美醫院 工務室電子白板管理系統</p>
-                    <p>Chi Mei Hospital, Chiali — Engineering Division Dashboard</p>
+                    <p>ChiMei Hospital, Chiali — Engineering Division Dashboard</p>
                 </div>
             </motion.section>
 
