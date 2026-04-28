@@ -184,6 +184,7 @@ export const workFileSchema = z.object({
     work_item: z.string().optional(),
     uploader_name: z.string().min(1, '請輸入上傳人員'),
     description: z.string().optional(),
+    folder_name: z.string().min(1, '請輸入資料夾名稱'),
     file_url: z.string().optional(),
     image_url: z.string().optional(),
     video_url: z.string().optional(),

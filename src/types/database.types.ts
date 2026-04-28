@@ -496,6 +496,7 @@ export interface Database {
           work_item: string | null
           uploader_name: string
           description: string | null
+          folder_name: string | null
           file_url: string
           image_url: string
           video_url: string | null
@@ -509,6 +510,7 @@ export interface Database {
           work_item?: string | null
           uploader_name: string
           description?: string | null
+          folder_name?: string | null
           file_url: string
           image_url: string
           video_url?: string | null
@@ -522,6 +524,7 @@ export interface Database {
           work_item?: string | null
           uploader_name?: string
           description?: string | null
+          folder_name?: string | null
           file_url?: string
           image_url?: string
           video_url?: string | null

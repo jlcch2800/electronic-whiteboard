@@ -7,7 +7,10 @@ import { format, subDays } from 'date-fns'
 import { motion } from 'framer-motion'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
-import { FileText, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, ExternalLink, Video, Download, Filter, FolderOpen } from 'lucide-react'
+import { FileText, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, ExternalLink, Video, Download, Filter, FolderOpen, FileIcon } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import Lightbox from "yet-another-react-lightbox"
+import "yet-another-react-lightbox/styles.css"
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import { createClient } from '@/lib/supabase/client'
@@ -46,6 +49,20 @@ export default function WorkFileClient() {
     const totalPages = Math.ceil(totalCount / pageSize)
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+    // Lightbox states
+    const [lightboxOpen, setLightboxOpen] = useState(false)
+    const [lightboxIndex, setLightboxIndex] = useState(0)
+    const [lightboxSlides, setLightboxSlides] = useState<{ src: string }[]>([])
+
+    // Parse array URLs helper
+    const parseUrls = (val: string | null | undefined): string[] => {
+        if (!val) return []
+        if (val.startsWith('[')) {
+            try { return JSON.parse(val) } catch { return [val] }
+        }
+        return [val]
+    }
 
     // 排序狀態
     const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
@@ -105,28 +122,92 @@ export default function WorkFileClient() {
         const ids = id ? [id] : Array.from(selected)
         if (ids.length === 0) return
 
-        // 收集被刪除項目的資料
+        // 收集被刪除項目的資料以供紀錄與檔案清理
         const deletedItems = data.filter(item => ids.includes(item.id))
+        
+        // 1. 蒐集所有相關檔案的網址與資料夾
+        const allUrls: string[] = []
+        const uniqueFolders = new Set<string>()
 
-        const { error } = await supabase.from('work_file').delete().in('id', ids)
+        deletedItems.forEach(item => {
+            const itemUrls = [
+                ...parseUrls(item.file_url),
+                ...parseUrls(item.image_url),
+                ...parseUrls(item.video_url)
+            ]
+            allUrls.push(...itemUrls)
+
+            // 從網址中解析資料夾路徑 (例如: work-report/2026-04-28_Test)
+            itemUrls.forEach(url => {
+                try {
+                    const decoded = decodeURIComponent(url)
+                    const parts = decoded.split('/')
+                    const uploadIndex = parts.indexOf('upload')
+                    if (uploadIndex !== -1) {
+                        // 取 upload/vXXXX/ 之後到檔名之前的部分
+                        const folderPath = parts.slice(uploadIndex + 2, parts.length - 1).join('/')
+                        if (folderPath) uniqueFolders.add(folderPath)
+                    }
+                } catch (e) {}
+            })
+        })
+
+        // 使用 .select() 來確認到底有沒有刪除成功
+        const { data: deletedData, error } = await supabase.from('work_file').delete().in('id', ids).select('id')
+        
         if (error) {
             toast({ title: '刪除失敗', description: error.message, variant: 'destructive' })
+        } else if (!deletedData || deletedData.length === 0) {
+            toast({ 
+                title: '刪除未生效', 
+                description: '您可能沒有權限刪除此資料，或該資料已被他人刪除。', 
+                variant: 'destructive' 
+            })
         } else {
+            // 2. 資料庫刪除成功後，背景執行 Cloudinary 清理
+            if (allUrls.length > 0 || uniqueFolders.size > 0) {
+                // 先刪除檔案
+                if (allUrls.length > 0) {
+                    fetch('/api/cloudinary/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ urls: allUrls })
+                    }).catch(e => console.error('Cloudinary files cleanup error:', e))
+                }
+
+                // 再嘗試刪除資料夾 (逐一刪除收集到的資料夾)
+                uniqueFolders.forEach(folder => {
+                    fetch('/api/cloudinary/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ folder })
+                    }).catch(e => console.error('Cloudinary folder cleanup error:', e))
+                })
+            }
+
             // 寫入系統異動紀錄
             logBatchDeleteRecords('work_file', deletedItems)
 
-            toast({ title: '刪除成功' })
+            toast({ title: '刪除成功', description: `已刪除 ${deletedData.length} 筆資料 (雲端檔案同步清理中)` })
+            
+            // 手動過濾本地資料，確保介面立即更新
+            setData(prev => prev.filter(item => !ids.includes(item.id)))
             fetchData()
         }
         setDeleteDialogOpen(false)
+        setSelected(new Set())
     }
 
     useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate])
 
-    const shortenUrl = (url: string | null) => {
-        if (!url) return null
-        try { const u = new URL(url); return u.hostname + (u.pathname.length > 15 ? u.pathname.slice(0, 15) + '...' : u.pathname) }
-        catch { return url.slice(0, 25) + '...' }
+    // 輔助函式：從網址提取檔名
+    const getFileName = (url: string | null) => {
+        if (!url) return ''
+        try {
+            const decoded = decodeURIComponent(url)
+            const parts = decoded.split('/')
+            return parts[parts.length - 1]
+        } catch { return url?.split('/').pop() || '' }
     }
 
     const handleExport = async () => {
@@ -204,9 +285,104 @@ export default function WorkFileClient() {
                                                     <TableCell className="text-muted-foreground text-sm">{(page - 1) * pageSize + index + 1}</TableCell>
                                                     <TableCell className="font-mono">{row.date}</TableCell><TableCell className="font-bold">{row.vendor_name || '-'}</TableCell><TableCell>{row.work_item || '-'}</TableCell><TableCell>{row.uploader_name}</TableCell>
                                                     <TableCell className="max-w-32 truncate" title={row.description || ''}>{row.description || '-'}</TableCell>
-                                                    <TableCell>{row.file_url ? <a href={row.file_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline flex items-center gap-1"><ExternalLink className="w-3 h-3" /><span className="text-xs">{shortenUrl(row.file_url)}</span></a> : '-'}</TableCell>
-                                                    <TableCell>{row.image_url ? <a href={row.image_url} target="_blank" rel="noopener noreferrer" className="block w-12 h-12"><img src={row.image_url} alt="Photo" className="w-full h-full object-cover rounded-md shadow-sm border border-border hover:scale-[2.5] hover:z-50 hover:shadow-xl transition-all duration-200 origin-center bg-white" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100?text=Error' }} /></a> : <span className="text-muted-foreground/50">-</span>}</TableCell>
-                                                    <TableCell>{row.video_url ? <a href={row.video_url} target="_blank" rel="noopener noreferrer" className="block w-12 h-12 relative group"><img src={row.video_url.replace(/\.[^/.]+$/, ".jpg")} alt="Video" className="w-full h-full object-cover rounded-md shadow-sm border border-border group-hover:scale-[2.5] group-hover:z-50 group-hover:shadow-xl transition-all duration-200 origin-center bg-black" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100?text=Video' }} /><div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-black/50 rounded-full p-1 group-hover:hidden"><Video className="w-3 h-3 text-white" /></div></div></a> : <span className="text-muted-foreground/50">-</span>}</TableCell>
+                                                    <TableCell>
+                                                        {(() => {
+                                                            const urls = parseUrls(row.file_url)
+                                                            if (urls.length === 0) return '-'
+                                                            if (urls.length === 1) {
+                                                                return (
+                                                                    <a href={urls[0]} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline flex items-center gap-1.5 group max-w-[150px]">
+                                                                        <FileIcon className="w-3.5 h-3.5 shrink-0 text-teal-500" />
+                                                                        <span className="text-[11px] truncate font-medium">{getFileName(urls[0])}</span>
+                                                                    </a>
+                                                                )
+                                                            }
+                                                            return (
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <button className="text-teal-600 hover:bg-teal-50 px-2 py-1 rounded-md border border-teal-100 flex items-center gap-1.5 transition-colors focus:outline-none">
+                                                                            <FileText className="w-3.5 h-3.5" />
+                                                                            <span className="text-[11px] font-bold">{urls.length} 份文件</span>
+                                                                        </button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent className="w-64 p-1">
+                                                                        <div className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 border-b border-border mb-1">點擊以下檔案查看:</div>
+                                                                        {urls.map((url, i) => (
+                                                                            <DropdownMenuItem key={i} asChild>
+                                                                                <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer group">
+                                                                                    <FileIcon className="w-4 h-4 text-teal-500" />
+                                                                                    <span className="text-xs truncate flex-1">{getFileName(url)}</span>
+                                                                                    <ExternalLink className="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                                                                </a>
+                                                                            </DropdownMenuItem>
+                                                                        ))}
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            )
+                                                        })()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {(() => {
+                                                            const urls = parseUrls(row.image_url)
+                                                            if (urls.length === 0) return <span className="text-muted-foreground/50">-</span>
+                                                            return (
+                                                                <div className="relative inline-block">
+                                                                    <img 
+                                                                        src={urls[0]} 
+                                                                        alt="Photo" 
+                                                                        className="w-12 h-12 object-cover rounded-md shadow-sm border border-border cursor-pointer hover:opacity-80 transition-opacity bg-white" 
+                                                                        onClick={() => {
+                                                                            setLightboxSlides(urls.map(src => ({ src })))
+                                                                            setLightboxIndex(0)
+                                                                            setLightboxOpen(true)
+                                                                        }}
+                                                                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100?text=Error' }} 
+                                                                    />
+                                                                    {urls.length > 1 && (
+                                                                        <div className="absolute -bottom-1 -right-1 bg-black/70 text-white text-[10px] px-1 rounded shadow-sm pointer-events-none">
+                                                                            +{urls.length - 1}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )
+                                                        })()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {(() => {
+                                                            const urls = parseUrls(row.video_url)
+                                                            if (urls.length === 0) return <span className="text-muted-foreground/50">-</span>
+                                                            if (urls.length === 1) {
+                                                                return (
+                                                                    <a href={urls[0]} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center gap-1.5 group max-w-[150px]">
+                                                                        <Video className="w-3.5 h-3.5 shrink-0 text-purple-500" />
+                                                                        <span className="text-[11px] truncate font-medium">{getFileName(urls[0])}</span>
+                                                                    </a>
+                                                                )
+                                                            }
+                                                            return (
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <button className="text-purple-600 hover:bg-purple-50 px-2 py-1 rounded-md border border-purple-100 flex items-center gap-1.5 transition-colors focus:outline-none">
+                                                                            <Video className="w-3.5 h-3.5" />
+                                                                            <span className="text-[11px] font-bold">{urls.length} 部影片</span>
+                                                                        </button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent className="w-64 p-1">
+                                                                        <div className="text-[10px] font-bold text-muted-foreground px-2 py-1.5 border-b border-border mb-1">點擊以下影片觀看:</div>
+                                                                        {urls.map((url, i) => (
+                                                                            <DropdownMenuItem key={i} asChild>
+                                                                                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 cursor-pointer group">
+                                                                                    <Video className="w-4 h-4 text-purple-500" />
+                                                                                    <span className="text-xs truncate flex-1">{getFileName(url)}</span>
+                                                                                    <ExternalLink className="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                                                                </a>
+                                                                            </DropdownMenuItem>
+                                                                        ))}
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            )
+                                                        })()}
+                                                    </TableCell>
                                                     <TableCell className="text-muted-foreground text-xs max-w-24 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
                                                 </TableRow>
                                             ))}
@@ -236,9 +412,46 @@ export default function WorkFileClient() {
                                                 details={[
                                                     { label: '施工項目', value: row.work_item },
                                                     { label: '說明', value: row.description },
-                                                    { label: '文件', value: row.file_url ? <a href={row.file_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline" onClick={(e) => e.stopPropagation()}>查看文件</a> : null },
-                                                    { label: '照片', value: row.image_url ? <a href={row.image_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline" onClick={(e) => e.stopPropagation()}>查看照片</a> : null },
-                                                    { label: '影片', value: row.video_url ? <a href={row.video_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline" onClick={(e) => e.stopPropagation()}>查看影片</a> : null },
+                                                    { label: '文件', value: (() => {
+                                                        const urls = parseUrls(row.file_url)
+                                                        if (urls.length === 0) return null
+                                                        return (
+                                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                                {urls.map((url, i) => (
+                                                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-teal-50 text-teal-700 px-2 py-1 rounded border border-teal-100 truncate max-w-[120px]" onClick={(e) => e.stopPropagation()}>
+                                                                        {getFileName(url)}
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                    })() },
+                                                    { label: '照片', value: (() => {
+                                                        const urls = parseUrls(row.image_url)
+                                                        if (urls.length === 0) return null
+                                                        return (
+                                                            <button type="button" onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                setLightboxSlides(urls.map(src => ({ src })))
+                                                                setLightboxIndex(0)
+                                                                setLightboxOpen(true)
+                                                            }} className="text-teal-600 hover:underline flex items-center gap-1 text-sm font-medium">
+                                                                查看照片 ({urls.length} 張)
+                                                            </button>
+                                                        )
+                                                    })() },
+                                                    { label: '影片', value: (() => {
+                                                        const urls = parseUrls(row.video_url)
+                                                        if (urls.length === 0) return null
+                                                        return (
+                                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                                {urls.map((url, i) => (
+                                                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100 truncate max-w-[120px]" onClick={(e) => e.stopPropagation()}>
+                                                                        {getFileName(url)}
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                    })() },
                                                     { label: '備註', value: row.note },
                                                 ]}
                                             />
@@ -276,6 +489,15 @@ export default function WorkFileClient() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <Lightbox
+                open={lightboxOpen}
+                close={() => setLightboxOpen(false)}
+                index={lightboxIndex}
+                slides={lightboxSlides}
+                carousel={{ finite: false }}
+                styles={{ container: { backgroundColor: "rgba(0, 0, 0, .8)" } }}
+            />
         </div>
     )
 }

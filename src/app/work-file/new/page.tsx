@@ -39,9 +39,9 @@ export default function WorkFileNewPage() {
     const { toast } = useToast()
 
     // File States
-    const [selectedFile, setSelectedFile] = useState<File | null>(null)
-    const [selectedImage, setSelectedImage] = useState<File | null>(null)
-    const [selectedVideo, setSelectedVideo] = useState<File | null>(null)
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+    const [selectedImages, setSelectedImages] = useState<File[]>([])
+    const [selectedVideos, setSelectedVideos] = useState<File[]>([])
     const [uploading, setUploading] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
@@ -56,6 +56,7 @@ export default function WorkFileNewPage() {
             file_url: '',
             image_url: '',
             uploader_name: '',
+            folder_name: '',
         }
     })
 
@@ -65,8 +66,14 @@ export default function WorkFileNewPage() {
     }, [trigger])
 
     // Cloudinary Upload Helper
-    const uploadToCloudinary = async (file: File, resourceType: 'auto' | 'image' | 'video' | 'raw' = 'auto') => {
+    const uploadToCloudinary = async (file: File, resourceType: 'auto' | 'image' | 'video' | 'raw' = 'auto', folderPath?: string) => {
         const formData = new FormData()
+        
+        // 關鍵：folder 必須在 file 之前加入 FormData
+        if (folderPath) {
+            const cleanPath = folderPath.replace(/^\/+|\/+$/g, '')
+            formData.append('folder', cleanPath)
+        }
         formData.append('file', file)
         formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!)
         formData.append('cloud_name', process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!)
@@ -90,7 +97,7 @@ export default function WorkFileNewPage() {
         const v = getValues()
         let step = 1
         if (v.date && v.uploader_name) step = 2
-        if (step >= 2 && (selectedFile || selectedImage)) step = 3
+        if (step >= 2 && (selectedFiles.length > 0 || selectedImages.length > 0)) step = 3
         return Math.min(step, totalSteps)
     }
 
@@ -105,13 +112,19 @@ export default function WorkFileNewPage() {
         try {
             setUploading(true)
 
-            let fileUrl = ''
-            let imageUrl = ''
-            let videoUrl = ''
+            // Build folder name
+            const sanitizedFolder = pendingData.folder_name?.replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '_') || 'work-file'
+            const folderPath = `work-report/${pendingData.date}_${sanitizedFolder}`
 
-            if (selectedFile) fileUrl = await uploadToCloudinary(selectedFile, 'raw')
-            if (selectedImage) imageUrl = await uploadToCloudinary(selectedImage, 'image')
-            if (selectedVideo) videoUrl = await uploadToCloudinary(selectedVideo, 'video')
+            const uploadFiles = async (files: File[], type: 'raw' | 'image' | 'video') => {
+                if (!files || files.length === 0) return ''
+                const urls = await Promise.all(files.map(f => uploadToCloudinary(f, type, folderPath)))
+                return JSON.stringify(urls)
+            }
+
+            const fileUrl = await uploadFiles(selectedFiles, 'raw')
+            const imageUrl = await uploadFiles(selectedImages, 'image')
+            const videoUrl = await uploadFiles(selectedVideos, 'video')
 
             const payload = {
                 ...pendingData,
@@ -140,13 +153,14 @@ export default function WorkFileNewPage() {
     // 為 ConfirmDialog 準備顯示用資料（加入檔案名稱）
     const displayData = pendingData ? {
         ...pendingData,
-        file_url: selectedFile?.name || '未選擇',
-        image_url: selectedImage?.name || '未選擇',
-        video_url: selectedVideo?.name || '未選擇',
+        file_url: selectedFiles.length ? `${selectedFiles.length} 份文件` : '未選擇',
+        image_url: selectedImages.length ? `${selectedImages.length} 張照片` : '未選擇',
+        video_url: selectedVideos.length ? `${selectedVideos.length} 部影片` : '未選擇',
     } : {}
 
     const displayLabels = {
         ...FIELD_LABELS,
+        folder_name: '資料夾名稱',
         file_url: '文件檔案',
         image_url: '照片檔案',
         video_url: '影片檔案',
@@ -203,80 +217,118 @@ export default function WorkFileNewPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                <FormField label="上傳檔案的資料夾名稱" required error={errors.folder_name?.message} touched={touchedFields.folder_name}>
+                                    <Input {...register('folder_name')} placeholder="請輸入資料夾名稱 (不需輸入日期)" onBlur={() => handleFieldBlur('folder_name')} />
+                                </FormField>
                                 <p className="text-[11px] text-amber-600 dark:text-amber-300 font-bold px-1 -mt-2">
-                                    提示：文件與照片請至少擇一上傳
+                                    提示：文件與照片請至少擇一上傳，每種最多10個檔案
                                 </p>
                                 <FormField 
-                                    label="文件 (PDF/DOC)" 
+                                    label="文件：(單一檔案大小限制: 10MB)" 
                                     error={errors.file_url?.message} 
                                     touched={touchedFields.file_url}
                                 >
                                     <div className="space-y-1.5">
                                         <Input
                                             type="file"
+                                            multiple
                                             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                                             onChange={(e) => {
-                                                const file = e.target.files?.[0] || null
-                                                setSelectedFile(file)
-                                                setValue('file_url', file ? 'selected' : '', { shouldValidate: true })
+                                                const files = Array.from(e.target.files || [])
+                                                if (files.length > 10) toast({ title: '超過數量', description: '最多只能上傳10個文件', variant: 'destructive' })
+                                                const finalFiles = files.slice(0, 10)
+                                                setSelectedFiles(finalFiles)
+                                                setValue('file_url', finalFiles.length ? 'selected' : '', { shouldValidate: true })
                                                 setTouchedFields(prev => ({ ...prev, file_url: true }))
                                             }}
                                             className="cursor-pointer file:cursor-pointer file:text-teal-700 dark:file:text-teal-300 file:bg-teal-100/50 dark:file:bg-teal-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-teal-100"
                                         />
-                                        {selectedFile && (
-                                            <p className="text-[11px] text-teal-700 dark:text-teal-300 font-bold px-2 py-1 bg-teal-100/50 dark:bg-teal-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
-                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedFile.name}
-                                            </p>
+                                        {selectedFiles.length > 0 && (
+                                            <ul className="mt-2 space-y-1">
+                                                {selectedFiles.map((f, i) => (
+                                                    <li key={i} className="text-[11px] text-teal-700 dark:text-teal-300 font-bold px-2 py-1 bg-teal-100/50 dark:bg-teal-900/50 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-left-2">
+                                                        <span className="flex items-center gap-1.5 truncate pr-2"><CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{f.name}</span></span>
+                                                        <button type="button" onClick={() => {
+                                                            const nf = selectedFiles.filter((_, idx) => idx !== i)
+                                                            setSelectedFiles(nf)
+                                                            setValue('file_url', nf.length ? 'selected' : '', { shouldValidate: true })
+                                                        }} className="p-0.5 hover:bg-teal-200/50 rounded-md transition-colors"><X className="w-3.5 h-3.5" /></button>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         )}
-                                        <p className="text-xs text-muted-foreground px-1">支援 PDF, Word, Excel 等文件格式</p>
                                     </div>
                                 </FormField>
 
                                 <FormField 
-                                    label="照片 (Image)" 
+                                    label="照片：(單一照片大小限制: 10MB)" 
                                     error={errors.image_url?.message} 
                                     touched={touchedFields.image_url}
                                 >
                                     <div className="space-y-1.5">
                                         <Input
                                             type="file"
+                                            multiple
                                             accept="image/*"
                                             onChange={(e) => {
-                                                const file = e.target.files?.[0] || null
-                                                setSelectedImage(file)
-                                                setValue('image_url', file ? 'selected' : '', { shouldValidate: true })
+                                                const files = Array.from(e.target.files || [])
+                                                if (files.length > 10) toast({ title: '超過數量', description: '最多只能上傳10張照片', variant: 'destructive' })
+                                                const finalFiles = files.slice(0, 10)
+                                                setSelectedImages(finalFiles)
+                                                setValue('image_url', finalFiles.length ? 'selected' : '', { shouldValidate: true })
                                                 setTouchedFields(prev => ({ ...prev, image_url: true }))
                                             }}
                                             className="cursor-pointer file:cursor-pointer file:text-blue-700 dark:file:text-blue-300 file:bg-blue-100/50 dark:file:bg-blue-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-blue-100"
                                         />
-                                        {selectedImage && (
-                                            <p className="text-[11px] text-blue-700 dark:text-blue-300 font-bold px-2 py-1 bg-blue-100/50 dark:bg-blue-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
-                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedImage.name}
-                                            </p>
+                                        {selectedImages.length > 0 && (
+                                            <ul className="mt-2 space-y-1">
+                                                {selectedImages.map((f, i) => (
+                                                    <li key={i} className="text-[11px] text-blue-700 dark:text-blue-300 font-bold px-2 py-1 bg-blue-100/50 dark:bg-blue-900/50 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-left-2">
+                                                        <span className="flex items-center gap-1.5 truncate pr-2"><CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{f.name}</span></span>
+                                                        <button type="button" onClick={() => {
+                                                            const nf = selectedImages.filter((_, idx) => idx !== i)
+                                                            setSelectedImages(nf)
+                                                            setValue('image_url', nf.length ? 'selected' : '', { shouldValidate: true })
+                                                        }} className="p-0.5 hover:bg-blue-200/50 rounded-md transition-colors"><X className="w-3.5 h-3.5" /></button>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         )}
                                     </div>
                                 </FormField>
 
                                 <FormField 
-                                    label="影片 (Video) (選填)" 
+                                    label="影片：(單一影片大小限制: 100MB)" 
                                     error={errors.video_url?.message} 
                                     touched={touchedFields.video_url}
                                 >
                                     <div className="space-y-1.5">
                                         <Input
                                             type="file"
+                                            multiple
                                             accept="video/*"
                                             onChange={(e) => {
-                                                const file = e.target.files?.[0] || null
-                                                setSelectedVideo(file)
-                                                setValue('video_url', file ? 'selected' : '')
+                                                const files = Array.from(e.target.files || [])
+                                                if (files.length > 10) toast({ title: '超過數量', description: '最多只能上傳10部影片', variant: 'destructive' })
+                                                const finalFiles = files.slice(0, 10)
+                                                setSelectedVideos(finalFiles)
+                                                setValue('video_url', finalFiles.length ? 'selected' : '')
                                             }}
                                             className="cursor-pointer file:cursor-pointer file:text-purple-700 dark:file:text-purple-300 file:bg-purple-100/50 dark:file:bg-purple-800/50 file:border-0 file:mr-4 file:py-1 file:px-3 file:rounded-full hover:file:bg-purple-100"
                                         />
-                                        {selectedVideo && (
-                                            <p className="text-[11px] text-purple-700 dark:text-purple-300 font-bold px-2 py-1 bg-purple-100/50 dark:bg-purple-900/50 rounded-lg flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
-                                                <CheckCircle2 className="w-3.5 h-3.5" /> 已選取：{selectedVideo.name}
-                                            </p>
+                                        {selectedVideos.length > 0 && (
+                                            <ul className="mt-2 space-y-1">
+                                                {selectedVideos.map((f, i) => (
+                                                    <li key={i} className="text-[11px] text-purple-700 dark:text-purple-300 font-bold px-2 py-1 bg-purple-100/50 dark:bg-purple-900/50 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-left-2">
+                                                        <span className="flex items-center gap-1.5 truncate pr-2"><CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{f.name}</span></span>
+                                                        <button type="button" onClick={() => {
+                                                            const nf = selectedVideos.filter((_, idx) => idx !== i)
+                                                            setSelectedVideos(nf)
+                                                            setValue('video_url', nf.length ? 'selected' : '')
+                                                        }} className="p-0.5 hover:bg-purple-200/50 rounded-md transition-colors"><X className="w-3.5 h-3.5" /></button>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         )}
                                     </div>
                                 </FormField>
