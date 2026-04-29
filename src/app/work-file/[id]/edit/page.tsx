@@ -185,8 +185,8 @@ export default function WorkFileEditPage() {
                 uploader_name: pendingData.uploader_name,
                 description: pendingData.description || null, 
                 folder_name: pendingData.folder_name,
-                file_url: combinedFileUrls.length > 0 ? JSON.stringify(combinedFileUrls) : null, 
-                image_url: combinedImageUrls.length > 0 ? JSON.stringify(combinedImageUrls) : null,
+                file_url: combinedFileUrls.length > 0 ? JSON.stringify(combinedFileUrls) : '', 
+                image_url: combinedImageUrls.length > 0 ? JSON.stringify(combinedImageUrls) : '',
                 video_url: combinedVideoUrls.length > 0 ? JSON.stringify(combinedVideoUrls) : null, 
                 note: pendingData.note || null,
             }
@@ -411,7 +411,7 @@ export default function WorkFileEditPage() {
                                                     {existingVideoUrls.map((url, i) => (
                                                         <li key={i} className="flex items-center justify-between gap-2">
                                                             <a href={url} target="_blank" rel="noopener noreferrer" className="text-purple-700 dark:text-purple-400 hover:underline flex items-center gap-1.5 font-bold text-[11px] truncate">
-                                                                <ExternalLink className="w-3 h-3 flex-shrink-0" /> {shortenUrl(url)}
+                                                                <ExternalLink className="w-3 h-3 flex-shrink-0" /> {getFileName(url)}
                                                             </a>
                                                             <button type="button" onClick={() => {
                                                                 const nUrls = existingVideoUrls.filter((_, idx) => idx !== i)
