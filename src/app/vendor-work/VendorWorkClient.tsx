@@ -35,6 +35,61 @@ interface VendorWorkClientProps {
     initialData: any[]
 }
 
+const formatItems = (data: any): string => {
+    if (!data) return ''
+    if (typeof data === 'string') return data
+    if (data.items && Array.isArray(data.items)) {
+        // 先顯示非「其他」的項目，最後顯示「其他」
+        const sortedItems = [...data.items].sort((a, b) => {
+            if (a === '其他') return 1
+            if (b === '其他') return -1
+            return 0
+        })
+
+        let text = sortedItems.join('、')
+        if (data.other_text) {
+            if (data.items.includes('其他')) {
+                // 如果有「其他」且有說明，將說明加在括號內
+                text = text.replace('其他', `其他(${data.other_text})`)
+            } else if (text) {
+                text += ` (${data.other_text})`
+            } else {
+                text = data.other_text
+            }
+        }
+        return text
+    }
+    return ''
+}
+
+const formatMissingItems = (arrival: any, departure: any): string => {
+    if (!arrival || !arrival.borrowed_items) return ''
+    if (departure.borrow_action !== 'partial_return') return ''
+
+    const borrowed = arrival.borrowed_items as any
+    const returned = (departure.returned_items || { items: [], other_text: '' }) as any
+
+    const borrowedItems = borrowed.items || []
+    const returnedItems = returned.items || []
+
+    // 1. 標準項目差異
+    const missingItems = borrowedItems.filter((item: string) => !returnedItems.includes(item))
+
+    // 2. 「其他」項目差異
+    const splitOther = (text: string) => text ? text.split(/[、,，\s]+/).map(s => s.trim()).filter(Boolean) : []
+    const borrowedOthers = splitOther(borrowed.other_text)
+    const returnedOthers = splitOther(returned.other_text)
+    const missingOthers = borrowedOthers.filter(item => !returnedOthers.includes(item))
+
+    // 組合顯示文字
+    const result: string[] = [...missingItems]
+    if (missingOthers.length > 0) {
+        result.push(`其他(${missingOthers.join('、')})`)
+    }
+
+    return result.join('、')
+}
+
 export default function VendorWorkClient({ initialData }: VendorWorkClientProps) {
     const router = useRouter()
     const supabase = createClient()
@@ -98,12 +153,18 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
         setTotalPages(Math.ceil(total / itemsPerPage))
 
         // 取得分頁資料
-        const { data: result } = await supabase
+        const { data: result, error } = await supabase
             .from('vendor_today_work')
             .select('*')
             .eq('work_date', today)
-            .order('work_date', { ascending: false })
+            .order('created_at', { ascending: false })
             .range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1)
+
+        if (error) {
+            console.error('Error fetching vendor work:', error)
+            toast({ title: '載入失敗', description: error.message, variant: 'destructive' })
+        }
+
 
         setData(result || [])
         setSelected(new Set())
@@ -177,7 +238,12 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
             '施工地點': v.location || '',
             '施工人數': v.head_count || '',
             '施工內容': v.work_content || '',
-            '備註': v.note || ''
+            '備註': v.note || '',
+            '借用動作': v.borrow_action === 'borrow' ? '借物中' : v.borrow_action === 'return' ? '已歸還' : v.borrow_action === 'partial_return' ? '部份未歸還' : '未借物',
+            '借出項目': formatItems(v.borrowed_items) || (v.entry_status === 'departure' ? formatMissingItems(data.find(r => r.id === v.ref_arrival_id), v) : ''),
+            '借出人員': v.lender_name || (v.entry_status === 'departure' ? data.find(r => r.id === v.ref_arrival_id)?.lender_name : '') || '',
+            '歸還項目': formatItems(v.returned_items),
+            '歸還人員': v.receiver_name || ''
         }))
 
         const wb = XLSX.utils.book_new()
@@ -275,6 +341,11 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                             <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
                                             <TableHead>施工內容</TableHead>
                                             <TableHead>備註</TableHead>
+                                            <TableHead>借用動作</TableHead>
+                                            <TableHead>借出項目</TableHead>
+                                            <TableHead>借出人員</TableHead>
+                                            <TableHead>歸還項目</TableHead>
+                                            <TableHead>歸還人員</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -311,6 +382,20 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                                         <TableCell>{v.head_count || '-'}</TableCell>
                                                         <TableCell className="max-w-[200px] truncate" title={v.work_content}>{v.work_content}</TableCell>
                                                         <TableCell className="max-w-[150px] truncate" title={v.note}>{v.note || '-'}</TableCell>
+                                                        <TableCell>
+                                                            {v.borrow_action === 'borrow' && <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300">借物中</Badge>}
+                                                            {v.borrow_action === 'return' && <Badge className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300">已歸還</Badge>}
+                                                            {v.borrow_action === 'partial_return' && <Badge className="bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300">部份未歸還</Badge>}
+                                                            {(!v.borrow_action || v.borrow_action === 'none') && <Badge variant="outline" className="text-muted-foreground">未借物</Badge>}
+                                                        </TableCell>
+                                                        <TableCell className="max-w-[150px] truncate" title={formatItems(v.borrowed_items) || (v.entry_status === 'departure' ? formatMissingItems(data.find(r => r.id === v.ref_arrival_id), v) : '')}>
+                                                            {(formatItems(v.borrowed_items) || (v.entry_status === 'departure' ? formatMissingItems(data.find(r => r.id === v.ref_arrival_id), v) : '')) || '-'}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {v.lender_name || (v.entry_status === 'departure' ? data.find(r => r.id === v.ref_arrival_id)?.lender_name : '') || '-'}
+                                                        </TableCell>
+                                                        <TableCell className="max-w-[150px] truncate" title={formatItems(v.returned_items)}>{formatItems(v.returned_items) || '-'}</TableCell>
+                                                        <TableCell>{v.receiver_name || '-'}</TableCell>
                                                     </TableRow>
                                                 )
                                             })
@@ -341,6 +426,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                                 onClick={() => router.push(`/vendor-work/${v.id}/edit`)}
                                                 details={[
                                                     { label: "狀態", value: v.entry_status === 'arrival' ? '到院' : '離院' },
+                                                    { label: "借用動作", value: v.borrow_action === 'borrow' ? '借物中' : v.borrow_action === 'return' ? '已歸還' : '未借物' },
                                                     { label: "工作證號", value: v.vendor_badge_id },
                                                     { label: "聯絡人", value: v.vendor_contact },
                                                     { label: "聯絡電話", value: v.vendor_contact_phone },
@@ -349,7 +435,11 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                                     { label: "地點", value: v.location },
                                                     { label: "人數", value: v.head_count },
                                                     { label: "內容", value: v.work_content },
-                                                    { label: "備註", value: v.note }
+                                                    { label: "備註", value: v.note },
+                                                    { label: "借出項目", value: formatItems(v.borrowed_items) },
+                                                    { label: "借出人員", value: v.lender_name },
+                                                    { label: "歸還項目", value: formatItems(v.returned_items) },
+                                                    { label: "歸還人員", value: v.receiver_name }
                                                 ]}
                                             />
                                         ))

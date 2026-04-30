@@ -72,7 +72,7 @@ export default function ConfirmDialog({
                                 }`}>
                                 {value === null || value === undefined || value === ''
                                     ? '未填寫'
-                                    : String(value)}
+                                    : Array.isArray(value) ? value.join('、') : String(value)}
                             </span>
                         </div>
                     ))}

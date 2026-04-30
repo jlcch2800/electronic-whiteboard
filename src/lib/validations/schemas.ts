@@ -46,6 +46,14 @@ export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
 // Vendor Work Form (廠商今日施工)
 // 必填：日期、到院/離院時間、廠商名稱、廠商負責人員、施工內容、負責人電話、棟別、樓層、地點、工作證號、人數
 // 非必填：到院/離院狀態、備註
+
+/** 可借用/歸還的物品清單 */
+export const BORROW_ITEM_OPTIONS = [
+    '1號施工卡', '2號施工卡', '3號施工卡', '4號施工卡',
+    '5號施工卡', '6號施工卡', '施工母卡', '8F電信機房鑰匙',
+    '推車', '樓梯', '其他',
+] as const
+
 export const vendorWorkSchema = z.object({
     entry_status: z.enum(['arrival', 'departure']),
     work_date: z.string().min(1, '請選擇日期'),
@@ -67,6 +75,15 @@ export const vendorWorkSchema = z.object({
     vendor_contact_phone: z.string().nullable().optional(),
     work_content: z.string().min(1, '請輸入施工內容'),
     note: z.string().nullable().optional(),
+    // 借物功能相關欄位
+    borrow_action: z.enum(['borrow', 'return', 'none', 'partial_return']).nullable().optional(),
+    borrowed_items: z.array(z.string()).nullable().optional(),
+    borrowed_other_text: z.string().nullable().optional(),
+    lender_name: z.string().nullable().optional(),
+    returned_items: z.array(z.string()).nullable().optional(),
+    returned_other_text: z.string().nullable().optional(),
+    receiver_name: z.string().nullable().optional(),
+    ref_arrival_id: z.string().nullable().optional(),
 }).superRefine((data, ctx) => {
     if (data.entry_status === 'arrival') {
         // 到院時驗證
@@ -91,10 +108,34 @@ export const vendorWorkSchema = z.object({
         if (!data.vendor_contact_phone || data.vendor_contact_phone.trim() === '') {
             ctx.addIssue({ code: 'custom', message: '請輸入負責人員電話', path: ['vendor_contact_phone'] })
         }
+        // 借物時：借出人員必填；且若勾選「其他」，需輸入說明
+        if (data.borrow_action === 'borrow') {
+            if (!data.lender_name || data.lender_name.trim() === '') {
+                ctx.addIssue({ code: 'custom', message: '請輸入借出人員', path: ['lender_name'] })
+            }
+            if (!data.borrowed_items || data.borrowed_items.length === 0) {
+                ctx.addIssue({ code: 'custom', message: '請至少選擇一項借用物品', path: ['borrowed_items'] })
+            }
+            if (data.borrowed_items?.includes('其他') && !data.borrowed_other_text?.trim()) {
+                ctx.addIssue({ code: 'custom', message: '請輸入其他物品說明', path: ['borrowed_other_text'] })
+            }
+        }
     } else {
         // 離院時驗證
         if (!data.departure_time) {
             ctx.addIssue({ code: 'custom', message: '請輸入離院時間', path: ['departure_time'] })
+        }
+        // 歸還時：歸還人員必填；且若勾選「其他」，需輸入說明
+        if (data.borrow_action === 'return') {
+            if (!data.receiver_name || data.receiver_name.trim() === '') {
+                ctx.addIssue({ code: 'custom', message: '請輸入歸還人員', path: ['receiver_name'] })
+            }
+            if (!data.returned_items || data.returned_items.length === 0) {
+                ctx.addIssue({ code: 'custom', message: '請至少選擇一項歸還物品', path: ['returned_items'] })
+            }
+            if (data.returned_items?.includes('其他') && !data.returned_other_text?.trim()) {
+                ctx.addIssue({ code: 'custom', message: '請輸入其他物品說明', path: ['returned_other_text'] })
+            }
         }
     }
 })

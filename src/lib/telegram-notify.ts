@@ -32,6 +32,11 @@ export const VENDOR_WORK_LABELS: Record<string, string> = {
     head_count: '施工人數',
     work_content: '施工內容',
     note: '備註',
+    borrow_action: '借用動作',
+    lender_name: '借出人員',
+    borrowed_items: '借出項目',
+    receiver_name: '歸還人員',
+    returned_items: '歸還項目',
 }
 
 /** 工務今日施工項目（施工回報）- 欄位標籤 */

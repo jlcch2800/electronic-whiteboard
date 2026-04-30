@@ -63,6 +63,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         building: '棟別', floor: '樓層', location: '施工地點', vendor_badge_id: '廠商工作證號', head_count: '施工人數',
         vendor_name: '廠商名稱', vendor_contact: '廠商負責人員姓名', vendor_contact_phone: '廠商負責人員電話',
         work_content: '施工內容', note: '備註',
+        borrow_action: '借用動作', borrowed_items: '借出項目', lender_name: '借出人員', returned_items: '歸還項目', receiver_name: '歸還人員', ref_arrival_id: '到院參考ID',
         // 待處理/工務 (pending_work / engineering_today_work)
         start_date: '施工開始日期', end_date: '施工結束日期', time: '時間', unit: '單位', department: '部門', name: '名稱',
         engineering_contact: '工務負責人員', // 對應 Image 3 & 4
@@ -88,6 +89,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'vendor_name', 'vendor_badge_id', 'vendor_contact', 'vendor_contact_phone',
         'building', 'floor', 'location', 'head_count',
         'work_content', 'note',
+        'borrow_action', 'borrowed_items', 'lender_name', 'returned_items', 'receiver_name', 'ref_arrival_id',
         // Work Reports
         'report_date', 'report_time',
         // Pending / Engineering
@@ -107,6 +109,56 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'work_item', 'uploader_name', 'description', 'file_url', 'image_url', 'video_url',
         'content'
     ];
+
+    const formatLogValue = (key: string, value: any) => {
+        if (value === undefined || value === null) return '-';
+
+        if (key === 'entry_status') {
+            if (value === 'arrival') return '"到院"';
+            if (value === 'departure') return '"離院"';
+        }
+
+        if (key === 'borrow_action') {
+            if (value === 'borrow') return '"已借物"';
+            if (value === 'none') return '"未借物"';
+            if (value === 'return') return '"歸還"';
+            if (value === 'partial_return') return '"部分未歸還"';
+        }
+
+        if (key === 'borrowed_items' || key === 'returned_items') {
+            const obj = typeof value === 'string' ? (() => { try { return JSON.parse(value) } catch { return value } })() : value;
+            if (obj && typeof obj === 'object' && Array.isArray(obj.items)) {
+                const items = obj.items as string[];
+                const otherText = obj.other_text;
+
+                const normalItems = items.filter(i => i !== '其他');
+                let result = normalItems.join('、');
+
+                if (obj.other_text) {
+                    if (items.includes('其他')) {
+                        if (result) result += '、';
+                        result += `其他(${obj.other_text})`;
+                    } else if (result) {
+                        result += ` (${obj.other_text})`;
+                    } else {
+                        result = obj.other_text;
+                    }
+                } else if (items.includes('其他')) {
+                    if (result) result += '、';
+                    result += '其他';
+                }
+                return result || '-';
+            }
+        }
+
+        return JSON.stringify(value);
+    }
+
+    const parseJson = (data: any) => {
+        if (!data) return {}
+        if (typeof data === 'string') { try { return JSON.parse(data) } catch { return {} } }
+        return data
+    }
 
     const getTranslatedTableName = (name: string) => TABLE_NAME_MAP[name] || name
 
@@ -211,7 +263,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             '帳號': r.user_account || '',
             '動作類型': r.action_type,
             '異動資料表': getTranslatedTableName(r.modify_table),
-            '異動記錄ID': r.modify_record_id
+            '異動記錄ID': r.modify_record_id,
+            '借用動作': formatLogValue('borrow_action', parseJson(r.new_data).borrow_action || parseJson(r.old_data).borrow_action),
+            '借出項目': formatLogValue('borrowed_items', parseJson(r.new_data).borrowed_items || parseJson(r.old_data).borrowed_items),
+            '歸還項目': formatLogValue('returned_items', parseJson(r.new_data).returned_items || parseJson(r.old_data).returned_items),
         }))
 
         const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(sheetData)
@@ -225,12 +280,6 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
     // 匯出單筆明細
     const handleExportDetail = (log: any) => {
-        const parseJson = (data: any) => {
-            if (!data) return {}
-            if (typeof data === 'string') { try { return JSON.parse(data) } catch { return {} } }
-            return data
-        }
-
         const aoa: any[][] = [];
 
         // 1. 基本資料
@@ -274,8 +323,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
                 aoa.push([
                     FIELD_LABELS[key] || key,
-                    oldVal !== undefined ? JSON.stringify(oldVal) : '-',
-                    newVal !== undefined ? JSON.stringify(newVal) : '-',
+                    formatLogValue(key, oldVal),
+                    formatLogValue(key, newVal),
                     isChanged ? '是' : ''
                 ]);
             });
@@ -518,10 +567,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                                                     <TableRow key={key} className={isChanged ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}>
                                                                                         <TableCell className="font-bold text-foreground/70 dark:text-gray-300 text-xs">{FIELD_LABELS[key] || key}</TableCell>
                                                                                         <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-900/20' : 'dark:text-gray-200'}`}>
-                                                                                            {oldVal !== undefined ? JSON.stringify(oldVal) : '-'}
+                                                                                            {formatLogValue(key, oldVal)}
                                                                                         </TableCell>
                                                                                         <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20' : 'dark:text-gray-200'}`}>
-                                                                                            {newVal !== undefined ? JSON.stringify(newVal) : '-'}
+                                                                                            {formatLogValue(key, newVal)}
                                                                                         </TableCell>
                                                                                     </TableRow>
                                                                                 )
@@ -632,8 +681,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                                             return (
                                                                                 <TableRow key={key} className={isChanged ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''}>
                                                                                     <TableCell className="font-bold text-foreground/70 dark:text-gray-300 text-xs">{FIELD_LABELS[key] || key}</TableCell>
-                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-900/20' : 'dark:text-gray-200'}`}>{oldVal !== undefined ? JSON.stringify(oldVal) : '-'}</TableCell>
-                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20' : 'dark:text-gray-200'}`}>{newVal !== undefined ? JSON.stringify(newVal) : '-'}</TableCell>
+                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-900/20' : 'dark:text-gray-200'}`}>{formatLogValue(key, oldVal)}</TableCell>
+                                                                                    <TableCell className={`font-mono text-sm break-words ${isChanged ? 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-900/20' : 'dark:text-gray-200'}`}>{formatLogValue(key, newVal)}</TableCell>
                                                                                 </TableRow>
                                                                             )
                                                                         })}

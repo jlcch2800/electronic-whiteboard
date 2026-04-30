@@ -45,6 +45,24 @@ interface VendorHistoryRecord {
     vendor_contact_phone: string | null
     work_content: string | null
     note: string | null
+    borrow_action?: 'none' | 'borrow' | 'return' | null
+    borrowed_items?: string | null
+    lender_name?: string | null
+    returned_items?: string | null
+    receiver_name?: string | null
+}
+
+const formatItems = (data: any): string => {
+    if (!data) return ''
+    if (typeof data === 'string') return data
+    if (data.items && Array.isArray(data.items)) {
+        let text = data.items.join('、')
+        if (data.other_text) {
+            text += ` (${data.other_text})`
+        }
+        return text
+    }
+    return ''
 }
 
 export default function VendorHistoryClient() {
@@ -211,7 +229,12 @@ export default function VendorHistoryClient() {
             '施工地點': row.location || '',
             '施工人數': row.head_count || '',
             '施工內容': row.work_content || '',
-            '備註': row.note || ''
+            '備註': row.note || '',
+            '借用動作': row.borrow_action === 'borrow' ? '借物中' : row.borrow_action === 'return' ? '已歸還' : '未借物',
+            '借出項目': formatItems(row.borrowed_items),
+            '借出人員': row.lender_name || '',
+            '歸還項目': formatItems(row.returned_items),
+            '歸還人員': row.receiver_name || ''
         }))
 
         const wb = XLSX.utils.book_new()
@@ -298,11 +321,16 @@ export default function VendorHistoryClient() {
                                             <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
                                             <TableHead>施工內容</TableHead>
                                             <TableHead>備註</TableHead>
+                                            <TableHead>借用動作</TableHead>
+                                            <TableHead>借出項目</TableHead>
+                                            <TableHead>借出人員</TableHead>
+                                            <TableHead>歸還項目</TableHead>
+                                            <TableHead>歸還人員</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {sortedData.length === 0 ? (
-                                            <TableRow><TableCell colSpan={17} className="p-0"><EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={22} className="p-0"><EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
                                         ) : (
                                             sortedData.map((row, index) => (
                                                 <TableRow key={row.id} className={`hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors even:bg-muted/20 dark:even:bg-muted/10 ${selected.has(row.id) ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}>
@@ -326,6 +354,15 @@ export default function VendorHistoryClient() {
                                                     <TableCell className="dark:text-gray-200">{row.head_count || '-'}</TableCell>
                                                     <TableCell className="max-w-xs truncate dark:text-gray-200" title={row.work_content || ''}>{row.work_content || '-'}</TableCell>
                                                     <TableCell className="text-muted-foreground dark:text-gray-400 text-xs max-w-32 truncate" title={row.note || ''}>{row.note || '-'}</TableCell>
+                                                    <TableCell>
+                                                        {row.borrow_action === 'borrow' && <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300">借物中</Badge>}
+                                                        {row.borrow_action === 'return' && <Badge className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300">已歸還</Badge>}
+                                                        {(!row.borrow_action || row.borrow_action === 'none') && <Badge variant="outline" className="text-muted-foreground dark:text-gray-400">未借物</Badge>}
+                                                    </TableCell>
+                                                    <TableCell className="max-w-32 truncate dark:text-gray-200" title={formatItems(row.borrowed_items)}>{formatItems(row.borrowed_items) || '-'}</TableCell>
+                                                    <TableCell className="dark:text-gray-200">{row.lender_name || '-'}</TableCell>
+                                                    <TableCell className="max-w-32 truncate dark:text-gray-200" title={formatItems(row.returned_items)}>{formatItems(row.returned_items) || '-'}</TableCell>
+                                                    <TableCell className="dark:text-gray-200">{row.receiver_name || '-'}</TableCell>
                                                 </TableRow>
                                             ))
                                         )}
@@ -363,6 +400,11 @@ export default function VendorHistoryClient() {
                                                     { label: '人數', value: row.head_count?.toString() || '-' },
                                                     { label: '內容', value: row.work_content },
                                                     { label: '備註', value: row.note },
+                                                    { label: '借用動作', value: row.borrow_action === 'borrow' ? '借物中' : row.borrow_action === 'return' ? '已歸還' : '未借物' },
+                                                    { label: '借出項目', value: formatItems(row.borrowed_items) },
+                                                    { label: '借出人員', value: row.lender_name },
+                                                    { label: '歸還項目', value: formatItems(row.returned_items) },
+                                                    { label: '歸還人員', value: row.receiver_name },
                                                 ]}
                                             />
                                         ))

@@ -12,6 +12,10 @@ export type WorkStatus = 'completed' | 'incomplete' | 'abnormal';
 export type UserRole = 'admin' | 'staff';
 export type ActionType = 'Insert' | 'Update' | 'Delete' | 'Login' | 'Logout';
 export type LogLevel = 'Info' | 'Warning' | 'Error';
+/** 借用動作：borrow=借物(到院), return=歸還(離院), none=未借物 */
+export type BorrowAction = 'borrow' | 'return' | 'none';
+/** 借物/歸還項目的 JSONB 結構 */
+export type BorrowItems = { items: string[]; other_text: string };
 
 export interface Database {
   public: {
@@ -34,6 +38,13 @@ export interface Database {
           vendor_contact_phone: string | null
           work_content: string | null
           note: string | null
+          // 借物功能相關欄位
+          borrow_action: BorrowAction | null
+          borrowed_items: BorrowItems | null
+          lender_name: string | null
+          returned_items: BorrowItems | null
+          receiver_name: string | null
+          ref_arrival_id: string | null
         }
         Insert: {
           id?: string
@@ -52,6 +63,12 @@ export interface Database {
           vendor_contact_phone?: string | null
           work_content?: string | null
           note?: string | null
+          borrow_action?: BorrowAction | null
+          borrowed_items?: BorrowItems | null
+          lender_name?: string | null
+          returned_items?: BorrowItems | null
+          receiver_name?: string | null
+          ref_arrival_id?: string | null
         }
         Update: {
           id?: string
@@ -70,6 +87,12 @@ export interface Database {
           vendor_contact_phone?: string | null
           work_content?: string | null
           note?: string | null
+          borrow_action?: BorrowAction | null
+          borrowed_items?: BorrowItems | null
+          lender_name?: string | null
+          returned_items?: BorrowItems | null
+          receiver_name?: string | null
+          ref_arrival_id?: string | null
         }
       }
       vendor_today_work_history: {
@@ -90,6 +113,12 @@ export interface Database {
           vendor_contact_phone: string | null
           work_content: string | null
           note: string | null
+          borrow_action: BorrowAction | null
+          borrowed_items: BorrowItems | null
+          lender_name: string | null
+          returned_items: BorrowItems | null
+          receiver_name: string | null
+          ref_arrival_id: string | null
         }
         Insert: {
           id?: string
@@ -108,12 +137,17 @@ export interface Database {
           vendor_contact_phone?: string | null
           work_content?: string | null
           note?: string | null
+          borrow_action?: BorrowAction | null
+          borrowed_items?: BorrowItems | null
+          lender_name?: string | null
+          returned_items?: BorrowItems | null
+          receiver_name?: string | null
+          ref_arrival_id?: string | null
         }
         Update: {
           id?: string
           created_at?: string
           entry_status?: EntryStatus
-          // ... (same as Insert but optional)
           work_date?: string
           arrival_time?: string | null
           departure_time?: string | null
@@ -127,6 +161,12 @@ export interface Database {
           vendor_contact_phone?: string | null
           work_content?: string | null
           note?: string | null
+          borrow_action?: BorrowAction | null
+          borrowed_items?: BorrowItems | null
+          lender_name?: string | null
+          returned_items?: BorrowItems | null
+          receiver_name?: string | null
+          ref_arrival_id?: string | null
         }
       }
       engineering_today_work: {
