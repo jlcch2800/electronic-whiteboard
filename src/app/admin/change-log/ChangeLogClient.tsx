@@ -19,6 +19,7 @@ import { DataTablePagination } from '@/components/DataTablePagination'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { formatItemsDisplay } from '@/lib/utils'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
 interface ChangeLogClientProps {
@@ -127,27 +128,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
         if (key === 'borrowed_items' || key === 'returned_items') {
             const obj = typeof value === 'string' ? (() => { try { return JSON.parse(value) } catch { return value } })() : value;
-            if (obj && typeof obj === 'object' && Array.isArray(obj.items)) {
-                const items = obj.items as string[];
-                const otherText = obj.other_text;
-
-                const normalItems = items.filter(i => i !== '其他');
-                let result = normalItems.join('、');
-
-                if (obj.other_text) {
-                    if (items.includes('其他')) {
-                        if (result) result += '、';
-                        result += `其他(${obj.other_text})`;
-                    } else if (result) {
-                        result += ` (${obj.other_text})`;
-                    } else {
-                        result = obj.other_text;
-                    }
-                } else if (items.includes('其他')) {
-                    if (result) result += '、';
-                    result += '其他';
-                }
-                return result || '-';
+            if (obj && typeof obj === 'object') {
+                return formatItemsDisplay(obj.items, obj.other_text) || '-';
             }
         }
 

@@ -13,6 +13,7 @@ import { MapPin, Package, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatCreateMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
 import { logChangeRecord } from '@/lib/change-log'
+import { formatItemsDisplay, validateOtherItemsSeparator } from '@/lib/utils'
 import { vendorWorkSchema, type VendorWorkFormValues, BORROW_ITEM_OPTIONS } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -175,24 +176,41 @@ export default function VendorWorkNewPage() {
     }
     const currentStep = getFilledSteps()
 
+
     // 點擊提交 → 先開啟確認 Dialog
     const onPreSubmit = (data: VendorWorkFormValues) => {
+        // 驗證「其他物品」的分隔符號
+        if (borrowAction === 'borrow' && borrowedItems.includes('其他')) {
+            const validation = validateOtherItemsSeparator(borrowedOtherText)
+            if (!validation.isValid) {
+                toast({ title: '格式錯誤', description: validation.message, variant: 'destructive' })
+                return
+            }
+        }
+        if (data.entry_status === 'departure' && returnAction === 'return' && returnedItems.includes('其他')) {
+            const validation = validateOtherItemsSeparator(returnedOtherText)
+            if (!validation.isValid) {
+                toast({ title: '格式錯誤', description: validation.message, variant: 'destructive' })
+                return
+            }
+        }
+
         setPendingData(data)
         if (data.entry_status === 'departure' && returnAction === 'return' && originalBorrowedItems !== null) {
             // 1. 比較標準項目
             const missingItems = originalBorrowedItems.filter(item => !returnedItems.includes(item))
             const extraItems = returnedItems.filter(item => !originalBorrowedItems.includes(item))
-            
+
             // 2. 比較「其他」文字內容 (處理手動輸入的多個項目)
-            const splitOther = (text: string) => text ? text.split(/[、,，\s]+/).map(s => s.trim()).filter(Boolean) : []
+            const splitOther = (text: string) => text ? text.split(/[、,，\s\.]+/).map(s => s.trim()).filter(Boolean) : []
             const originalOtherList = splitOther(originalBorrowedOtherText)
             const currentOtherList = splitOther(returnedOtherText)
-            
+
             const missingOthers = originalOtherList.filter(item => !currentOtherList.includes(item))
             const extraOthers = currentOtherList.filter(item => !originalOtherList.includes(item))
 
             const errorMsgs: string[] = []
-            
+
             if (missingItems.length > 0) {
                 errorMsgs.push(`尚未歸還: ${missingItems.join('、')}`)
             }
@@ -205,13 +223,13 @@ export default function VendorWorkNewPage() {
             if (extraOthers.length > 0) {
                 errorMsgs.push(`未曾借出卻歸還 (其他): ${extraOthers.join('、')}`)
             }
-            
+
             const hasMissing = missingItems.length > 0 || missingOthers.length > 0
             const hasExtra = extraItems.length > 0 || extraOthers.length > 0
-            
+
             if (hasMissing || hasExtra) {
-                setMismatchWarning({ 
-                    open: true, 
+                setMismatchWarning({
+                    open: true,
                     messages: errorMsgs,
                     allowSave: !hasExtra // 只有在沒有「多餘歸還」的情況下才允許強行存檔（部分歸還）
                 })
@@ -263,16 +281,16 @@ export default function VendorWorkNewPage() {
                     if (payload.borrow_action === 'partial_return' && originalBorrowedItems) {
                         // 計算並存入「尚未歸還」的項目
                         const missing = originalBorrowedItems.filter(i => !returnedItems.includes(i))
-                        const splitOther = (text: string) => text ? text.split(/[、,，\s]+/).map(s => s.trim()).filter(Boolean) : []
+                        const splitOther = (text: string) => text ? text.split(/[、,，\s\.]+/).map(s => s.trim()).filter(Boolean) : []
                         const originalOthers = splitOther(originalBorrowedOtherText)
                         const currentOthers = splitOther(returnedOtherText)
                         const missingOthers = originalOthers.filter(item => !currentOthers.includes(item))
-                        
-                        payload.borrowed_items = { 
-                            items: missing, 
-                            other_text: missingOthers.join('、') 
+
+                        payload.borrowed_items = {
+                            items: missing,
+                            other_text: missingOthers.join('、')
                         }
-                        payload.lender_name = lenderName 
+                        payload.lender_name = lenderName
                     } else {
                         payload.borrowed_items = null
                         payload.lender_name = null
@@ -447,11 +465,10 @@ export default function VendorWorkNewPage() {
                                         {/* 借物狀態選擇 */}
                                         <div className="flex gap-3">
                                             {(['none', 'borrow'] as const).map(val => (
-                                                <label key={val} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-bold ${
-                                                    borrowAction === val
-                                                        ? 'border-amber-500 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                                                        : 'border-border hover:border-amber-300'
-                                                }`}>
+                                                <label key={val} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-bold ${borrowAction === val
+                                                    ? 'border-amber-500 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                                    : 'border-border hover:border-amber-300'
+                                                    }`}>
                                                     <input type="radio" className="sr-only" checked={borrowAction === val} onChange={() => { setBorrowAction(val); if (val === 'none') { setBorrowedItems([]); setLenderName('') } }} />
                                                     {val === 'none' ? '未借物' : '已借物'}
                                                 </label>
@@ -464,11 +481,10 @@ export default function VendorWorkNewPage() {
                                                     <p className="text-sm font-medium mb-2">借出項目 <span className="text-red-500">*</span></p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {BORROW_ITEM_OPTIONS.map(item => (
-                                                            <label key={item} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all ${
-                                                                borrowedItems.includes(item)
-                                                                    ? 'border-amber-500 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                                                                    : 'border-border hover:border-amber-300 bg-background'
-                                                            }`}>
+                                                            <label key={item} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all ${borrowedItems.includes(item)
+                                                                ? 'border-amber-500 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                                                : 'border-border hover:border-amber-300 bg-background'
+                                                                }`}>
                                                                 <input type="checkbox" className="sr-only" checked={borrowedItems.includes(item)} onChange={() => toggleItem(item, borrowedItems, setBorrowedItems)} />
                                                                 {item}
                                                             </label>
@@ -477,8 +493,8 @@ export default function VendorWorkNewPage() {
                                                     {(errors as any).borrowed_items && <p className="text-xs text-red-500 mt-1">{(errors as any).borrowed_items.message}</p>}
                                                 </div>
                                                 {borrowedItems.includes('其他') && (
-                                                    <FormField label="其他物品說明" required error={errors.borrowed_other_text?.message}>
-                                                        <Input value={borrowedOtherText} onChange={e => setBorrowedOtherText(e.target.value)} placeholder="請說明其他物品" />
+                                                    <FormField label="其他物品" required error={errors.borrowed_other_text?.message}>
+                                                        <Input value={borrowedOtherText} onChange={e => setBorrowedOtherText(e.target.value)} placeholder="多個項目請以頓號「、」分隔" />
                                                     </FormField>
                                                 )}
                                                 <FormField label="借出人員" required error={errors.lender_name?.message}>
@@ -506,11 +522,10 @@ export default function VendorWorkNewPage() {
                                         {/* 歸還狀態選擇 */}
                                         <div className="flex gap-3">
                                             {(['none', 'return'] as const).map(val => (
-                                                <label key={val} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-bold ${
-                                                    returnAction === val
-                                                        ? 'border-green-500 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                                                        : 'border-border hover:border-green-300'
-                                                }`}>
+                                                <label key={val} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-bold ${returnAction === val
+                                                    ? 'border-green-500 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                                                    : 'border-border hover:border-green-300'
+                                                    }`}>
                                                     <input type="radio" className="sr-only" checked={returnAction === val} onChange={() => { setReturnAction(val); if (val === 'none') { setReturnedItems([]); setReceiverName('') } }} />
                                                     {val === 'none' ? '未借物' : '已歸還'}
                                                 </label>
@@ -524,11 +539,10 @@ export default function VendorWorkNewPage() {
                                                     {refArrivalId && <p className="text-xs text-green-600 mb-2">✓ 已自動帶入借物紀錄，請確認歸還項目</p>}
                                                     <div className="flex flex-wrap gap-2">
                                                         {BORROW_ITEM_OPTIONS.map(item => (
-                                                            <label key={item} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all ${
-                                                                returnedItems.includes(item)
-                                                                    ? 'border-green-500 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                                                                    : 'border-border hover:border-green-300 bg-background'
-                                                            }`}>
+                                                            <label key={item} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all ${returnedItems.includes(item)
+                                                                ? 'border-green-500 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                                                                : 'border-border hover:border-green-300 bg-background'
+                                                                }`}>
                                                                 <input type="checkbox" className="sr-only" checked={returnedItems.includes(item)} onChange={() => toggleItem(item, returnedItems, setReturnedItems)} />
                                                                 {item}
                                                             </label>
@@ -538,7 +552,7 @@ export default function VendorWorkNewPage() {
                                                 </div>
                                                 {returnedItems.includes('其他') && (
                                                     <FormField label="其他物品說明" required error={errors.returned_other_text?.message}>
-                                                        <Input value={returnedOtherText} onChange={e => setReturnedOtherText(e.target.value)} placeholder="請說明其他物品" />
+                                                        <Input value={returnedOtherText} onChange={e => setReturnedOtherText(e.target.value)} placeholder="請說明其他物品 (多個項目請以頓號「、」分隔)" />
                                                     </FormField>
                                                 )}
                                                 <FormField label="歸還人員" required error={errors.receiver_name?.message}>
@@ -583,8 +597,8 @@ export default function VendorWorkNewPage() {
                     ...pendingData,
                     entry_status: pendingData.entry_status === 'arrival' ? '到院' : pendingData.entry_status === 'departure' ? '離院' : pendingData.entry_status,
                     borrow_action: pendingData.borrow_action === 'borrow' ? '已借物' : pendingData.borrow_action === 'return' ? '歸還' : pendingData.borrow_action === 'partial_return' ? '部分未歸還' : pendingData.borrow_action === 'none' ? '未借物' : pendingData.borrow_action,
-                    borrowed_items: pendingData.borrowed_items?.length ? pendingData.borrowed_items.join('、') + (pendingData.borrowed_items.includes('其他') && pendingData.borrowed_other_text ? ` (${pendingData.borrowed_other_text})` : '') : pendingData.borrowed_items,
-                    returned_items: pendingData.returned_items?.length ? pendingData.returned_items.join('、') + (pendingData.returned_items.includes('其他') && pendingData.returned_other_text ? ` (${pendingData.returned_other_text})` : '') : pendingData.returned_items,
+                    borrowed_items: formatItemsDisplay(pendingData.borrowed_items, pendingData.borrowed_other_text),
+                    returned_items: formatItemsDisplay(pendingData.returned_items, pendingData.returned_other_text),
                 } : {}}
                 fieldLabels={FIELD_LABELS}
             />
@@ -605,7 +619,7 @@ export default function VendorWorkNewPage() {
                                 ))}
                             </ul>
                             <p className="mt-4 text-sm text-muted-foreground font-medium">
-                                {mismatchWarning.allowSave 
+                                {mismatchWarning.allowSave
                                     ? "若確認部份物品暫時無法歸還，請點擊「已確認存檔」，系統將標記為「部份未歸還」。"
                                     : "因為你歸還了未曾借出的物品，請按返回修改按鈕，進行修改"
                                 }

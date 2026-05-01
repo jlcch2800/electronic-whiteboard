@@ -11,6 +11,7 @@ import { MapPin, Package, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatUpdateMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
 import { logChangeRecord } from '@/lib/change-log'
+import { formatItemsDisplay, validateOtherItemsSeparator } from '@/lib/utils'
 import { vendorWorkSchema, type VendorWorkFormValues, BORROW_ITEM_OPTIONS } from '@/lib/validations/schemas'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -140,6 +141,22 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
     }, [borrowAction, borrowedItems, borrowedOtherText, lenderName, returnAction, returnedItems, returnedOtherText, receiverName, entryStatus, setValue, trigger])
 
     const onPreSubmit = (data: VendorWorkFormValues) => {
+        // 驗證「其他物品」的分隔符號
+        if (entryStatus === 'arrival' && borrowAction === 'borrow' && borrowedItems.includes('其他')) {
+            const validation = validateOtherItemsSeparator(borrowedOtherText)
+            if (!validation.isValid) {
+                toast({ title: '格式錯誤', description: validation.message, variant: 'destructive' })
+                return
+            }
+        }
+        if (entryStatus === 'departure' && returnAction === 'return' && returnedItems.includes('其他')) {
+            const validation = validateOtherItemsSeparator(returnedOtherText)
+            if (!validation.isValid) {
+                toast({ title: '格式錯誤', description: validation.message, variant: 'destructive' })
+                return
+            }
+        }
+
         setPendingData(data)
         if (data.entry_status === 'departure' && returnAction === 'return' && originalBorrowedItems !== null) {
             // 1. 比較標準項目
@@ -147,7 +164,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
             const extraItems = returnedItems.filter(item => !originalBorrowedItems.includes(item))
             
             // 2. 比較「其他」文字內容 (處理手動輸入的多個項目)
-            const splitOther = (text: string) => text ? text.split(/[、,，\s]+/).map(s => s.trim()).filter(Boolean) : []
+            const splitOther = (text: string) => text ? text.split(/[、,，\s\.]+/).map(s => s.trim()).filter(Boolean) : []
             const originalOtherList = splitOther(originalBorrowedOtherText)
             const currentOtherList = splitOther(returnedOtherText)
             
@@ -212,7 +229,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                 if (payload.borrow_action === 'partial_return' && originalBorrowedItems) {
                     // 計算並存入「尚未歸還」的項目
                     const missing = originalBorrowedItems.filter(i => !returnedItems.includes(i))
-                    const splitOther = (text: string) => text ? text.split(/[、,，\s]+/).map(s => s.trim()).filter(Boolean) : []
+                    const splitOther = (text: string) => text ? text.split(/[、,，\s\.]+/).map(s => s.trim()).filter(Boolean) : []
                     const originalOthers = splitOther(originalBorrowedOtherText)
                     const currentOthers = splitOther(returnedOtherText)
                     const missingOthers = originalOthers.filter(item => !currentOthers.includes(item))
@@ -381,7 +398,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                                 </div>
                                                 {borrowedItems.includes('其他') && (
                                                     <FormField label="其他物品說明" required error={errors.borrowed_other_text?.message}>
-                                                        <Input value={borrowedOtherText} onChange={e => setBorrowedOtherText(e.target.value)} placeholder="請說明其他物品" />
+                                                        <Input value={borrowedOtherText} onChange={e => setBorrowedOtherText(e.target.value)} placeholder="請說明其他物品 (多個項目請以頓號「、」分隔)" />
                                                     </FormField>
                                                 )}
                                                 <FormField label="借出人員" required error={errors.lender_name?.message}>
@@ -437,7 +454,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                                 </div>
                                                 {returnedItems.includes('其他') && (
                                                     <FormField label="其他物品說明" required error={errors.returned_other_text?.message}>
-                                                        <Input value={returnedOtherText} onChange={e => setReturnedOtherText(e.target.value)} placeholder="請說明其他物品" />
+                                                        <Input value={returnedOtherText} onChange={e => setReturnedOtherText(e.target.value)} placeholder="請說明其他物品 (多個項目請以頓號「、」分隔)" />
                                                     </FormField>
                                                 )}
                                                 <FormField label="歸還人員" required error={errors.receiver_name?.message}>
@@ -478,8 +495,8 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                     ...pendingData,
                     entry_status: pendingData.entry_status === 'arrival' ? '到院' : pendingData.entry_status === 'departure' ? '離院' : pendingData.entry_status,
                     borrow_action: pendingData.borrow_action === 'borrow' ? '已借物' : pendingData.borrow_action === 'return' ? '歸還' : pendingData.borrow_action === 'partial_return' ? '部分未歸還' : pendingData.borrow_action === 'none' ? '未借物' : pendingData.borrow_action,
-                    borrowed_items: pendingData.borrowed_items?.length ? pendingData.borrowed_items.join('、') + (pendingData.borrowed_items.includes('其他') && pendingData.borrowed_other_text ? ` (${pendingData.borrowed_other_text})` : '') : pendingData.borrowed_items,
-                    returned_items: pendingData.returned_items?.length ? pendingData.returned_items.join('、') + (pendingData.returned_items.includes('其他') && pendingData.returned_other_text ? ` (${pendingData.returned_other_text})` : '') : pendingData.returned_items,
+                    borrowed_items: formatItemsDisplay(pendingData.borrowed_items, pendingData.borrowed_other_text),
+                    returned_items: formatItemsDisplay(pendingData.returned_items, pendingData.returned_other_text),
                 } : {}}
                 fieldLabels={FIELD_LABELS}
             />

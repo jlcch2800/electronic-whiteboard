@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { SkeletonTable } from '@/components/SkeletonTable'
 
 import { createClient } from '@/lib/supabase/client'
+import { formatItemsDisplay } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -45,7 +46,7 @@ interface VendorHistoryRecord {
     vendor_contact_phone: string | null
     work_content: string | null
     note: string | null
-    borrow_action?: 'none' | 'borrow' | 'return' | null
+    borrow_action?: 'none' | 'borrow' | 'return' | 'partial_return' | null
     borrowed_items?: string | null
     lender_name?: string | null
     returned_items?: string | null
@@ -55,14 +56,7 @@ interface VendorHistoryRecord {
 const formatItems = (data: any): string => {
     if (!data) return ''
     if (typeof data === 'string') return data
-    if (data.items && Array.isArray(data.items)) {
-        let text = data.items.join('、')
-        if (data.other_text) {
-            text += ` (${data.other_text})`
-        }
-        return text
-    }
-    return ''
+    return formatItemsDisplay(data.items, data.other_text)
 }
 
 export default function VendorHistoryClient() {
@@ -230,7 +224,7 @@ export default function VendorHistoryClient() {
             '施工人數': row.head_count || '',
             '施工內容': row.work_content || '',
             '備註': row.note || '',
-            '借用動作': row.borrow_action === 'borrow' ? '借物中' : row.borrow_action === 'return' ? '已歸還' : '未借物',
+            '借用動作': row.borrow_action === 'borrow' ? '借物中' : row.borrow_action === 'return' ? '已歸還' : row.borrow_action === 'partial_return' ? '部份未歸還' : '未借物',
             '借出項目': formatItems(row.borrowed_items),
             '借出人員': row.lender_name || '',
             '歸還項目': formatItems(row.returned_items),
@@ -357,6 +351,7 @@ export default function VendorHistoryClient() {
                                                     <TableCell>
                                                         {row.borrow_action === 'borrow' && <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300">借物中</Badge>}
                                                         {row.borrow_action === 'return' && <Badge className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300">已歸還</Badge>}
+                                                        {row.borrow_action === 'partial_return' && <Badge className="bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300">部份未歸還</Badge>}
                                                         {(!row.borrow_action || row.borrow_action === 'none') && <Badge variant="outline" className="text-muted-foreground dark:text-gray-400">未借物</Badge>}
                                                     </TableCell>
                                                     <TableCell className="max-w-32 truncate dark:text-gray-200" title={formatItems(row.borrowed_items)}>{formatItems(row.borrowed_items) || '-'}</TableCell>
@@ -400,7 +395,17 @@ export default function VendorHistoryClient() {
                                                     { label: '人數', value: row.head_count?.toString() || '-' },
                                                     { label: '內容', value: row.work_content },
                                                     { label: '備註', value: row.note },
-                                                    { label: '借用動作', value: row.borrow_action === 'borrow' ? '借物中' : row.borrow_action === 'return' ? '已歸還' : '未借物' },
+                                                    {
+                                                        label: '借用動作',
+                                                        value: (
+                                                            <div className="flex gap-1">
+                                                                {row.borrow_action === 'borrow' && <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300">借物中</Badge>}
+                                                                {row.borrow_action === 'return' && <Badge className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300">已歸還</Badge>}
+                                                                {row.borrow_action === 'partial_return' && <Badge className="bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300">部份未歸還</Badge>}
+                                                                {(!row.borrow_action || row.borrow_action === 'none') && <Badge variant="outline" className="text-muted-foreground dark:text-gray-400">未借物</Badge>}
+                                                            </div>
+                                                        )
+                                                    },
                                                     { label: '借出項目', value: formatItems(row.borrowed_items) },
                                                     { label: '借出人員', value: row.lender_name },
                                                     { label: '歸還項目', value: formatItems(row.returned_items) },
