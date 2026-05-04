@@ -34,8 +34,6 @@ const FIELD_LABELS: Record<string, string> = {
     vendor_name: '廠商名稱',
     vendor_contact: '廠商負責人員',
     vendor_contact_phone: '負責人員電話',
-    building: '棟別',
-    floor: '樓層',
     location: '施工地點',
     vendor_badge_id: '工作證號',
     head_count: '施工人數',
@@ -216,8 +214,6 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                 payload.receiver_name = null
             } else {
                 payload.arrival_time = null
-                payload.building = null
-                payload.floor = null
                 payload.location = null
                 payload.vendor_badge_id = null
                 payload.head_count = null
@@ -333,12 +329,6 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <FormField label="棟別" required error={errors.building?.message} touched={touchedFields.building}>
-                                            <Input {...register('building')} onBlur={() => handleFieldBlur('building')} />
-                                        </FormField>
-                                        <FormField label="樓層" required error={errors.floor?.message} touched={touchedFields.floor}>
-                                            <Input {...register('floor')} onBlur={() => handleFieldBlur('floor')} />
-                                        </FormField>
                                         <FormField label="工作證號" required error={errors.vendor_badge_id?.message} touched={touchedFields.vendor_badge_id}>
                                             <Input type="number" {...register('vendor_badge_id')} onBlur={() => handleFieldBlur('vendor_badge_id')} />
                                         </FormField>

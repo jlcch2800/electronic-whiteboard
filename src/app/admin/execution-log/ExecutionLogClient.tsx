@@ -56,7 +56,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
         id: 'ID', created_at: '建立時間', updated_at: '更新時間', date: '日期',
         // 廠商今日施工項目 (vendor_today_work)
         entry_status: '到院或離院', work_date: '施工日期', arrival_time: '到院時間', departure_time: '離院時間',
-        building: '棟別', floor: '樓層', location: '施工地點', vendor_badge_id: '廠商工作證號', head_count: '施工人數',
+        location: '施工地點', vendor_badge_id: '廠商工作證號', head_count: '施工人數',
         vendor_name: '廠商名稱', vendor_contact: '廠商負責人員姓名', vendor_contact_phone: '廠商負責人員電話',
         work_content: '施工內容', note: '備註',
         // 待處理/工務 (pending_work / engineering_today_work)
@@ -79,7 +79,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
     const FIELD_ORDER = [
         'id', 'created_at', 'updated_at',
         // Vendor Today Work
-        'entry_status', 'work_date', 'arrival_time', 'departure_time', 'building', 'floor', 'location',
+        'entry_status', 'work_date', 'arrival_time', 'departure_time', 'location',
         'vendor_badge_id', 'head_count',
         // Work Reports
         'report_date', 'report_time',

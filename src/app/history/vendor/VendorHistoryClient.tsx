@@ -36,8 +36,6 @@ interface VendorHistoryRecord {
     work_date: string
     arrival_time: string | null
     departure_time: string | null
-    building: string | null
-    floor: string | null
     location: string | null
     vendor_badge_id: number | null
     head_count: number | null
@@ -103,8 +101,6 @@ export default function VendorHistoryClient() {
             row.note?.toLowerCase().includes(kw) ||
             row.vendor_contact?.toLowerCase().includes(kw) ||
             row.vendor_contact_phone?.toLowerCase().includes(kw) ||
-            row.building?.toLowerCase().includes(kw) ||
-            row.floor?.toLowerCase().includes(kw) ||
             row.location?.toLowerCase().includes(kw) ||
             (row.entry_status === 'arrival' ? '到院' : '離院').includes(kw)
         )
@@ -193,7 +189,7 @@ export default function VendorHistoryClient() {
                 .order('work_date', { ascending: false })
 
             if (keyword.trim()) {
-                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,building.ilike.%${keyword}%,floor.ilike.%${keyword}%,location.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
+                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,location.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
             }
 
             const { data: allData } = await query
@@ -218,8 +214,6 @@ export default function VendorHistoryClient() {
             '廠商工作證號': row.vendor_badge_id || '',
             '廠商負責人員姓名': row.vendor_contact || '',
             '廠商負責人員電話': row.vendor_contact_phone || '',
-            '棟別': row.building || '',
-            '樓層': row.floor || '',
             '施工地點': row.location || '',
             '施工人數': row.head_count || '',
             '施工內容': row.work_content || '',
@@ -309,8 +303,6 @@ export default function VendorHistoryClient() {
                                             <SortableTableHead label="廠商工作證號" sortKey="vendor_badge_id" currentSort={sort} onSort={handleSort} />
                                             <SortableTableHead label="廠商負責人員姓名" sortKey="vendor_contact" currentSort={sort} onSort={handleSort} />
                                             <TableHead>廠商負責人員電話</TableHead>
-                                            <SortableTableHead label="棟別" sortKey="building" currentSort={sort} onSort={handleSort} />
-                                            <SortableTableHead label="樓層" sortKey="floor" currentSort={sort} onSort={handleSort} />
                                             <SortableTableHead label="施工地點" sortKey="location" currentSort={sort} onSort={handleSort} />
                                             <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
                                             <TableHead>施工內容</TableHead>
@@ -324,7 +316,7 @@ export default function VendorHistoryClient() {
                                     </TableHeader>
                                     <TableBody>
                                         {sortedData.length === 0 ? (
-                                            <TableRow><TableCell colSpan={22} className="p-0"><EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={20} className="p-0"><EmptyState icon={Users} title="查無歷史紀錄" description="在選定的日期範圍內沒有找到相關歷史紀錄。" /></TableCell></TableRow>
                                         ) : (
                                             sortedData.map((row, index) => (
                                                 <TableRow key={row.id} className={`hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors even:bg-muted/20 dark:even:bg-muted/10 ${selected.has(row.id) ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}>
@@ -342,8 +334,6 @@ export default function VendorHistoryClient() {
                                                     <TableCell className="font-mono dark:text-gray-200">{row.vendor_badge_id || '-'}</TableCell>
                                                     <TableCell className="dark:text-gray-200">{row.vendor_contact || '-'}</TableCell>
                                                     <TableCell className="font-mono dark:text-gray-200">{row.vendor_contact_phone || '-'}</TableCell>
-                                                    <TableCell className="dark:text-gray-200">{row.building || '-'}</TableCell>
-                                                    <TableCell className="dark:text-gray-200">{row.floor || '-'}</TableCell>
                                                     <TableCell className="dark:text-gray-200">{row.location || '-'}</TableCell>
                                                     <TableCell className="dark:text-gray-200">{row.head_count || '-'}</TableCell>
                                                     <TableCell className="max-w-xs truncate dark:text-gray-200" title={row.work_content || ''}>{row.work_content || '-'}</TableCell>
@@ -389,8 +379,6 @@ export default function VendorHistoryClient() {
                                                     { label: '工作證號', value: row.vendor_badge_id?.toString() || '-' },
                                                     { label: '聯絡人', value: row.vendor_contact },
                                                     { label: '聯絡電話', value: row.vendor_contact_phone },
-                                                    { label: '棟別', value: row.building },
-                                                    { label: '樓層', value: row.floor },
                                                     { label: '地點', value: row.location },
                                                     { label: '人數', value: row.head_count?.toString() || '-' },
                                                     { label: '內容', value: row.work_content },

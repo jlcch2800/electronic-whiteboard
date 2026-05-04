@@ -210,8 +210,6 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
             '廠商工作證號': v.vendor_badge_id || '',
             '廠商負責人員姓名': v.vendor_contact || '',
             '廠商負責人員電話': v.vendor_contact_phone || '',
-            '棟別': v.building || '',
-            '樓層': v.floor || '',
             '施工地點': v.location || '',
             '施工人數': v.head_count || '',
             '施工內容': v.work_content || '',
@@ -312,8 +310,6 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                             <SortableTableHead label="廠商工作證號" sortKey="vendor_badge_id" currentSort={sort} onSort={handleSort} />
                                             <SortableTableHead label="廠商負責人員姓名" sortKey="vendor_contact" currentSort={sort} onSort={handleSort} />
                                             <TableHead>廠商負責人員電話</TableHead>
-                                            <SortableTableHead label="棟別" sortKey="building" currentSort={sort} onSort={handleSort} />
-                                            <SortableTableHead label="樓層" sortKey="floor" currentSort={sort} onSort={handleSort} />
                                             <SortableTableHead label="施工地點" sortKey="location" currentSort={sort} onSort={handleSort} />
                                             <SortableTableHead label="施工人數" sortKey="head_count" currentSort={sort} onSort={handleSort} />
                                             <TableHead>施工內容</TableHead>
@@ -328,7 +324,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                     <TableBody>
                                         {sortedData.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={17} className="p-0">
+                                                <TableCell colSpan={19} className="p-0">
                                                     <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
                                                 </TableCell>
                                             </TableRow>
@@ -353,8 +349,6 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                                         <TableCell>{v.vendor_badge_id || '-'}</TableCell>
                                                         <TableCell>{v.vendor_contact}</TableCell>
                                                         <TableCell className="font-mono">{v.vendor_contact_phone || '-'}</TableCell>
-                                                        <TableCell>{v.building || '-'}</TableCell>
-                                                        <TableCell>{v.floor || '-'}</TableCell>
                                                         <TableCell className="max-w-[150px] truncate" title={v.location}>{v.location}</TableCell>
                                                         <TableCell>{v.head_count || '-'}</TableCell>
                                                         <TableCell className="max-w-[200px] truncate" title={v.work_content}>{v.work_content}</TableCell>
@@ -417,8 +411,6 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                                     { label: "工作證號", value: v.vendor_badge_id },
                                                     { label: "聯絡人", value: v.vendor_contact },
                                                     { label: "聯絡電話", value: v.vendor_contact_phone },
-                                                    { label: "棟別", value: v.building },
-                                                    { label: "樓層", value: v.floor },
                                                     { label: "地點", value: v.location },
                                                     { label: "人數", value: v.head_count },
                                                     { label: "內容", value: v.work_content },

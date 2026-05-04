@@ -26,8 +26,6 @@ export const VENDOR_WORK_LABELS: Record<string, string> = {
     vendor_badge_id: '廠商工作證號',
     vendor_contact: '廠商負責人員姓名',
     vendor_contact_phone: '廠商負責人員電話',
-    building: '棟別',
-    floor: '樓層',
     location: '施工地點',
     head_count: '施工人數',
     work_content: '施工內容',

@@ -59,8 +59,6 @@ export const vendorWorkSchema = z.object({
     work_date: z.string().min(1, '請選擇日期'),
     arrival_time: z.string().nullable().optional(),
     departure_time: z.string().nullable().optional(),
-    building: z.string().nullable().optional(),
-    floor: z.string().nullable().optional(),
     location: z.string().nullable().optional(),
     vendor_badge_id: z.preprocess(
         (val) => (val === '' || val === null || val === undefined) ? null : Number(val),
@@ -89,12 +87,6 @@ export const vendorWorkSchema = z.object({
         // 到院時驗證
         if (!data.arrival_time) {
             ctx.addIssue({ code: 'custom', message: '請輸入到院時間', path: ['arrival_time'] })
-        }
-        if (!data.building || data.building.trim() === '') {
-            ctx.addIssue({ code: 'custom', message: '請輸入棟別', path: ['building'] })
-        }
-        if (!data.floor || data.floor.trim() === '') {
-            ctx.addIssue({ code: 'custom', message: '請輸入樓層', path: ['floor'] })
         }
         if (!data.location || data.location.trim() === '') {
             ctx.addIssue({ code: 'custom', message: '請輸入施工地點', path: ['location'] })

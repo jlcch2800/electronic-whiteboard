@@ -28,8 +28,6 @@ export interface Database {
           work_date: string
           arrival_time: string | null
           departure_time: string | null
-          building: string | null
-          floor: string | null
           location: string | null
           vendor_badge_id: number | null
           head_count: number | null
@@ -53,8 +51,6 @@ export interface Database {
           work_date: string
           arrival_time?: string | null
           departure_time?: string | null
-          building?: string | null
-          floor?: string | null
           location?: string | null
           vendor_badge_id?: number | null
           head_count?: number | null
@@ -77,8 +73,6 @@ export interface Database {
           work_date?: string
           arrival_time?: string | null
           departure_time?: string | null
-          building?: string | null
-          floor?: string | null
           location?: string | null
           vendor_badge_id?: number | null
           head_count?: number | null
@@ -103,8 +97,6 @@ export interface Database {
           work_date: string
           arrival_time: string | null
           departure_time: string | null
-          building: string | null
-          floor: string | null
           location: string | null
           vendor_badge_id: number | null
           head_count: number | null
@@ -127,8 +119,6 @@ export interface Database {
           work_date: string
           arrival_time?: string | null
           departure_time?: string | null
-          building?: string | null
-          floor?: string | null
           location?: string | null
           vendor_badge_id?: number | null
           head_count?: number | null
@@ -151,8 +141,6 @@ export interface Database {
           work_date?: string
           arrival_time?: string | null
           departure_time?: string | null
-          building?: string | null
-          floor?: string | null
           location?: string | null
           vendor_badge_id?: number | null
           head_count?: number | null

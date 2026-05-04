@@ -61,7 +61,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         id: 'ID', created_at: '建立時間', updated_at: '更新時間', date: '日期',
         // 廠商今日施工項目 (vendor_today_work)
         entry_status: '到院或離院', work_date: '施工日期', arrival_time: '到院時間', departure_time: '離院時間',
-        building: '棟別', floor: '樓層', location: '施工地點', vendor_badge_id: '廠商工作證號', head_count: '施工人數',
+        location: '施工地點', vendor_badge_id: '廠商工作證號', head_count: '施工人數',
         vendor_name: '廠商名稱', vendor_contact: '廠商負責人員姓名', vendor_contact_phone: '廠商負責人員電話',
         work_content: '施工內容', note: '備註',
         borrow_action: '借用動作', borrowed_items: '借出項目', lender_name: '借出人員', returned_items: '歸還項目', receiver_name: '歸還人員', ref_arrival_id: '到院參考ID',
@@ -88,7 +88,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         // Vendor Today Work
         'entry_status', 'work_date', 'arrival_time', 'departure_time',
         'vendor_name', 'vendor_badge_id', 'vendor_contact', 'vendor_contact_phone',
-        'building', 'floor', 'location', 'head_count',
+        'location', 'head_count',
         'work_content', 'note',
         'borrow_action', 'borrowed_items', 'lender_name', 'returned_items', 'receiver_name', 'ref_arrival_id',
         // Work Reports
@@ -282,7 +282,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         // 2. 異動明細
         const oldData = parseJson(log.old_data);
         const newData = parseJson(log.new_data);
-        const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]));
+        const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})])).filter(key => key !== 'building' && key !== 'floor');
 
         // Sort keys
         const sortedKeys = allKeys.sort((a, b) => {
@@ -515,7 +515,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                             }
                                                             const oldData = parseJson(log.old_data)
                                                             const newData = parseJson(log.new_data)
-                                                            const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]))
+                                                            const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})])).filter(key => key !== 'building' && key !== 'floor')
 
                                                             const sortedKeys = allKeys.sort((a, b) => {
                                                                 const indexA = FIELD_ORDER.indexOf(a);
@@ -639,7 +639,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                         }
                                                         const oldData = parseJson(log.old_data)
                                                         const newData = parseJson(log.new_data)
-                                                        const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]))
+                                                        const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})])).filter(key => key !== 'building' && key !== 'floor')
                                                         const sortedKeys = allKeys.sort((a, b) => {
                                                             const indexA = FIELD_ORDER.indexOf(a); const indexB = FIELD_ORDER.indexOf(b);
                                                             if (indexA !== -1 && indexB !== -1) return indexA - indexB;
