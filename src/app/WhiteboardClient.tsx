@@ -43,11 +43,8 @@ import { SkeletonTable } from '@/components/SkeletonTable'
 interface WhiteboardClientProps {
     initialVendors: any[]
     initialEngineering: any[]
-    initialPending: any[]
 }
 
-    initialPending: any[]
-}
 
 const formatItems = (data: any): string => {
     if (!data) return ''
