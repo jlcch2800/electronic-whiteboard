@@ -18,16 +18,16 @@ export type BorrowAction = 'borrow' | 'return' | 'none';
 export type BorrowItems = { items: string[]; other_text: string };
 /** 維修單狀態 */
 export type MaintenanceStatus =
-    | '已轉維修單'
-    | '開單主管簽核完成'
-    | '工務部門報價，主管簽核中'
-    | '廠商施工中'
-    | '院長室簽核中'
-    | '採購發包簽核中'
-    | '已發包'
-    | '開單單位驗收中'
-    | '維修部門驗收中'
-    | '已驗收';
+  | '已轉維修單'
+  | '開單主管簽核完成'
+  | '工務部門報價，主管簽核中'
+  | '廠商施工中'
+  | '院長室簽核中'
+  | '採購發包簽核中'
+  | '已發包'
+  | '開單單位驗收中'
+  | '維修部門驗收中'
+  | '已驗收';
 
 export interface Database {
   public: {

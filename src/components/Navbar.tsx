@@ -52,6 +52,7 @@ const NAV_ITEMS: NavItem[] = [
             { label: '工務施工歷史', icon: HardHat, href: '/history/engineering' },
             { label: '待處理工作歷史', icon: FileClock, href: '/history/pending' },
             { label: '施工回報歷史', icon: ClipboardCheck, href: '/history/report' },
+            { label: '維修單歷史紀錄', icon: Activity, href: '/maintenance-work/history' },
         ]
     },
 ]
