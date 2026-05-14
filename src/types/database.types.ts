@@ -16,6 +16,18 @@ export type LogLevel = 'Info' | 'Warning' | 'Error';
 export type BorrowAction = 'borrow' | 'return' | 'none';
 /** 借物/歸還項目的 JSONB 結構 */
 export type BorrowItems = { items: string[]; other_text: string };
+/** 維修單狀態 */
+export type MaintenanceStatus =
+    | '已轉維修單'
+    | '開單主管簽核完成'
+    | '工務部門報價，主管簽核中'
+    | '廠商施工中'
+    | '院長室簽核中'
+    | '採購發包簽核中'
+    | '已發包'
+    | '開單單位驗收中'
+    | '維修部門驗收中'
+    | '已驗收';
 
 export interface Database {
   public: {
@@ -557,6 +569,292 @@ export interface Database {
           image_url?: string
           video_url?: string | null
           note?: string | null
+        }
+      }
+      maintenance_work_orders: {
+        Row: {
+          id: string
+          created_at: string
+          status: MaintenanceStatus
+          request_date: string
+          request_department: string
+          cost_center: string
+          maintain_content: string
+          requester_name: string
+          work_order_id: string
+          handler_name: string
+          work_order_date: string
+          maint_mgr_name: string
+          maint_mgr_date: string
+          req_dept_mgr_name: string | null
+          req_dept_mgr_date: string | null
+          quote_user_name: string | null
+          quote_user_date: string | null
+          vendor_name: string | null
+          amount: number | null
+          dispatch_mgr_name: string | null
+          dispatch_mgr_date: string | null
+          dispatch_director_name: string | null
+          dispatch_director_date: string | null
+          vice_dean_name: string | null
+          vice_dean_date: string | null
+          dean_name: string | null
+          dean_date: string | null
+          project_order_id: string | null
+          procurement_name: string | null
+          procurement_date: string | null
+          material_name: string | null
+          material_date: string | null
+          rev_vice_dean_name: string | null
+          rev_vice_dean_date: string | null
+          rev_dean_name: string | null
+          rev_dean_date: string | null
+          construct_end_date: string | null
+          accept_dept_mgr_name: string | null
+          accept_dept_mgr_date: string | null
+          accept_handler_name: string | null
+          accept_handler_date: string | null
+          accept_mgr_name: string | null
+          accept_mgr_date: string | null
+          accept_director_name: string | null
+          accept_director_date: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          status?: MaintenanceStatus
+          request_date: string
+          request_department: string
+          cost_center: string
+          maintain_content: string
+          requester_name: string
+          work_order_id: string
+          handler_name: string
+          work_order_date: string
+          maint_mgr_name: string
+          maint_mgr_date: string
+          req_dept_mgr_name?: string | null
+          req_dept_mgr_date?: string | null
+          quote_user_name?: string | null
+          quote_user_date?: string | null
+          vendor_name?: string | null
+          amount?: number | null
+          dispatch_mgr_name?: string | null
+          dispatch_mgr_date?: string | null
+          dispatch_director_name?: string | null
+          dispatch_director_date?: string | null
+          vice_dean_name?: string | null
+          vice_dean_date?: string | null
+          dean_name?: string | null
+          dean_date?: string | null
+          project_order_id?: string | null
+          procurement_name?: string | null
+          procurement_date?: string | null
+          material_name?: string | null
+          material_date?: string | null
+          rev_vice_dean_name?: string | null
+          rev_vice_dean_date?: string | null
+          rev_dean_name?: string | null
+          rev_dean_date?: string | null
+          construct_end_date?: string | null
+          accept_dept_mgr_name?: string | null
+          accept_dept_mgr_date?: string | null
+          accept_handler_name?: string | null
+          accept_handler_date?: string | null
+          accept_mgr_name?: string | null
+          accept_mgr_date?: string | null
+          accept_director_name?: string | null
+          accept_director_date?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          status?: MaintenanceStatus
+          request_date?: string
+          request_department?: string
+          cost_center?: string
+          maintain_content?: string
+          requester_name?: string
+          work_order_id?: string
+          handler_name?: string
+          work_order_date?: string
+          maint_mgr_name?: string
+          maint_mgr_date?: string
+          req_dept_mgr_name?: string | null
+          req_dept_mgr_date?: string | null
+          quote_user_name?: string | null
+          quote_user_date?: string | null
+          vendor_name?: string | null
+          amount?: number | null
+          dispatch_mgr_name?: string | null
+          dispatch_mgr_date?: string | null
+          dispatch_director_name?: string | null
+          dispatch_director_date?: string | null
+          vice_dean_name?: string | null
+          vice_dean_date?: string | null
+          dean_name?: string | null
+          dean_date?: string | null
+          project_order_id?: string | null
+          procurement_name?: string | null
+          procurement_date?: string | null
+          material_name?: string | null
+          material_date?: string | null
+          rev_vice_dean_name?: string | null
+          rev_vice_dean_date?: string | null
+          rev_dean_name?: string | null
+          rev_dean_date?: string | null
+          construct_end_date?: string | null
+          accept_dept_mgr_name?: string | null
+          accept_dept_mgr_date?: string | null
+          accept_handler_name?: string | null
+          accept_handler_date?: string | null
+          accept_mgr_name?: string | null
+          accept_mgr_date?: string | null
+          accept_director_name?: string | null
+          accept_director_date?: string | null
+        }
+      }
+      maintenance_work_orders_history: {
+        Row: {
+          id: string
+          created_at: string
+          status: MaintenanceStatus
+          request_date: string
+          request_department: string
+          cost_center: string
+          maintain_content: string
+          requester_name: string
+          work_order_id: string
+          handler_name: string
+          work_order_date: string
+          maint_mgr_name: string
+          maint_mgr_date: string
+          req_dept_mgr_name: string | null
+          req_dept_mgr_date: string | null
+          quote_user_name: string | null
+          quote_user_date: string | null
+          vendor_name: string | null
+          amount: number | null
+          dispatch_mgr_name: string | null
+          dispatch_mgr_date: string | null
+          dispatch_director_name: string | null
+          dispatch_director_date: string | null
+          vice_dean_name: string | null
+          vice_dean_date: string | null
+          dean_name: string | null
+          dean_date: string | null
+          project_order_id: string | null
+          procurement_name: string | null
+          procurement_date: string | null
+          material_name: string | null
+          material_date: string | null
+          rev_vice_dean_name: string | null
+          rev_vice_dean_date: string | null
+          rev_dean_name: string | null
+          rev_dean_date: string | null
+          construct_end_date: string | null
+          accept_dept_mgr_name: string | null
+          accept_dept_mgr_date: string | null
+          accept_handler_name: string | null
+          accept_handler_date: string | null
+          accept_mgr_name: string | null
+          accept_mgr_date: string | null
+          accept_director_name: string | null
+          accept_director_date: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          status: MaintenanceStatus
+          request_date: string
+          request_department: string
+          cost_center: string
+          maintain_content: string
+          requester_name: string
+          work_order_id: string
+          handler_name: string
+          work_order_date: string
+          maint_mgr_name: string
+          maint_mgr_date: string
+          req_dept_mgr_name?: string | null
+          req_dept_mgr_date?: string | null
+          quote_user_name?: string | null
+          quote_user_date?: string | null
+          vendor_name?: string | null
+          amount?: number | null
+          dispatch_mgr_name?: string | null
+          dispatch_mgr_date?: string | null
+          dispatch_director_name?: string | null
+          dispatch_director_date?: string | null
+          vice_dean_name?: string | null
+          vice_dean_date?: string | null
+          dean_name?: string | null
+          dean_date?: string | null
+          project_order_id?: string | null
+          procurement_name?: string | null
+          procurement_date?: string | null
+          material_name?: string | null
+          material_date?: string | null
+          rev_vice_dean_name?: string | null
+          rev_vice_dean_date?: string | null
+          rev_dean_name?: string | null
+          rev_dean_date?: string | null
+          construct_end_date?: string | null
+          accept_dept_mgr_name?: string | null
+          accept_dept_mgr_date?: string | null
+          accept_handler_name?: string | null
+          accept_handler_date?: string | null
+          accept_mgr_name?: string | null
+          accept_mgr_date?: string | null
+          accept_director_name?: string | null
+          accept_director_date?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          status?: MaintenanceStatus
+          request_date?: string
+          request_department?: string
+          cost_center?: string
+          maintain_content?: string
+          requester_name?: string
+          work_order_id?: string
+          handler_name?: string
+          work_order_date?: string
+          maint_mgr_name?: string
+          maint_mgr_date?: string
+          req_dept_mgr_name?: string | null
+          req_dept_mgr_date?: string | null
+          quote_user_name?: string | null
+          quote_user_date?: string | null
+          vendor_name?: string | null
+          amount?: number | null
+          dispatch_mgr_name?: string | null
+          dispatch_mgr_date?: string | null
+          dispatch_director_name?: string | null
+          dispatch_director_date?: string | null
+          vice_dean_name?: string | null
+          vice_dean_date?: string | null
+          dean_name?: string | null
+          dean_date?: string | null
+          project_order_id?: string | null
+          procurement_name?: string | null
+          procurement_date?: string | null
+          material_name?: string | null
+          material_date?: string | null
+          rev_vice_dean_name?: string | null
+          rev_vice_dean_date?: string | null
+          rev_dean_name?: string | null
+          rev_dean_date?: string | null
+          construct_end_date?: string | null
+          accept_dept_mgr_name?: string | null
+          accept_dept_mgr_date?: string | null
+          accept_handler_name?: string | null
+          accept_handler_date?: string | null
+          accept_mgr_name?: string | null
+          accept_mgr_date?: string | null
+          accept_director_name?: string | null
+          accept_director_date?: string | null
         }
       }
     }

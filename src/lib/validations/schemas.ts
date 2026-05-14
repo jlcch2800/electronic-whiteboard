@@ -227,3 +227,62 @@ export const workFileSchema = z.object({
     path: ['file_url'], // 優先顯示在文件欄位，或兩者都顯示
 })
 export type WorkFileFormValues = z.infer<typeof workFileSchema>
+
+// ============================================================
+// 維修單管理系統 (Maintenance Work Order)
+// ============================================================
+
+/** 承辦人、報價承辦人、驗收承辦人選項 (姓名筆畫遞增排序) */
+export const HANDLER_OPTIONS = [
+    '李建賢', '周禹良', '林坤宏', '林鑫宏', '陳冠博',
+    '黃永男', '楊盈慶', '楊竣欽', '廖文傑', '蔡明憬',
+    '謝為紘', '蘇建勳', '蘇匯元'
+] as const
+
+/** 工務單位主管、發包-工務主管、驗收-工務主管選項 */
+export const MAINT_MGR_OPTIONS = ['李建賢', '黃永男'] as const
+
+/** 發包工務主任、驗收工務主任預設值 */
+export const DIRECTOR_DEFAULT = '楊竣欽'
+
+/** 副院長選項 */
+export const VICE_DEAN_OPTIONS = ['邵詩媛', '王哲川'] as const
+
+/** 院長選項 */
+export const DEAN_OPTIONS = ['田宇峯'] as const
+
+/** 維修狀態選項 */
+export const MAINTENANCE_STATUS_OPTIONS = [
+    '已轉維修單', '開單主管簽核完成', '工務部門報價，主管簽核中',
+    '廠商施工中', '院長室簽核中', '採購發包簽核中', '已發包',
+    '開單單位驗收中', '維修部門驗收中', '已驗收'
+] as const
+
+/** 維修單欄位中文對照表（供 ConfirmDialog 使用） */
+export const MAINTENANCE_FIELD_LABELS: Record<string, string> = {
+    request_date: '開單日',
+    request_department: '開單部門',
+    cost_center: '成本中心',
+    maintain_content: '維修內容',
+    requester_name: '開單人',
+    work_order_id: '工單編號',
+    handler_name: '承辦人',
+    work_order_date: '接單日期',
+    maint_mgr_name: '工務單位主管',
+    maint_mgr_date: '工務單位主管日期',
+}
+
+/** 新增維修單表單 Schema（步驟 1：已轉維修單） */
+export const maintenanceWorkOrderSchema = z.object({
+    request_date: z.string().min(1, '請選擇開單日'),
+    request_department: z.string().min(1, '請輸入開單部門'),
+    cost_center: z.string().min(1, '請輸入成本中心'),
+    maintain_content: z.string().min(1, '請輸入維修內容'),
+    requester_name: z.string().min(1, '請輸入開單人'),
+    work_order_id: z.string().min(1, '請輸入工單編號'),
+    handler_name: z.string().min(1, '請選擇承辦人'),
+    work_order_date: z.string().min(1, '請選擇接單日期'),
+    maint_mgr_name: z.string().min(1, '請選擇工務單位主管'),
+    maint_mgr_date: z.string().min(1, '請選擇工務單位主管日期'),
+})
+export type MaintenanceWorkOrderFormValues = z.infer<typeof maintenanceWorkOrderSchema>
