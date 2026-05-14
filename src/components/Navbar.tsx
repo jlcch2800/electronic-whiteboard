@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import {
     Users, HardHat, FileClock, ClipboardCheck, History, UserCog, Activity,
     LogOut, Home, Calendar, ChevronDown, FileText, RefreshCw, Menu, X, Lock,
-    Sun, Moon, User, Settings
+    Sun, Moon, User, Settings, Clock, LayoutDashboard
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -34,10 +34,10 @@ const NAV_ITEMS: NavItem[] = [
     { label: '首頁', icon: Home, href: '/' },
     {
         label: '今日-待處理', icon: Calendar, children: [
-            { label: '廠商今日施工', href: '/vendor-work' },
-            { label: '工務今日施工', href: '/engineering-work' },
-            { label: '待處理工作', href: '/pending-work' },
-            { label: 'All', href: '/dashboard' },
+            { label: '廠商今日施工', icon: Users, href: '/vendor-work' },
+            { label: '工務今日施工', icon: HardHat, href: '/engineering-work' },
+            { label: '待處理工作', icon: Clock, href: '/pending-work' },
+            { label: 'All', icon: LayoutDashboard, href: '/dashboard' },
         ]
     },
     {
@@ -211,38 +211,63 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
     // === 行動版選單項目 ===
     const renderMobileNavItem = (item: NavItem, depth = 0) => {
         const active = isPathActive(pathname, item.href, item.children)
-        const paddingLeft = depth > 0 ? (depth * 1.5 + 1) + 'rem' : undefined
+
+        // 每層縮排量：depth=0 從 1rem 開始，
+        // 每深一層增加 1.75rem (等於 w-5 的 1.25rem + gap-2 的 0.5rem)
+        // 這樣可以確保子項目的圖示剛好對齊父項目的文字起始點
+        const paddingLeft = `${1 + depth * 1.75}rem`
+
+        // 圖示槽：固定 w-5 寬度，有圖示就顯示，沒有就空著
+        // 確保同層所有項目文字起始點完全對齊
+        const iconSlot = (
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                {item.icon && (
+                    <item.icon className={`w-full h-full ${active ? 'text-primary' : 'text-muted-foreground/70'}`} />
+                )}
+            </div>
+        )
+
+        const baseStyle = { paddingLeft, paddingRight: '1rem' }
 
         if (item.href) {
             return (
                 <button
                     key={item.label}
                     onClick={() => { router.push(item.href!); setMobileOpen(false) }}
-                    style={{ paddingLeft }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left w-full transition-colors ${active
-                        ? 'bg-primary/10 text-primary font-bold'
-                        : 'text-foreground/70 hover:bg-accent'
+                    className={`flex items-center gap-2 w-full py-2.5 rounded-xl text-left transition-all ${depth === 0
+                        ? 'py-3 text-base'
+                        : 'py-2 text-sm'
+                        } ${active
+                            ? 'bg-primary/10 text-primary font-semibold'
+                            : 'text-foreground/70 hover:bg-accent'
                         }`}
+                    style={baseStyle}
                 >
-                    {depth === 0 && <item.icon className="w-5 h-5" />}
-                    {item.label}
+                    {iconSlot}
+                    <span className="truncate">{item.label}</span>
                 </button>
             )
         }
 
         return (
-            <div key={item.label} className="space-y-1">
+            <div key={item.label} className="space-y-0.5">
                 <div
-                    style={{ paddingLeft }}
-                    className={`flex items-center gap-3 px-4 py-2 text-xs font-bold uppercase tracking-wider ${active ? 'text-primary' : 'text-muted-foreground'}`}
+                    className={`flex items-center gap-2 w-full ${depth === 0
+                        ? 'py-2.5 text-sm font-semibold'
+                        : 'py-2 text-xs font-bold uppercase tracking-wider'
+                        } ${active ? 'text-primary' : 'text-muted-foreground'}`}
+                    style={baseStyle}
                 >
-                    {depth === 0 && <item.icon className="w-4 h-4" />}
-                    {item.label}
+                    {iconSlot}
+                    <span className="truncate">{item.label}</span>
                 </div>
-                {item.children!.map(child => renderMobileNavItem(child, depth + 1))}
+                <div className="space-y-0.5">
+                    {item.children!.map(child => renderMobileNavItem(child, depth + 1))}
+                </div>
             </div>
         )
     }
+
 
     return (
         <>
@@ -395,12 +420,12 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
 
                     {/* 側欄面板 */}
                     <nav
-                        className="absolute top-0 left-0 bottom-0 w-72 bg-card shadow-2xl p-4 pt-20 space-y-1 overflow-y-auto animate-in slide-in-from-left duration-200"
+                        className="absolute top-0 left-0 bottom-0 w-72 bg-card shadow-2xl py-4 pt-20 space-y-1 overflow-y-auto animate-in slide-in-from-left duration-200"
                         onClick={e => e.stopPropagation()}
                     >
                         {/* 使用者資訊 — 行動版 */}
                         {profile && (
-                            <div className="mb-4 p-3 rounded-xl bg-accent/50">
+                            <div className="mb-4 mx-4 p-3 rounded-xl bg-accent/50">
                                 <div className="text-xs text-muted-foreground">當前使用者</div>
                                 <div className="text-sm font-bold text-foreground flex items-center gap-1 mt-0.5">
                                     {profile.user_name}
@@ -411,7 +436,7 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                             </div>
                         )}
 
-                        {allNavItems.map(renderMobileNavItem)}
+                        {allNavItems.map(item => renderMobileNavItem(item, 0))}
 
                         <div className="pt-4 border-t border-border mt-4 space-y-1">
                             {profile && (
