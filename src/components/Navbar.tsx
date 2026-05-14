@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-    DropdownMenuSeparator, DropdownMenuLabel
+    DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent
 } from '@/components/ui/dropdown-menu'
 
 // 導覽項目定義
@@ -56,9 +56,19 @@ const NAV_ITEMS: NavItem[] = [
     },
 ]
 
+// 維修單管理項目
+const MAINTENANCE_ITEMS: NavItem = {
+    label: '維修單管理', icon: ClipboardCheck, children: [
+        { label: '新增維修單', icon: FileText, href: '/maintenance-work/new' },
+        { label: '維修單狀態', icon: Activity, href: '/maintenance-work/status' },
+        { label: '維修單總表', icon: Activity, href: '/maintenance-work/all' },
+    ]
+}
+
 // 系統管理項目（僅 admin）
 const ADMIN_ITEMS: NavItem = {
     label: '系統管理', icon: UserCog, children: [
+        MAINTENANCE_ITEMS,
         { label: '帳號管理', icon: UserCog, href: '/admin/users' },
         { label: '系統異動記錄', icon: Activity, href: '/admin/change-log' },
         { label: '系統執行記錄', icon: Activity, href: '/admin/execution-log' },
@@ -143,6 +153,38 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
             )
         }
 
+        // 渲染下拉選單內容（支援遞迴子選單）
+        const renderDropdownItems = (children: NavItem[]) => {
+            return children.map(child => {
+                // 如果子項還有子項，渲染為 SubMenu
+                if (child.children && child.children.length > 0) {
+                    return (
+                        <DropdownMenuSub key={child.label}>
+                            <DropdownMenuSubTrigger className={isPathActive(pathname, undefined, child.children) ? 'bg-accent font-semibold' : ''}>
+                                {child.icon && <child.icon className="w-4 h-4 mr-2" />}
+                                {child.label}
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                                {renderDropdownItems(child.children)}
+                            </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                    )
+                }
+
+                // 一般選單項
+                return (
+                    <DropdownMenuItem
+                        key={child.href}
+                        onClick={() => child.href && router.push(child.href)}
+                        className={child.href && pathname.startsWith(child.href) ? 'bg-accent font-semibold' : ''}
+                    >
+                        {child.icon && <child.icon className="w-4 h-4 mr-2" />}
+                        {child.label}
+                    </DropdownMenuItem>
+                )
+            })
+        }
+
         // 有子選單
         return (
             <DropdownMenu key={item.label}>
@@ -160,36 +202,29 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                    {item.children!.map(child => (
-                        <DropdownMenuItem
-                            key={child.href}
-                            onClick={() => router.push(child.href)}
-                            className={pathname.startsWith(child.href) ? 'bg-accent font-semibold' : ''}
-                        >
-                            {child.icon && <child.icon className="w-4 h-4 mr-2" />}
-                            {child.label}
-                        </DropdownMenuItem>
-                    ))}
+                    {renderDropdownItems(item.children!)}
                 </DropdownMenuContent>
             </DropdownMenu>
         )
     }
 
     // === 行動版選單項目 ===
-    const renderMobileNavItem = (item: NavItem) => {
+    const renderMobileNavItem = (item: NavItem, depth = 0) => {
         const active = isPathActive(pathname, item.href, item.children)
+        const paddingLeft = depth > 0 ? (depth * 1.5 + 1) + 'rem' : undefined
 
         if (item.href) {
             return (
                 <button
                     key={item.label}
                     onClick={() => { router.push(item.href!); setMobileOpen(false) }}
+                    style={{ paddingLeft }}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left w-full transition-colors ${active
                         ? 'bg-primary/10 text-primary font-bold'
                         : 'text-foreground/70 hover:bg-accent'
                         }`}
                 >
-                    <item.icon className="w-5 h-5" />
+                    {depth === 0 && <item.icon className="w-5 h-5" />}
                     {item.label}
                 </button>
             )
@@ -197,23 +232,14 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
 
         return (
             <div key={item.label} className="space-y-1">
-                <div className={`flex items-center gap-3 px-4 py-2 text-xs font-bold uppercase tracking-wider ${active ? 'text-primary' : 'text-muted-foreground'}`}>
-                    <item.icon className="w-4 h-4" />
+                <div
+                    style={{ paddingLeft }}
+                    className={`flex items-center gap-3 px-4 py-2 text-xs font-bold uppercase tracking-wider ${active ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                    {depth === 0 && <item.icon className="w-4 h-4" />}
                     {item.label}
                 </div>
-                {item.children!.map(child => (
-                    <button
-                        key={child.href}
-                        onClick={() => { router.push(child.href); setMobileOpen(false) }}
-                        className={`flex items-center gap-3 pl-11 pr-4 py-2.5 rounded-xl text-left w-full transition-colors text-sm ${pathname.startsWith(child.href)
-                            ? 'bg-primary/10 text-primary font-semibold'
-                            : 'text-foreground/60 hover:bg-accent'
-                            }`}
-                    >
-                        {child.icon && <child.icon className="w-4 h-4" />}
-                        {child.label}
-                    </button>
-                ))}
+                {item.children!.map(child => renderMobileNavItem(child, depth + 1))}
             </div>
         )
     }
