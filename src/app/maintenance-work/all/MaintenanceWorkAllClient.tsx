@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
-import { History, Download, ArrowLeft, Search, CheckCircle2, ChevronDown, ChevronUp, RotateCcw, Activity, Plus, Trash2 } from 'lucide-react'
+import { History, Download, ArrowLeft, Search, CheckCircle2, ChevronDown, ChevronUp, RotateCcw, Activity, Plus, Trash2, Edit2 } from 'lucide-react'
 import { AdvancedSearchFilter, SearchFilters, defaultFilters } from '@/components/AdvancedSearchFilter'
 
 import { createClient } from '@/lib/supabase/client'
@@ -138,7 +138,7 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
             if (activeFilters.projectOrderId) query = query.ilike('project_order_id', `%${activeFilters.projectOrderId}%`)
             if (activeFilters.procurement) query = query.ilike('procurement_name', `%${activeFilters.procurement}%`)
             if (activeFilters.acceptHandler) query = query.ilike('accept_handler_name', `%${activeFilters.acceptHandler}%`)
-            
+
             if (activeFilters.amount === 'lte20k') {
                 query = query.lte('amount', 20000)
             } else if (activeFilters.amount === 'gt20k') {
@@ -297,38 +297,52 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
 
     return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50 flex flex-col">
-            <header className="glass border-b border-border/50 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+            <header className="glass border-b border-border/50 px-3 sm:px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
-                        <ArrowLeft className="w-4 h-4 mr-1" />返回首頁
+                    <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="px-2 sm:px-4">
+                        <ArrowLeft className="w-4 h-4 sm:mr-1" /><span className="hidden sm:inline">返回首頁</span>
                     </Button>
                     <div className="h-6 w-px bg-border" />
-                    <h1 className="text-xl font-black text-foreground flex items-center gap-2">
-                        <Activity className="w-6 h-6 text-orange-500" />
+                    <h1 className="text-lg sm:text-xl font-black text-foreground flex items-center gap-2 whitespace-nowrap">
+                        <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500 shrink-0" />
                         維修單總表
                     </h1>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading}>
-                        <Download className="w-4 h-4 mr-2" />
-                        匯出 Excel
+                <div className="flex items-center gap-1 sm:gap-2">
+                    <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading} className="px-2 sm:px-4">
+                        <Download className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">匯出 Excel</span>
                     </Button>
-                    {selected.size > 0 && isAdmin && (
-                        <Button variant="destructive" size="sm" onClick={() => onPreDelete(Array.from(selected))} disabled={loading}>
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            刪除 ({selected.size})
+                    {selected.size === 1 && (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => router.push(`/maintenance-work/edit/${Array.from(selected)[0]}`)} 
+                            disabled={loading} 
+                            className="px-2 sm:px-4 border-primary text-primary hover:bg-primary/5"
+                        >
+                            <Edit2 className="w-4 h-4 sm:mr-2" />
+                            <span className="hidden sm:inline">修改</span>
                         </Button>
                     )}
-                    <Button className="bg-orange-600 hover:bg-orange-700 text-white" size="sm" onClick={() => router.push('/maintenance-work/new')}>
-                        <Plus className="w-4 h-4 mr-2" />新增維修單
+                    {selected.size > 0 && isAdmin && (
+                        <Button variant="destructive" size="sm" onClick={() => onPreDelete(Array.from(selected))} disabled={loading} className="px-2 sm:px-4">
+                            <Trash2 className="w-4 h-4 sm:mr-2" />
+                            <span className="hidden sm:inline">刪除 ({selected.size})</span>
+                            <span className="sm:hidden">{selected.size}</span>
+                        </Button>
+                    )}
+                    <Button className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4" size="sm" onClick={() => router.push('/maintenance-work/new')}>
+                        <Plus className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">新增維修單</span>
+                        <span className="sm:hidden">新增</span>
                     </Button>
                 </div>
             </header>
 
             <main className="flex-1 p-6 max-w-[1600px] mx-auto w-full">
-                <AdvancedSearchFilter 
-                    onSearch={(f) => { setActiveFilters(f); setCurrentPage(1); }} 
-                    onReset={() => { setActiveFilters(defaultFilters); setCurrentPage(1); }} 
+                <AdvancedSearchFilter
+                    onSearch={(f) => { setActiveFilters(f); setCurrentPage(1); }}
+                    onReset={() => { setActiveFilters(defaultFilters); setCurrentPage(1); }}
                 />
 
                 {loading ? (
@@ -358,9 +372,12 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                         <SortableTableHead sortKey="status" currentSort={sort} onSort={handleSort} label="狀態" />
                                         <SortableTableHead sortKey="request_date" currentSort={sort} onSort={handleSort} label="開單日" />
                                         <SortableTableHead sortKey="request_department" currentSort={sort} onSort={handleSort} label="開單部門" />
+                                        <SortableTableHead sortKey="cost_center" currentSort={sort} onSort={handleSort} label="成本中心" />
+                                        <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
                                         <TableHead>維修內容</TableHead>
                                         <SortableTableHead sortKey="handler_name" currentSort={sort} onSort={handleSort} label="承辦人" />
-                                        <TableHead className="text-right pr-6">操作</TableHead>
+                                        <SortableTableHead sortKey="amount" currentSort={sort} onSort={handleSort} label="金額" />
+                                        <SortableTableHead sortKey="vendor_name" currentSort={sort} onSort={handleSort} label="廠商" />
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -392,18 +409,6 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                             <TableCell>{item.handler_name}</TableCell>
                                             <TableCell>{item.amount ? `$${Number(item.amount).toLocaleString()}` : '-'}</TableCell>
                                             <TableCell>{item.vendor_name || '-'}</TableCell>
-                                            <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                                                {isAdmin && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                        onClick={() => onPreDelete([item.id])}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                )}
-                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>

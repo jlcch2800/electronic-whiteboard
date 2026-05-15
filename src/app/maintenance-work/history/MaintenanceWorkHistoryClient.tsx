@@ -118,7 +118,7 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
             if (activeFilters.projectOrderId) query = query.ilike('project_order_id', `%${activeFilters.projectOrderId}%`)
             if (activeFilters.procurement) query = query.ilike('procurement_name', `%${activeFilters.procurement}%`)
             if (activeFilters.acceptHandler) query = query.ilike('accept_handler_name', `%${activeFilters.acceptHandler}%`)
-            
+
             if (activeFilters.amount === 'lte20k') query = query.lte('amount', 20000)
             else if (activeFilters.amount === 'gt20k') query = query.gt('amount', 20000)
 
@@ -251,18 +251,18 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                         維修單歷史紀錄
                     </h1>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading}>
-                        <Download className="w-4 h-4 mr-2" />
-                        匯出 Excel
+                <div className="flex items-center gap-1 sm:gap-2">
+                    <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading} className="px-2 sm:px-4">
+                        <Download className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">匯出 Excel</span>
                     </Button>
                 </div>
             </header>
 
             <main className="flex-1 p-6 max-w-[1600px] mx-auto w-full">
-                <AdvancedSearchFilter 
-                    onSearch={(f) => { setActiveFilters(f); setCurrentPage(1); }} 
-                    onReset={() => { setActiveFilters(defaultFilters); setCurrentPage(1); }} 
+                <AdvancedSearchFilter
+                    onSearch={(f) => { setActiveFilters(f); setCurrentPage(1); }}
+                    onReset={() => { setActiveFilters(defaultFilters); setCurrentPage(1); }}
                 />
 
                 {loading ? (

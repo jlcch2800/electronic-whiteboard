@@ -57,19 +57,16 @@ const NAV_ITEMS: NavItem[] = [
     },
 ]
 
-// 維修單管理項目
-const MAINTENANCE_ITEMS: NavItem = {
-    label: '維修單管理', icon: ClipboardCheck, children: [
-        { label: '新增維修單', icon: FileText, href: '/maintenance-work/new' },
-        { label: '維修單狀態', icon: Activity, href: '/maintenance-work/status' },
-        { label: '維修單總表', icon: Activity, href: '/maintenance-work/all' },
-    ]
-}
-
 // 系統管理項目（僅 admin）
 const ADMIN_ITEMS: NavItem = {
     label: '系統管理', icon: UserCog, children: [
-        MAINTENANCE_ITEMS,
+        {
+            label: '維修單管理', icon: ClipboardCheck, children: [
+                { label: '新增維修單', icon: FileText, href: '/maintenance-work/new' },
+                { label: '維修單狀態', icon: Activity, href: '/maintenance-work/status' },
+                { label: '維修單總表', icon: LayoutDashboard, href: '/maintenance-work/all' },
+            ]
+        },
         { label: '帳號管理', icon: UserCog, href: '/admin/users' },
         { label: '系統異動記錄', icon: Activity, href: '/admin/change-log' },
         { label: '系統執行記錄', icon: Activity, href: '/admin/execution-log' },
