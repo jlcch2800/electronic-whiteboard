@@ -167,7 +167,7 @@ export default function StatusDashboardClient() {
                 statsMap[s] = { status: s, count: 0, recent: [] }
             })
 
-            data?.forEach(item => {
+            data?.forEach((item: any) => {
                 if (statsMap[item.status]) {
                     statsMap[item.status].count++
                     if (statsMap[item.status].recent.length < 3) {

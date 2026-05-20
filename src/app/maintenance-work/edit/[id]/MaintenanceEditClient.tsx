@@ -10,6 +10,7 @@ import {
 
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useAppStore } from '@/stores/useAppStore'
 import Navbar from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,7 +32,8 @@ interface MaintenanceEditClientProps {
 
 export default function MaintenanceEditClient({ id, initialData }: MaintenanceEditClientProps) {
     const router = useRouter()
-    const { user, profile } = useAuth()
+    const { user } = useAuth()
+    const { profile } = useAppStore()
     const supabase = createClient()
     const isAdmin = profile?.role === 'admin'
 
@@ -100,11 +102,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
-        setFormData(prev => ({ ...prev, [name]: value }))
+        setFormData((prev: any) => ({ ...prev, [name]: value }))
     }
 
     const handleSelectChange = (name: string, value: string) => {
-        setFormData(prev => ({ ...prev, [name]: value }))
+        setFormData((prev: any) => ({ ...prev, [name]: value }))
     }
 
     // 驗證目前狀態的必填欄位
@@ -239,22 +241,24 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         <div className="min-h-screen bg-slate-50 flex flex-col">
             <Navbar />
 
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => router.back()}>
-                        <ArrowLeft className="w-4 h-4 mr-1" />返回
+            <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3 sticky top-0 z-50">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full md:w-auto">
+                    <Button variant="ghost" size="sm" onClick={() => router.back()} className="px-2 h-9 shrink-0">
+                        <ArrowLeft className="w-4 h-4 mr-1 shrink-0" />返回
                     </Button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                        維修單簽核作業
-                        <Badge variant="outline" className="ml-2 bg-orange-50 text-orange-600 border-orange-200">
+                    <div className="h-6 w-px bg-slate-200 hidden xs:block" />
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <h1 className="text-lg sm:text-xl font-black text-slate-800 whitespace-nowrap">
+                            維修單簽核作業
+                        </h1>
+                        <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 text-xs py-1 px-2.5 font-bold tracking-wide whitespace-nowrap flex-shrink-0">
                             {formData.status}
                         </Badge>
-                    </h1>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleSave()} disabled={loading}>
-                        <Save className="w-4 h-4 mr-2" />僅儲存不變更狀態
+                <div className="flex items-center w-full md:w-auto">
+                    <Button variant="outline" size="sm" onClick={() => handleSave()} disabled={loading} className="w-full md:w-auto justify-center h-9 border-slate-300 text-slate-700 hover:bg-slate-50">
+                        <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
                     </Button>
                 </div>
             </header>

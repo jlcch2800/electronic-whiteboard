@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
-    Activity, ArrowLeft, Download, Plus, Search, Trash2, 
+    Activity, ArrowLeft, Download, Plus, Search, Trash2,
     RefreshCcw, CheckCircle2, MoreHorizontal, Edit2, Eye
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useAppStore } from '@/stores/useAppStore'
 import Navbar from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +26,7 @@ import { DataTablePagination } from '@/components/DataTablePagination'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import * as XLSX from 'xlsx'
@@ -92,7 +93,8 @@ const EXPORT_LABELS: Record<string, string> = {
 
 export default function StatusDetailPageClient({ status }: { status: string }) {
     const router = useRouter()
-    const { user, profile } = useAuth()
+    const { user } = useAuth()
+    const { profile } = useAppStore()
     const supabase = createClient()
     const isAdmin = profile?.role === 'admin'
 
@@ -257,55 +259,59 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
         <div className="min-h-screen bg-slate-50/50 flex flex-col">
             <Navbar onRefresh={refreshData} />
 
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => router.push('/maintenance-work/status')}>
-                        <ArrowLeft className="w-4 h-4 mr-1" />返回儀表板
+            <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3 sticky top-0 z-50">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full md:w-auto">
+                    <Button variant="ghost" size="sm" onClick={() => router.push('/maintenance-work/status')} className="px-2 h-9 shrink-0">
+                        <ArrowLeft className="w-4 h-4 mr-1 shrink-0" />返回儀表板
                     </Button>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                        <Badge className="bg-primary/10 text-primary border-primary/20">{status}</Badge>
-                        明細列表
-                    </h1>
+                    <div className="h-6 w-px bg-slate-200 hidden xs:block" />
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <h1 className="text-lg sm:text-xl font-black text-slate-800 whitespace-nowrap">
+                            明細列表
+                        </h1>
+                        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs py-1 px-2.5 font-bold tracking-wide whitespace-nowrap flex-shrink-0">
+                            {status}
+                        </Badge>
+                    </div>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleViewDetails} 
-                        disabled={selected.size !== 1 || loading} 
-                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50"
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap md:flex-nowrap w-full md:w-auto">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleViewDetails}
+                        disabled={selected.size !== 1 || loading}
+                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center"
                     >
-                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <Eye className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">檢視明細</span>
                     </Button>
-                    <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading} className="px-2 sm:px-4">
-                        <Download className="w-4 h-4 sm:mr-2" />
+                    <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading} className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center">
+                        <Download className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">匯出 Excel</span>
                     </Button>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => router.push(`/maintenance-work/edit/${Array.from(selected)[0]}`)} 
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/maintenance-work/edit/${Array.from(selected)[0]}`)}
                         disabled={selected.size !== 1 || loading}
-                        className="px-2 sm:px-4 border-primary text-primary hover:bg-primary/5 disabled:opacity-50"
+                        className="px-2 sm:px-4 border-primary text-primary hover:bg-primary/5 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center"
                     >
-                        <Edit2 className="w-4 h-4 sm:mr-2" />
+                        <Edit2 className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">修改</span>
                     </Button>
-                    <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })} 
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })}
                         disabled={selected.size === 0 || !isAdmin || loading}
-                        className="px-2 sm:px-4"
+                        className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center"
                     >
-                        <Trash2 className="w-4 h-4 sm:mr-2" />
+                        <Trash2 className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">刪除 {selected.size > 0 ? `(${selected.size})` : ''}</span>
                         <span className="sm:hidden">{selected.size > 0 ? selected.size : ''}</span>
                     </Button>
-                    <Button className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4" size="sm" onClick={() => router.push('/maintenance-work/new')}>
-                        <Plus className="w-4 h-4 sm:mr-2" />
+                    <Button className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center shrink-0" size="sm" onClick={() => router.push('/maintenance-work/new')}>
+                        <Plus className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">新增維修單</span>
                     </Button>
                 </div>
@@ -429,53 +435,146 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* 檢視明細對話框 */}
+            {/* 醫療風格 - 檢視明細對話框 */}
             <AlertDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <AlertDialogContent className="max-w-3xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <Eye className="w-5 h-5 text-blue-600" />
-                            維修單詳細資訊
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            以下為此筆維修單的完整欄位資料。
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    
-                    <div className="max-h-[60vh] overflow-y-auto pr-2 my-4">
+                <AlertDialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-2 border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl">
+                    {/* 醫療卡片 Header */}
+                    <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-teal-800 text-white px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm shrink-0 border border-white/20">
+                                <Activity className="w-6 h-6 text-teal-300 animate-pulse" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold tracking-wider">工務維修單單筆記錄明細</h2>
+
+                            </div>
+                        </div>
                         {viewingItem && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {Object.entries(EXPORT_LABELS).map(([key, label]) => {
-                                    let val = viewingItem[key];
-                                    if (key === 'amount' && val) {
-                                        val = `$${Number(val).toLocaleString()}`;
-                                    } else if (key === 'created_at' && val) {
-                                        try {
-                                            val = format(new Date(val), 'yyyy-MM-dd HH:mm:ss');
-                                        } catch (e) {
-                                            val = String(val);
-                                        }
-                                    } else if (val === null || val === undefined) {
-                                        val = '-';
-                                    }
-                                    return (
-                                        <div key={key} className="space-y-1 pb-2 border-b border-slate-100 dark:border-slate-800">
-                                            <Label className="text-xs text-muted-foreground">{label}</Label>
-                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200 break-all">
-                                                {String(val)}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                            <div className="text-right hidden sm:block font-mono">
+                                <span className="text-[10px] text-teal-200 block">SYSTEM ID</span>
+                                <span className="text-xs text-slate-300 tracking-tighter opacity-90">{viewingItem.id}</span>
                             </div>
                         )}
                     </div>
 
-                    <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setViewDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
-                            關閉
+                    {/* 卡片主體 */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30 dark:bg-slate-900/10">
+                        {viewingItem && (
+                            <div className="space-y-6">
+                                {[
+                                    {
+                                        title: "📋 設備開單基本資訊",
+                                        iconColor: "text-blue-600 dark:text-blue-400",
+                                        bgColor: "bg-blue-50/50 dark:bg-blue-950/20",
+                                        borderColor: "border-blue-100 dark:border-blue-900/40",
+                                        fields: ['work_order_id', 'status', 'request_date', 'request_department', 'cost_center', 'requester_name', 'created_at']
+                                    },
+                                    {
+                                        title: "🔧 故障描述與承辦接單",
+                                        iconColor: "text-amber-600 dark:text-amber-400",
+                                        bgColor: "bg-amber-50/50 dark:bg-amber-950/20",
+                                        borderColor: "border-amber-100 dark:border-amber-900/40",
+                                        fields: ['maintain_content', 'handler_name', 'work_order_date', 'maint_mgr_name', 'maint_mgr_date', 'req_dept_mgr_name', 'req_dept_mgr_date']
+                                    },
+                                    {
+                                        title: "💰 報價發包與行政簽核",
+                                        iconColor: "text-emerald-600 dark:text-emerald-400",
+                                        bgColor: "bg-emerald-50/50 dark:bg-emerald-950/20",
+                                        borderColor: "border-emerald-100 dark:border-emerald-900/40",
+                                        fields: ['quote_user_name', 'quote_user_date', 'vendor_name', 'amount', 'dispatch_mgr_name', 'dispatch_mgr_date', 'dispatch_director_name', 'dispatch_director_date', 'vice_dean_name', 'vice_dean_date', 'dean_name', 'dean_date']
+                                    },
+                                    {
+                                        title: "🏗️ 採購招標與工程審查",
+                                        iconColor: "text-indigo-600 dark:text-indigo-400",
+                                        bgColor: "bg-indigo-50/50 dark:bg-indigo-950/20",
+                                        borderColor: "border-indigo-100 dark:border-indigo-900/40",
+                                        fields: ['project_order_id', 'procurement_name', 'procurement_date', 'material_name', 'material_date', 'rev_vice_dean_name', 'rev_vice_dean_date', 'rev_dean_name', 'rev_dean_date']
+                                    },
+                                    {
+                                        title: "✅ 施工完工與驗收簽章",
+                                        iconColor: "text-teal-600 dark:text-teal-400",
+                                        bgColor: "bg-teal-50/50 dark:bg-teal-950/20",
+                                        borderColor: "border-teal-100 dark:border-teal-900/40",
+                                        fields: ['construct_end_date', 'accept_dept_mgr_name', 'accept_dept_mgr_date', 'accept_handler_name', 'accept_handler_date', 'accept_mgr_name', 'accept_mgr_date', 'accept_director_name', 'accept_director_date']
+                                    }
+                                ].map((group, gIdx) => (
+                                    <div
+                                        key={gIdx}
+                                        className={`rounded-xl border ${group.borderColor} ${group.bgColor} p-4 shadow-sm space-y-4 backdrop-blur-[2px] transition-all hover:shadow-md`}
+                                    >
+                                        <div className="flex items-center gap-2 border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
+                                            <span className={`text-base font-bold ${group.iconColor} tracking-wide`}>
+                                                {group.title}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3.5">
+                                            {group.fields.map((key) => {
+                                                const label = EXPORT_LABELS[key] || key;
+                                                let rawVal = viewingItem[key];
+                                                let isPending = false;
+                                                let formattedVal = "";
+
+                                                if (rawVal === null || rawVal === undefined || String(rawVal).trim() === "" || rawVal === "-") {
+                                                    isPending = true;
+                                                    formattedVal = "待簽核 / 未填寫";
+                                                } else {
+                                                    if (key === 'amount') {
+                                                        formattedVal = `$${Number(rawVal).toLocaleString()}`;
+                                                    } else if (key === 'created_at') {
+                                                        try {
+                                                            formattedVal = format(new Date(rawVal), 'yyyy-MM-dd HH:mm:ss');
+                                                        } catch (e) {
+                                                            formattedVal = String(rawVal);
+                                                        }
+                                                    } else {
+                                                        formattedVal = String(rawVal);
+                                                    }
+                                                }
+
+                                                return (
+                                                    <div
+                                                        key={key}
+                                                        className={`flex flex-col gap-1 pb-2 border-b border-dashed border-slate-200/50 dark:border-slate-800/40 last:border-b-0 ${key === 'maintain_content' ? 'sm:col-span-2 md:col-span-3' : ''
+                                                            }`}
+                                                    >
+                                                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                                            {label}
+                                                        </span>
+                                                        {key === 'status' ? (
+                                                            <div className="pt-0.5">
+                                                                <Badge className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-0.5 px-2 tracking-wide rounded-md">
+                                                                    {formattedVal}
+                                                                </Badge>
+                                                            </div>
+                                                        ) : isPending ? (
+                                                            <span className="text-xs text-slate-400/80 italic font-medium tracking-tight">
+                                                                {formattedVal}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 break-all leading-relaxed font-mono">
+                                                                {formattedVal}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 卡片 Footer */}
+                    <div className="bg-slate-50 dark:bg-slate-900 px-6 py-4 flex items-center justify-end border-t border-slate-200/60 dark:border-slate-800/80 shrink-0">
+                        <AlertDialogAction
+                            onClick={() => setViewDialogOpen(false)}
+                            className="bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-900 hover:to-blue-950 text-white text-xs font-bold tracking-wider px-6 py-2 rounded-xl transition-all shadow-md active:scale-95"
+                        >
+                            離開
                         </AlertDialogAction>
-                    </AlertDialogFooter>
+                    </div>
                 </AlertDialogContent>
             </AlertDialog>
         </div>
