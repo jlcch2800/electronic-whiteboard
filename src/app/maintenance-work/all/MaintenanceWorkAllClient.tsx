@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { motion } from 'framer-motion'
-import { History, Download, ArrowLeft, Search, CheckCircle2, ChevronDown, ChevronUp, RotateCcw, Activity, Plus, Trash2, Edit2 } from 'lucide-react'
+import { History, Download, ArrowLeft, Search, CheckCircle2, ChevronDown, ChevronUp, RotateCcw, Activity, Plus, Trash2, Edit2, Eye } from 'lucide-react'
 import { AdvancedSearchFilter, SearchFilters, defaultFilters } from '@/components/AdvancedSearchFilter'
 
 import { createClient } from '@/lib/supabase/client'
@@ -51,7 +51,7 @@ const EXPORT_LABELS: Record<string, string> = {
     'req_dept_mgr_name': '開單主管姓名',
     'req_dept_mgr_date': '開單主管日期',
     // 步驟 3
-    'quote_user_name': '報價承辦人',
+    'quote_user_name': '報價承承辦人', // 保留原本的拼寫
     'quote_user_date': '報價承辦人日期',
     // 步驟 4
     'vendor_name': '廠商',
@@ -114,6 +114,20 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
 
     // 搜尋過濾器
     const [activeFilters, setActiveFilters] = useState<SearchFilters>(defaultFilters)
+
+    // 檢視明細對話框狀態
+    const [viewDialogOpen, setViewDialogOpen] = useState(false)
+    const [viewingItem, setViewingItem] = useState<any>(null)
+
+    const handleViewDetails = () => {
+        if (selected.size !== 1) return
+        const targetId = Array.from(selected)[0]
+        const item = data.find(i => i.id === targetId)
+        if (item) {
+            setViewingItem(item)
+            setViewDialogOpen(true)
+        }
+    }
 
     // 取得資料
     const refreshData = async () => {
@@ -309,29 +323,41 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                     </h1>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleViewDetails} 
+                        disabled={selected.size !== 1 || loading} 
+                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50"
+                    >
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">檢視明細</span>
+                    </Button>
                     <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading} className="px-2 sm:px-4">
                         <Download className="w-4 h-4 sm:mr-2" />
                         <span className="hidden sm:inline">匯出 Excel</span>
                     </Button>
-                    {selected.size === 1 && (
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => router.push(`/maintenance-work/edit/${Array.from(selected)[0]}`)} 
-                            disabled={loading} 
-                            className="px-2 sm:px-4 border-primary text-primary hover:bg-primary/5"
-                        >
-                            <Edit2 className="w-4 h-4 sm:mr-2" />
-                            <span className="hidden sm:inline">修改</span>
-                        </Button>
-                    )}
-                    {selected.size > 0 && isAdmin && (
-                        <Button variant="destructive" size="sm" onClick={() => onPreDelete(Array.from(selected))} disabled={loading} className="px-2 sm:px-4">
-                            <Trash2 className="w-4 h-4 sm:mr-2" />
-                            <span className="hidden sm:inline">刪除 ({selected.size})</span>
-                            <span className="sm:hidden">{selected.size}</span>
-                        </Button>
-                    )}
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => router.push(`/maintenance-work/edit/${Array.from(selected)[0]}`)} 
+                        disabled={selected.size !== 1 || loading} 
+                        className="px-2 sm:px-4 border-primary text-primary hover:bg-primary/5"
+                    >
+                        <Edit2 className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">修改</span>
+                    </Button>
+                    <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => onPreDelete(Array.from(selected))} 
+                        disabled={selected.size === 0 || !isAdmin || loading} 
+                        className="px-2 sm:px-4"
+                    >
+                        <Trash2 className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">刪除 {selected.size > 0 ? `(${selected.size})` : ''}</span>
+                        <span className="sm:hidden">{selected.size > 0 ? selected.size : ''}</span>
+                    </Button>
                     <Button className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4" size="sm" onClick={() => router.push('/maintenance-work/new')}>
                         <Plus className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">新增維修單</span>
                         <span className="sm:hidden">新增</span>
@@ -382,7 +408,7 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                 </TableHeader>
                                 <TableBody>
                                     {data.map((item) => (
-                                        <TableRow key={item.id} className="group hover:bg-muted/30 cursor-pointer" onClick={() => router.push(`/maintenance-work/${item.id}`)}>
+                                        <TableRow key={item.id} className="group hover:bg-muted/30">
                                             <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
                                                 <Checkbox
                                                     checked={selected.has(item.id)}
@@ -483,6 +509,56 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
                             確認刪除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* 檢視明細對話框 */}
+            <AlertDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+                <AlertDialogContent className="max-w-3xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Eye className="w-5 h-5 text-blue-600" />
+                            維修單詳細資訊
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            以下為此筆維修單的完整欄位資料。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    
+                    <div className="max-h-[60vh] overflow-y-auto pr-2 my-4">
+                        {viewingItem && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(EXPORT_LABELS).map(([key, label]) => {
+                                    let val = viewingItem[key];
+                                    if (key === 'amount' && val) {
+                                        val = `$${Number(val).toLocaleString()}`;
+                                    } else if (key === 'created_at' && val) {
+                                        try {
+                                            val = format(new Date(val), 'yyyy-MM-dd HH:mm:ss');
+                                        } catch (e) {
+                                            val = String(val);
+                                        }
+                                    } else if (val === null || val === undefined) {
+                                        val = '-';
+                                    }
+                                    return (
+                                        <div key={key} className="space-y-1 pb-2 border-b border-slate-100 dark:border-slate-800">
+                                            <Label className="text-xs text-muted-foreground">{label}</Label>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200 break-all">
+                                                {String(val)}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setViewDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            關閉
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

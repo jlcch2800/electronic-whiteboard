@@ -109,11 +109,11 @@ function StatusCard({
         >
             <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-xl ${c.topBar}`} />
             
-            <div className="flex items-center gap-3 mb-4">
-                <div className={`p-2 rounded-lg ${c.iconBg} ${c.iconColor}`}>
+            <div className="flex items-start gap-3 mb-4">
+                <div className={`p-2 rounded-lg ${c.iconBg} ${c.iconColor} shrink-0`}>
                     <Icon className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-700 truncate">{status}</h3>
+                <h3 className="text-sm font-bold text-gray-700 leading-snug">{status}</h3>
             </div>
 
             <div className="flex items-baseline gap-1 mb-4">

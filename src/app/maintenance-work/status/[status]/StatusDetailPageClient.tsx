@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
     Activity, ArrowLeft, Download, Plus, Search, Trash2, 
-    RefreshCcw, CheckCircle2, MoreHorizontal, Edit2
+    RefreshCcw, CheckCircle2, MoreHorizontal, Edit2, Eye
 } from 'lucide-react'
+import { Label } from '@/components/ui/label'
 
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/providers/AuthProvider'
@@ -27,7 +28,67 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { exportToExcel } from '@/lib/utils' // 假設已有匯出工具
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
+import { format } from 'date-fns'
+
+// 完整的欄位中文對照表（供 Excel 匯出用）
+const EXPORT_LABELS: Record<string, string> = {
+    'id': 'ID',
+    'created_at': '建立時間',
+    'status': '狀態',
+    // 步驟 1
+    'request_date': '開單日',
+    'request_department': '開單部門',
+    'cost_center': '成本中心',
+    'maintain_content': '維修內容',
+    'requester_name': '開單人',
+    'work_order_id': '工單編號',
+    'handler_name': '承辦人',
+    'work_order_date': '接單日期',
+    'maint_mgr_name': '工務單位主管',
+    'maint_mgr_date': '工務單位主管日期',
+    // 步驟 2
+    'req_dept_mgr_name': '開單主管姓名',
+    'req_dept_mgr_date': '開單主管日期',
+    // 步驟 3
+    'quote_user_name': '報價承辦人',
+    'quote_user_date': '報價承辦人日期',
+    // 步驟 4
+    'vendor_name': '廠商',
+    'amount': '金額',
+    'dispatch_mgr_name': '發包-工務主管',
+    'dispatch_mgr_date': '發包-工務主管日期',
+    'dispatch_director_name': '發包工務主任姓名',
+    'dispatch_director_date': '發包工務主任日期',
+    // 步驟 6
+    'vice_dean_name': '副院長姓名',
+    'vice_dean_date': '副院長日期',
+    'dean_name': '院長姓名',
+    'dean_date': '院長日期',
+    // 步驟 7
+    'project_order_id': '工程單編號',
+    'procurement_name': '採購組姓名',
+    'procurement_date': '採購組日期',
+    'material_name': '資材室姓名',
+    'material_date': '資材室日期',
+    'rev_vice_dean_name': '審查-副院長姓名',
+    'rev_vice_dean_date': '審查-副院長日期',
+    'rev_dean_name': '審查-院長姓名',
+    'rev_dean_date': '審查-院長日期',
+    // 步驟 8
+    'construct_end_date': '施工完成日期',
+    // 步驟 9
+    'accept_dept_mgr_name': '驗收-開單主管姓名',
+    'accept_dept_mgr_date': '驗收-開單主管日期',
+    // 步驟 10
+    'accept_handler_name': '驗收-承辦人',
+    'accept_handler_date': '驗收-承辦人日期',
+    'accept_mgr_name': '驗收-工務主管',
+    'accept_mgr_date': '驗收-工務主管日期',
+    'accept_director_name': '驗收工務主任姓名',
+    'accept_director_date': '驗收工務主任日期',
+}
 
 export default function StatusDetailPageClient({ status }: { status: string }) {
     const router = useRouter()
@@ -40,6 +101,20 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [selected, setSelected] = useState<Set<string>>(new Set())
+
+    // 檢視明細對話框狀態
+    const [viewDialogOpen, setViewDialogOpen] = useState(false)
+    const [viewingItem, setViewingItem] = useState<any>(null)
+
+    const handleViewDetails = () => {
+        if (selected.size !== 1) return
+        const targetId = Array.from(selected)[0]
+        const item = data.find(i => i.id === targetId)
+        if (item) {
+            setViewingItem(item)
+            setViewDialogOpen(true)
+        }
+    }
 
     // 分頁與排序
     const [currentPage, setCurrentPage] = useState(1)
@@ -122,6 +197,62 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
         }
     }
 
+    const exportToExcel = async () => {
+        setLoading(true)
+        let dataToExport = []
+        if (selected.size > 0) {
+            dataToExport = data.filter(item => selected.has(item.id))
+        } else {
+            try {
+                let query = supabase
+                    .from('maintenance_work_orders')
+                    .select('*')
+                    .eq('status', status)
+
+                if (searchTerm) {
+                    query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,request_department.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                }
+
+                if (sort) {
+                    query = query.order(sort.key, { ascending: sort.direction === 'asc' })
+                } else {
+                    query = query.order('created_at', { ascending: false })
+                }
+
+                const { data: allResult, error } = await query
+                if (error) throw error
+                dataToExport = allResult || []
+            } catch (err: any) {
+                toast({ title: '取得匯出資料失敗', description: err.message, variant: 'destructive' })
+                setLoading(false)
+                return
+            }
+        }
+
+        if (dataToExport.length === 0) {
+            toast({ title: '無資料可匯出', variant: 'destructive' })
+            setLoading(false)
+            return
+        }
+
+        const sheetData = dataToExport.map((v: any, index: number) => {
+            const row: any = { '#': index + 1 }
+            for (const key of Object.keys(EXPORT_LABELS)) {
+                row[EXPORT_LABELS[key]] = v[key] || ''
+            }
+            return row
+        })
+
+        const wb = XLSX.utils.book_new()
+        const ws = XLSX.utils.json_to_sheet(sheetData)
+        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
+        XLSX.utils.book_append_sheet(wb, ws, '維修單明細')
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `維修單明細_${status}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+        toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        setLoading(false)
+    }
+
     return (
         <div className="min-h-screen bg-slate-50/50 flex flex-col">
             <Navbar onRefresh={refreshData} />
@@ -141,6 +272,20 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     <Button 
                         variant="outline" 
                         size="sm" 
+                        onClick={handleViewDetails} 
+                        disabled={selected.size !== 1 || loading} 
+                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50"
+                    >
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">檢視明細</span>
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading} className="px-2 sm:px-4">
+                        <Download className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">匯出 Excel</span>
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
                         onClick={() => router.push(`/maintenance-work/edit/${Array.from(selected)[0]}`)} 
                         disabled={selected.size !== 1 || loading}
                         className="px-2 sm:px-4 border-primary text-primary hover:bg-primary/5 disabled:opacity-50"
@@ -148,22 +293,16 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                         <Edit2 className="w-4 h-4 sm:mr-2" />
                         <span className="hidden sm:inline">修改</span>
                     </Button>
-                    {selected.size > 0 && isAdmin && (
-                        <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })} 
-                            disabled={loading}
-                            className="px-2 sm:px-4"
-                        >
-                            <Trash2 className="w-4 h-4 sm:mr-2" />
-                            <span className="hidden sm:inline">刪除 ({selected.size})</span>
-                            <span className="sm:hidden">{selected.size}</span>
-                        </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => {/* TODO: Implement Export */}} disabled={loading} className="px-2 sm:px-4">
-                        <Download className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">匯出 Excel</span>
+                    <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })} 
+                        disabled={selected.size === 0 || !isAdmin || loading}
+                        className="px-2 sm:px-4"
+                    >
+                        <Trash2 className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">刪除 {selected.size > 0 ? `(${selected.size})` : ''}</span>
+                        <span className="sm:hidden">{selected.size > 0 ? selected.size : ''}</span>
                     </Button>
                     <Button className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4" size="sm" onClick={() => router.push('/maintenance-work/new')}>
                         <Plus className="w-4 h-4 sm:mr-2" />
@@ -286,6 +425,56 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">確認刪除</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* 檢視明細對話框 */}
+            <AlertDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+                <AlertDialogContent className="max-w-3xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Eye className="w-5 h-5 text-blue-600" />
+                            維修單詳細資訊
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            以下為此筆維修單的完整欄位資料。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    
+                    <div className="max-h-[60vh] overflow-y-auto pr-2 my-4">
+                        {viewingItem && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(EXPORT_LABELS).map(([key, label]) => {
+                                    let val = viewingItem[key];
+                                    if (key === 'amount' && val) {
+                                        val = `$${Number(val).toLocaleString()}`;
+                                    } else if (key === 'created_at' && val) {
+                                        try {
+                                            val = format(new Date(val), 'yyyy-MM-dd HH:mm:ss');
+                                        } catch (e) {
+                                            val = String(val);
+                                        }
+                                    } else if (val === null || val === undefined) {
+                                        val = '-';
+                                    }
+                                    return (
+                                        <div key={key} className="space-y-1 pb-2 border-b border-slate-100 dark:border-slate-800">
+                                            <Label className="text-xs text-muted-foreground">{label}</Label>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200 break-all">
+                                                {String(val)}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setViewDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            關閉
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
