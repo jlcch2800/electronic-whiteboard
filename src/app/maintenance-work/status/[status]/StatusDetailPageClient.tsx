@@ -91,12 +91,90 @@ const EXPORT_LABELS: Record<string, string> = {
     'accept_director_date': '驗收工務主任日期',
 }
 
+interface ExtraColumn {
+    key: string;
+    label: string;
+}
+
+const getExtraColumns = (status: string): ExtraColumn[] => {
+    switch (status) {
+        case '已轉維修單':
+            return [
+                { key: 'work_order_date', label: '接單日期' },
+                { key: 'maint_mgr_name', label: '工務單位主管' },
+                { key: 'maint_mgr_date', label: '工務單位主管日期' }
+            ];
+        case '開單主管簽核完成':
+            return [
+                { key: 'req_dept_mgr_name', label: '開單主管姓名' },
+                { key: 'req_dept_mgr_date', label: '開單主管日期' }
+            ];
+        case '工務部門報價，主管簽核中':
+            return [
+                { key: 'quote_user_name', label: '報價承辦人' },
+                { key: 'quote_user_date', label: '報價承辦人日期' }
+            ];
+        case '工務已發包':
+            return [
+                { key: 'project_order_id', label: '工程單編號' },
+                { key: 'dispatch_director_name', label: '發包-工務主任' },
+                { key: 'dispatch_director_date', label: '發包-工務主任日期' }
+            ];
+        case '院長室簽核中':
+            return [
+                { key: 'dispatch_director_name', label: '發包-工務主任' },
+                { key: 'dispatch_director_date', label: '發包-工務主任日期' }
+            ];
+        case '採購發包簽核中':
+            return [
+                { key: 'dean_name', label: '院長姓名' },
+                { key: 'dean_date', label: '院長日期' }
+            ];
+        case '採購已發包':
+            return [
+                { key: 'project_order_id', label: '工程單編號' },
+                { key: 'procurement_name', label: '採購組姓名' },
+                { key: 'procurement_date', label: '採購組日期' },
+                { key: 'material_name', label: '資材室姓名' },
+                { key: 'material_date', label: '資材室日期' },
+                { key: 'rev_dean_name', label: '審查-院長姓名' },
+                { key: 'rev_dean_date', label: '審查-院長日期' }
+            ];
+        case '施工完成，開單單位驗收中':
+            return [
+                { key: 'project_order_id', label: '工程單編號' },
+                { key: 'construct_end_date', label: '施工完成日期' }
+            ];
+        case '維修部門驗收中':
+            return [
+                { key: 'project_order_id', label: '工程單編號' },
+                { key: 'construct_end_date', label: '施工完成日期' },
+                { key: 'accept_dept_mgr_name', label: '驗收-開單主管' },
+                { key: 'accept_dept_mgr_date', label: '驗收-開單主管日期' }
+            ];
+        case '已驗收':
+            return [
+                { key: 'project_order_id', label: '工程單編號' },
+                { key: 'accept_handler_name', label: '驗收-承辦人' },
+                { key: 'accept_handler_date', label: '驗收-承辦人日期' },
+                { key: 'accept_mgr_name', label: '驗收-工務主管' },
+                { key: 'accept_mgr_date', label: '驗收-工務主管日期' },
+                { key: 'accept_director_name', label: '驗收工務主任姓名' },
+                { key: 'accept_director_date', label: '驗收工務主任日期' }
+            ];
+        default:
+            return [];
+    }
+}
+
 export default function StatusDetailPageClient({ status }: { status: string }) {
     const router = useRouter()
     const { user } = useAuth()
     const { profile } = useAppStore()
     const supabase = createClient()
     const isAdmin = profile?.role === 'admin'
+
+    const extraCols = getExtraColumns(status)
 
     // 資料狀態
     const [data, setData] = useState<any[]>([])
@@ -359,8 +437,15 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                         <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
                                         <TableHead>維修內容</TableHead>
                                         <SortableTableHead sortKey="handler_name" currentSort={sort} onSort={handleSort} label="承辦人" />
-                                        <SortableTableHead sortKey="amount" currentSort={sort} onSort={handleSort} label="金額" />
-                                        <SortableTableHead sortKey="vendor_name" currentSort={sort} onSort={handleSort} label="廠商" />
+                                        {extraCols.map((col) => (
+                                            <SortableTableHead
+                                                key={col.key}
+                                                sortKey={col.key}
+                                                currentSort={sort}
+                                                onSort={handleSort}
+                                                label={col.label}
+                                            />
+                                        ))}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -381,8 +466,15 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                                 {item.maintain_content}
                                             </TableCell>
                                             <TableCell>{item.handler_name}</TableCell>
-                                            <TableCell>{item.amount ? `$${Number(item.amount).toLocaleString()}` : '-'}</TableCell>
-                                            <TableCell>{item.vendor_name || '-'}</TableCell>
+                                            {extraCols.map((col) => {
+                                                const rawValue = item[col.key];
+                                                const displayValue = rawValue || '-';
+                                                return (
+                                                    <TableCell key={col.key} className="text-slate-600">
+                                                        {displayValue}
+                                                    </TableCell>
+                                                );
+                                            })}
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -402,6 +494,10 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                     details={[
                                         { label: '承辦人', value: item.handler_name },
                                         { label: '內容', value: item.maintain_content },
+                                        ...extraCols.map((col) => ({
+                                            label: col.label,
+                                            value: item[col.key] || '-',
+                                        })),
                                     ]}
                                     isSelected={selected.has(item.id)}
                                     onSelect={() => toggleSelect(item.id)}

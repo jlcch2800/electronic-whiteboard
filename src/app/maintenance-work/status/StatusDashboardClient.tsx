@@ -56,11 +56,11 @@ const STATUS_ICONS: Record<string, any> = {
     '已轉維修單': FileText,
     '開單主管簽核完成': UserCheck,
     '工務部門報價，主管簽核中': ClipboardList,
-    '廠商施工中': Hammer,
+    '工務已發包': Hammer,
     '院長室簽核中': ShieldCheck,
     '採購發包簽核中': ShoppingCart,
-    '已發包': Send,
-    '開單單位驗收中': Clock,
+    '採購已發包': Send,
+    '施工完成，開單單位驗收中': Clock,
     '維修部門驗收中': Activity,
     '已驗收': CheckCircle2
 }

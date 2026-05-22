@@ -62,15 +62,15 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         }
 
         // 其他狀態：一對一映射
-        // sectionIndex 對應：0=狀態1, 1=狀態2, 4=狀態6, 5=狀態7, 6=狀態8, 7=狀態9, 8=狀態10
+        // sectionIndex 對應：0=狀態1, 1=狀態2, 4=狀態5, 5=狀態6, 6=狀態7, 7=狀態8, 8=狀態9
         const statusMap: Record<string, number> = {
             '已轉維修單': 0,
             '開單主管簽核完成': 1,
             '院長室簽核中': 4,
             '採購發包簽核中': 5,
-            '廠商施工中': 6,
-            '已發包': 6,
-            '開單單位驗收中': 7,
+            '工務已發包': 6,
+            '採購已發包': 6,
+            '施工完成，開單單位驗收中': 7,
             '維修部門驗收中': 8,
         }
 
@@ -91,9 +91,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             '開單主管簽核完成': 'section2',
             '院長室簽核中': 'section4_dean',
             '採購發包簽核中': 'section5',
-            '廠商施工中': 'section7',
-            '已發包': 'section7',
-            '開單單位驗收中': 'section8',
+            '工務已發包': 'section7',
+            '採購已發包': 'section7',
+            '施工完成，開單單位驗收中': 'section8',
             '維修部門驗收中': 'section9',
         }
         const activeSection = statusMap[formData.status] || 'section1'
@@ -133,14 +133,21 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 if (!formData.dean_date) return '請輸入院長日期'
                 break
             case '採購發包簽核中':
+                if (!formData.project_order_id) return '請輸入工程單編號'
                 if (!formData.procurement_name) return '請輸入採購組姓名'
                 if (!formData.procurement_date) return '請輸入採購組日期'
+                if (!formData.material_name) return '請輸入資材室姓名'
+                if (!formData.material_date) return '請輸入資材室日期'
+                if (!formData.rev_vice_dean_name) return '請選擇審查-副院長'
+                if (!formData.rev_vice_dean_date) return '請輸入審查-副院長日期'
+                if (!formData.rev_dean_name) return '請選擇審查-院長'
+                if (!formData.rev_dean_date) return '請輸入審查-院長日期'
                 break
-            case '廠商施工中':
-            case '已發包':
+            case '工務已發包':
+            case '採購已發包':
                 if (!formData.construct_end_date) return '請輸入施工完成日期'
                 break
-            case '開單單位驗收中':
+            case '施工完成，開單單位驗收中':
                 if (!formData.accept_dept_mgr_name) return '請輸入驗收-開單主管姓名'
                 if (!formData.accept_dept_mgr_date) return '請輸入驗收-開單主管日期'
                 break
@@ -149,6 +156,8 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 if (!formData.accept_handler_date) return '請輸入驗收-承辦人日期'
                 if (!formData.accept_mgr_name) return '請選擇驗收-工務主管'
                 if (!formData.accept_mgr_date) return '請輸入驗收-工務主管日期'
+                if (!formData.accept_director_name) return '請輸入驗收工務主任姓名'
+                if (!formData.accept_director_date) return '請輸入驗收工務主任日期'
                 break
         }
         return null
@@ -205,6 +214,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             toast({ title: '驗證失敗', description: '請輸入有效的發包金額', variant: 'destructive' })
             return
         }
+        if (amount <= 20000 && !formData.project_order_id) {
+            toast({ title: '驗證失敗', description: '金額小於或等於 2 萬，工程單編號為必填', variant: 'destructive' })
+            return
+        }
         if (!formData.dispatch_mgr_name) {
             toast({ title: '驗證失敗', description: '請選擇發包-工務主管', variant: 'destructive' })
             return
@@ -215,7 +228,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         }
 
         const threshold = 20000 // 寫死或從 system_settings 讀取
-        const nextStatus = amount <= threshold ? '廠商施工中' : '院長室簽核中'
+        const nextStatus = amount <= threshold ? '工務已發包' : '院長室簽核中'
         handleSave(nextStatus)
     }
 
@@ -418,6 +431,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         <Label>發包工務主任日期</Label>
                                         <Input name="dispatch_director_date" type="date" value={formData.dispatch_director_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
                                     </div>
+                                    <div className="space-y-2 col-span-full">
+                                        <Label>工程單編號 {Number(formData.amount) <= 20000 && <span className="text-red-500">*</span>}</Label>
+                                        <Input name="project_order_id" value={formData.project_order_id || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
+                                    </div>
                                     {isSectionEditable(3) && (
                                         <div className="col-span-full pt-4">
                                             <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={handleDispatchSignoff}>發包簽核完成 (系統將依金額判斷流程)</Button>
@@ -429,10 +446,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </AnimatePresence>
                 </Card>
 
-                {/* 狀態 6: 院長室簽核 (僅金額 > 2萬顯示) */}
+                {/* 狀態 5: 院長室簽核 (僅金額 > 2萬顯示) */}
                 {(Number(formData.amount) > 20000 || formData.status === '院長室簽核中' || formData.vice_dean_name) && (
                     <Card className="overflow-hidden border-slate-200 shadow-sm border-l-4 border-l-purple-500">
-                        <SectionHeader title="狀態 6：院長室簽核 (金額 > 2萬)" sectionKey="section4_dean" index={4} />
+                        <SectionHeader title="狀態 5：院長室簽核 (金額 > 2萬)" sectionKey="section4_dean" index={4} />
                         <AnimatePresence>
                             {openSections.section4_dean && (
                                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
@@ -471,10 +488,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </Card>
                 )}
 
-                {/* 狀態 7: 採購發包簽核中 (僅金額 > 2萬顯示) */}
+                {/* 狀態 6: 採購發包簽核中 (僅金額 > 2萬顯示) */}
                 {(Number(formData.amount) > 20000 || formData.status === '採購發包簽核中' || formData.project_order_id) && (
                     <Card className="overflow-hidden border-slate-200 shadow-sm border-l-4 border-l-violet-500">
-                        <SectionHeader title="狀態 7：採購發包簽核中" sectionKey="section5" index={5} />
+                        <SectionHeader title="狀態 6：採購發包簽核中" sectionKey="section5" index={5} />
                         <AnimatePresence>
                             {openSections.section5 && (
                                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
@@ -524,7 +541,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         </div>
                                         {isSectionEditable(5) && (
                                             <div className="col-span-full pt-4">
-                                                <Button className="w-full bg-violet-600 hover:bg-violet-700" onClick={() => handleSave('已發包')}>審查完成，正式發包</Button>
+                                                <Button className="w-full bg-violet-600 hover:bg-violet-700" onClick={() => handleSave('採購已發包')}>審查完成，正式發包</Button>
                                             </div>
                                         )}
                                     </CardContent>
@@ -534,9 +551,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </Card>
                 )}
 
-                {/* 狀態 8: 施工完成 */}
+                {/* 狀態 7: 施工已完成 */}
                 <Card className="overflow-hidden border-slate-200 shadow-sm">
-                    <SectionHeader title="狀態 8：施工完成" sectionKey="section7" index={6} />
+                    <SectionHeader title="狀態 7：施工已完成" sectionKey="section7" index={6} />
                     <AnimatePresence>
                         {openSections.section7 && (
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
@@ -547,7 +564,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     {isSectionEditable(6) && (
                                         <div className="col-span-full pt-4">
-                                            <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={() => handleSave('開單單位驗收中')}>施工完成，送開單單位驗收</Button>
+                                            <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={() => handleSave('施工完成，開單單位驗收中')}>施工完成，送開單單位驗收</Button>
                                         </div>
                                     )}
                                 </CardContent>
@@ -556,9 +573,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </AnimatePresence>
                 </Card>
 
-                {/* 狀態 9: 開單單位已驗收 */}
+                {/* 狀態 8: 施工完成，開單單位驗收中 */}
                 <Card className="overflow-hidden border-slate-200 shadow-sm">
-                    <SectionHeader title="狀態 9：開單單位已驗收" sectionKey="section8" index={7} />
+                    <SectionHeader title="狀態 8：施工完成，開單單位驗收中" sectionKey="section8" index={7} />
                     <AnimatePresence>
                         {openSections.section8 && (
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
@@ -582,9 +599,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </AnimatePresence>
                 </Card>
 
-                {/* 狀態 10: 維修部門已驗收 */}
+                {/* 狀態 9: 維修部門驗收中 */}
                 <Card className="overflow-hidden border-slate-200 shadow-sm border-b-4 border-b-green-500">
-                    <SectionHeader title="狀態 10：維修部門已驗收" sectionKey="section9" index={8} />
+                    <SectionHeader title="狀態 9：維修部門驗收中" sectionKey="section9" index={8} />
                     <AnimatePresence>
                         {openSections.section9 && (
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
