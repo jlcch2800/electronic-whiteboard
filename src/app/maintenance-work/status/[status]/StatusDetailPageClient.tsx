@@ -318,7 +318,15 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
         const sheetData = dataToExport.map((v: any, index: number) => {
             const row: any = { '#': index + 1 }
             for (const key of Object.keys(EXPORT_LABELS)) {
-                row[EXPORT_LABELS[key]] = v[key] || ''
+                let cellValue = v[key]
+                if (key === 'created_at' && cellValue) {
+                    try {
+                        cellValue = format(new Date(cellValue), 'yyyy-MM-dd HH:mm:ss')
+                    } catch (e) {
+                        cellValue = String(cellValue)
+                    }
+                }
+                row[EXPORT_LABELS[key]] = cellValue || ''
             }
             return row
         })
@@ -491,6 +499,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                     subtitle={item.request_department}
                                     status={{ label: item.status, variant: 'default' }}
                                     date={item.request_date}
+                                    dateLabel="開單日"
                                     details={[
                                         { label: '承辦人', value: item.handler_name },
                                         { label: '內容', value: item.maintain_content },

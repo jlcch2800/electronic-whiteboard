@@ -37,27 +37,47 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const supabase = createClient()
     const isAdmin = profile?.role === 'admin'
 
-    const [formData, setFormData] = useState(initialData)
+    const [formData, setFormData] = useState(() => ({
+        ...initialData,
+        dispatch_director_name: initialData.dispatch_director_name || DEFAULT_DIRECTOR_NAME,
+        accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME
+    }))
     const [loading, setLoading] = useState(false)
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
 
     // 取得當前狀態索引
     const currentStatusIndex = MAINTENANCE_STATUS.indexOf(formData.status)
 
-    // 判斷「報價階段」是否已完成（報價承辦人＋日期都已填）
-    const isQuoteCompleted = !!(formData.quote_user_name && formData.quote_user_date)
+    // 使用 state 記錄「基本資料階段」是否已完成，避免已存檔仍可修改或下一階段被鎖死
+    const [section1Completed, setSection1Completed] = useState(
+        !!(initialData.handler_name && initialData.work_order_date && initialData.maint_mgr_name && initialData.maint_mgr_date)
+    )
+
+    // 使用 state 記錄「報價階段」是否已完成，避免輸入時即時判定導致鎖死與自動收合/展開
+    const [quoteCompleted, setQuoteCompleted] = useState(
+        !!(initialData.quote_user_name && initialData.quote_user_date)
+    )
 
     // 定義區塊是否可編輯
     const isSectionEditable = (sectionIndex: number) => {
         // 特殊邏輯：已驗收則全部不可編輯
         if (formData.status === '已驗收') return false
 
+        // 特殊處理：「已轉維修單」涵蓋 Section 1（基本資料）＋ Section 2（開單主管簽核）
+        // 狀態1未完成 → Section 1 (index 0) 可編輯，Section 2 (index 1) 不可編輯
+        // 狀態1已完成 → Section 1 (index 0) 唯讀，Section 2 (index 1) 可編輯
+        if (formData.status === '已轉維修單') {
+            if (sectionIndex === 0) return !section1Completed
+            if (sectionIndex === 1) return section1Completed
+            return false
+        }
+
         // 特殊處理：「工務部門報價，主管簽核中」涵蓋 Section 3（報價）＋ Section 4（發包簽核）
         // 報價未完成 → Section 3 (index 2) 可編輯，Section 4 (index 3) 不可編輯
         // 報價已完成 → Section 3 (index 2) 唯讀，Section 4 (index 3) 可編輯
         if (formData.status === '工務部門報價，主管簽核中') {
-            if (sectionIndex === 2) return !isQuoteCompleted
-            if (sectionIndex === 3) return isQuoteCompleted
+            if (sectionIndex === 2) return !quoteCompleted
+            if (sectionIndex === 3) return quoteCompleted
             return false
         }
 
@@ -80,10 +100,14 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
     // 初始化展開區塊
     useEffect(() => {
+        // 特殊處理：「已轉維修單」依完成度決定展開 section1 或 section2
+        if (formData.status === '已轉維修單') {
+            setOpenSections({ [section1Completed ? 'section2' : 'section1']: true })
+            return
+        }
         // 特殊處理：報價階段依完成度決定展開 section3 或 section4
         if (formData.status === '工務部門報價，主管簽核中') {
-            const quoteComplete = !!(formData.quote_user_name && formData.quote_user_date)
-            setOpenSections({ [quoteComplete ? 'section4' : 'section3']: true })
+            setOpenSections({ [quoteCompleted ? 'section4' : 'section3']: true })
             return
         }
         const statusMap: Record<string, string> = {
@@ -98,7 +122,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         }
         const activeSection = statusMap[formData.status] || 'section1'
         setOpenSections({ [activeSection]: true })
-    }, [formData.status, formData.quote_user_name, formData.quote_user_date])
+    }, [formData.status, section1Completed, quoteCompleted])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
@@ -194,6 +218,14 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 router.push('/maintenance-work/history')
             } else {
                 setFormData(updateData)
+                // 若是狀態1「已轉維修單」送審成功，更新 section1Completed 為 true
+                if (formData.status === '已轉維修單' && nextStatus === '開單主管簽核完成') {
+                    setSection1Completed(true)
+                }
+                // 狀態3：工務部門報價主管簽核中，點擊「報價完成，送工務主管簽核」成功儲存後，更新 quoteCompleted 為 true
+                if (formData.status === '工務部門報價，主管簽核中' && nextStatus === '工務部門報價，主管簽核中') {
+                    setQuoteCompleted(true)
+                }
             }
         } catch (err: any) {
             toast({ title: '儲存失敗', description: err.message, variant: 'destructive' })
@@ -230,6 +262,19 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         const threshold = 20000 // 寫死或從 system_settings 讀取
         const nextStatus = amount <= threshold ? '工務已發包' : '院長室簽核中'
         handleSave(nextStatus)
+    }
+
+    // 動態取得狀態 7（施工完成/已發包）的標題
+    const getSection7Title = () => {
+        if (formData.status === '工務已發包') {
+            return '狀態 7：工務已發包 (施工中)'
+        }
+        if (formData.status === '採購已發包') {
+            return '狀態 7：採購已發包 (施工中)'
+        }
+        // 若已完成施工，依據發包金額判斷當初是採購還是工務發包
+        const isProcurement = Number(formData.amount) > 20000
+        return `狀態 7：${isProcurement ? '採購' : '工務'}已發包 (施工已完成)`
     }
 
     const SectionHeader = ({ title, sectionKey, index }: { title: string, sectionKey: string, index: number }) => (
@@ -425,7 +470,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     <div className="space-y-2">
                                         <Label>發包工務主任</Label>
-                                        <Input name="dispatch_director_name" value={formData.dispatch_director_name || DEFAULT_DIRECTOR_NAME} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
+                                        <Input name="dispatch_director_name" value={formData.dispatch_director_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>發包工務主任日期</Label>
@@ -447,7 +492,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 </Card>
 
                 {/* 狀態 5: 院長室簽核 (僅金額 > 2萬顯示) */}
-                {(Number(formData.amount) > 20000 || formData.status === '院長室簽核中' || formData.vice_dean_name) && (
+                {(Number(formData.amount) > 20000 || formData.status === '院長室簽核中') && (
                     <Card className="overflow-hidden border-slate-200 shadow-sm border-l-4 border-l-purple-500">
                         <SectionHeader title="狀態 5：院長室簽核 (金額 > 2萬)" sectionKey="section4_dean" index={4} />
                         <AnimatePresence>
@@ -489,7 +534,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 )}
 
                 {/* 狀態 6: 採購發包簽核中 (僅金額 > 2萬顯示) */}
-                {(Number(formData.amount) > 20000 || formData.status === '採購發包簽核中' || formData.project_order_id) && (
+                {(Number(formData.amount) > 20000 || formData.status === '採購發包簽核中') && (
                     <Card className="overflow-hidden border-slate-200 shadow-sm border-l-4 border-l-violet-500">
                         <SectionHeader title="狀態 6：採購發包簽核中" sectionKey="section5" index={5} />
                         <AnimatePresence>
@@ -541,7 +586,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         </div>
                                         {isSectionEditable(5) && (
                                             <div className="col-span-full pt-4">
-                                                <Button className="w-full bg-violet-600 hover:bg-violet-700" onClick={() => handleSave('採購已發包')}>審查完成，正式發包</Button>
+                                                <Button className="w-full bg-violet-600 hover:bg-violet-700" onClick={() => handleSave('採購已發包')}>審查完成，採購已發包</Button>
                                             </div>
                                         )}
                                     </CardContent>
@@ -553,7 +598,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
                 {/* 狀態 7: 施工已完成 */}
                 <Card className="overflow-hidden border-slate-200 shadow-sm">
-                    <SectionHeader title="狀態 7：施工已完成" sectionKey="section7" index={6} />
+                    <SectionHeader title={getSection7Title()} sectionKey="section7" index={6} />
                     <AnimatePresence>
                         {openSections.section7 && (
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
@@ -630,7 +675,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     <div className="space-y-2">
                                         <Label>驗收工務主任</Label>
-                                        <Input name="accept_director_name" value={formData.accept_director_name || DEFAULT_DIRECTOR_NAME} onChange={handleInputChange} disabled={!isSectionEditable(8)} />
+                                        <Input name="accept_director_name" value={formData.accept_director_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(8)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>驗收工務主任日期</Label>

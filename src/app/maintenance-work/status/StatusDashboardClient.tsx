@@ -18,12 +18,14 @@ interface SummaryItem {
     request_date: string
     request_department: string
     maintain_content: string
+    work_order_id: string
 }
 
 interface StatusStat {
     status: string
     count: number
     recent: SummaryItem[]
+    lastYearCount?: number
 }
 
 // 計數動畫 Hook
@@ -70,13 +72,15 @@ function StatusCard({
     count,
     recent,
     color,
-    delay
+    delay,
+    lastYearCount
 }: {
     status: string
     count: number
     recent: SummaryItem[]
     color: string
     delay: number
+    lastYearCount?: number
 }) {
     const router = useRouter()
     const animatedCount = useCountUp(count)
@@ -104,7 +108,13 @@ function StatusCard({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay, duration: 0.4 }}
-            onClick={() => router.push(`/maintenance-work/status/${encodeURIComponent(status)}`)}
+            onClick={() => {
+                if (status === '已驗收') {
+                    router.push('/maintenance-work/history')
+                } else {
+                    router.push(`/maintenance-work/status/${encodeURIComponent(status)}`)
+                }
+            }}
             className={`relative cursor-pointer group bg-gradient-to-br ${c.bg} rounded-xl border ${c.border} p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1`}
         >
             <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-xl ${c.topBar}`} />
@@ -116,9 +126,14 @@ function StatusCard({
                 <h3 className="text-sm font-bold text-gray-700 leading-snug">{status}</h3>
             </div>
 
-            <div className="flex items-baseline gap-1 mb-4">
+            <div className="flex items-baseline gap-1 mb-4 flex-wrap">
                 <span className={`text-4xl font-black ${c.iconColor}`}>{animatedCount}</span>
-                <span className="text-xs text-gray-400 font-medium">筆</span>
+                <span className="text-xs text-gray-400 font-medium mr-1">筆</span>
+                {lastYearCount !== undefined && (
+                    <span className="text-[10.5px] text-gray-400 font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60 inline-flex items-center shrink-0">
+                        去年：{lastYearCount} 筆
+                    </span>
+                )}
             </div>
 
             <div className="space-y-2 mb-4">
@@ -128,7 +143,9 @@ function StatusCard({
                     recent.map((item, idx) => (
                         <div key={item.id} className="text-[11px] leading-tight text-gray-600 border-l-2 border-gray-100 pl-2">
                             <div className="flex justify-between text-gray-400 mb-0.5">
-                                <span>{item.request_date}</span>
+                                <span>
+                                    {idx + 1}. {item.request_date}
+                                </span>
                                 <span className="font-medium text-gray-500">{item.request_department}</span>
                             </div>
                             <p className="truncate font-medium">{item.maintain_content}</p>
@@ -153,13 +170,38 @@ export default function StatusDashboardClient() {
     const fetchStats = async () => {
         setLoading(true)
         try {
-            // 查詢所有維修單，按狀態分組
-            const { data, error } = await supabase
+            // 1. 查詢活動表資料
+            const { data: activeData, error: activeError } = await supabase
                 .from('maintenance_work_orders')
-                .select('id, status, request_date, request_department, maintain_content')
+                .select('id, status, request_date, request_department, maintain_content, work_order_id')
                 .order('request_date', { ascending: false })
 
-            if (error) throw error
+            if (activeError) throw activeError
+
+            // 2. 查詢歷史表資料 (已驗收歸檔的資料)
+            const { data: historyData, error: historyError } = await supabase
+                .from('maintenance_work_orders_history')
+                .select('id, status, request_date, request_department, maintain_content, work_order_id')
+                .order('request_date', { ascending: false })
+
+            if (historyError) throw historyError
+
+            // 合併兩者
+            const allData = [...(activeData || []), ...(historyData || [])]
+
+            // 3. 計算去年的已驗收總筆數 (去年為今年減 1)
+            const currentYear = new Date().getFullYear()
+            const lastYear = currentYear - 1
+            let lastYearHistoryCount = 0
+
+            historyData?.forEach((item: any) => {
+                if (item.request_date) {
+                    const itemYear = new Date(item.request_date).getFullYear()
+                    if (itemYear === lastYear) {
+                        lastYearHistoryCount++
+                    }
+                }
+            })
 
             // 處理統計數據
             const statsMap: Record<string, StatusStat> = {}
@@ -167,15 +209,23 @@ export default function StatusDashboardClient() {
                 statsMap[s] = { status: s, count: 0, recent: [] }
             })
 
-            data?.forEach((item: any) => {
-                if (statsMap[item.status]) {
-                    statsMap[item.status].count++
-                    if (statsMap[item.status].recent.length < 3) {
-                        statsMap[item.status].recent.push({
+            // 注入去年的統計數值給已驗收狀態
+            statsMap['已驗收'].lastYearCount = lastYearHistoryCount
+
+            allData.forEach((item: any) => {
+                const itemStatus = item.status || '已驗收'
+                if (statsMap[itemStatus]) {
+                    statsMap[itemStatus].count++
+                    
+                    // 已驗收卡片顯示最近 5 筆記錄，其他卡片顯示 3 筆
+                    const limit = itemStatus === '已驗收' ? 5 : 3
+                    if (statsMap[itemStatus].recent.length < limit) {
+                        statsMap[itemStatus].recent.push({
                             id: item.id,
                             request_date: item.request_date,
                             request_department: item.request_department,
-                            maintain_content: item.maintain_content
+                            maintain_content: item.maintain_content,
+                            work_order_id: item.work_order_id
                         })
                     }
                 }
@@ -222,6 +272,7 @@ export default function StatusDashboardClient() {
                                 recent={stat.recent}
                                 color={STATUS_COLORS[stat.status]}
                                 delay={index * 0.05}
+                                lastYearCount={stat.lastYearCount}
                             />
                         ))}
                     </div>

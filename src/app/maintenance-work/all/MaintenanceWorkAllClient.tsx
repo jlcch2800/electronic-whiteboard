@@ -296,7 +296,17 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         }
         const sheetData = dataToExport.map((v: any, index: number) => {
             const row: any = { '#': index + 1 }
-            for (const key of Object.keys(EXPORT_LABELS)) row[EXPORT_LABELS[key]] = v[key] || ''
+            for (const key of Object.keys(EXPORT_LABELS)) {
+                let cellValue = v[key]
+                if (key === 'created_at' && cellValue) {
+                    try {
+                        cellValue = format(new Date(cellValue), 'yyyy-MM-dd HH:mm:ss')
+                    } catch (e) {
+                        cellValue = String(cellValue)
+                    }
+                }
+                row[EXPORT_LABELS[key]] = cellValue || ''
+            }
             return row
         })
         const wb = XLSX.utils.book_new()
@@ -461,6 +471,7 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                             className: statusClassName
                                         }}
                                         date={item.request_date}
+                                        dateLabel="開單日"
                                         details={[
                                             { label: '承辦人', value: item.handler_name },
                                             { label: '維修內容', value: item.maintain_content },

@@ -12,6 +12,7 @@ interface MobileTableCardProps {
         className?: string
     }
     date: string
+    dateLabel?: string
     endDate?: string  // 結束日期（工務/待處理用）
     time?: string
     details: { label: string; value: React.ReactNode }[]
@@ -27,6 +28,7 @@ export function MobileTableCard({
     subtitle,
     status,
     date,
+    dateLabel,
     endDate,
     time,
     details,
@@ -79,7 +81,7 @@ export function MobileTableCard({
 
             <div className={`grid ${endDate ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-3 bg-muted/60 p-3 rounded-lg relative z-10`}>
                 <div className="text-xs">
-                    <span className="text-muted-foreground block mb-0.5">{endDate ? '開始日期' : '日期'}</span>
+                    <span className="text-muted-foreground block mb-0.5">{dateLabel || (endDate ? '開始日期' : '日期')}</span>
                     <span className="font-mono text-foreground/80">{date}</span>
                 </div>
                 {endDate && (
