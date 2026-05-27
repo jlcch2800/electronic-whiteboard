@@ -274,39 +274,51 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         }
         // 若已完成施工，依據發包金額判斷當初是採購還是工務發包
         const isProcurement = Number(formData.amount) > 20000
-        return `狀態 7：${isProcurement ? '採購' : '工務'}已發包 (施工已完成)`
+        return `狀態 7：${isProcurement ? '採購' : '工務'}已發包`
     }
 
     const SectionHeader = ({ title, sectionKey, index }: { title: string, sectionKey: string, index: number }) => (
         <div
-            className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-100"
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800/60"
             onClick={() => setOpenSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }))}
         >
             <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isSectionEditable(index) ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isSectionEditable(index) ? 'bg-primary text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                     {index + 1}
                 </div>
-                <h3 className="font-bold text-slate-700">{title}</h3>
+                <h3 className={`font-bold transition-colors ${isSectionEditable(index) ? 'text-slate-900 dark:text-white font-extrabold' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {title}
+                </h3>
             </div>
             <div className="flex items-center gap-2">
-                {isSectionEditable(index) ? <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5">編輯中</Badge> : <Lock className="w-3 h-3 text-slate-300" />}
-                {openSections[sectionKey] ? <ChevronDown className="w-5 h-5 text-slate-400" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
+                {isSectionEditable(index) ? (
+                    <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 whitespace-nowrap">
+                        編輯中
+                    </Badge>
+                ) : (
+                    <Lock className="w-3 h-3 text-slate-300 dark:text-slate-600" />
+                )}
+                {openSections[sectionKey] ? (
+                    <ChevronDown className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                ) : (
+                    <ChevronRight className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                )}
             </div>
         </div>
     )
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
             <Navbar />
 
-            <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3 sticky top-0 z-50">
+            <header className="bg-background/95 backdrop-blur-md border-b border-border/50 px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3 sticky top-0 z-50">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full md:w-auto">
                     <Button variant="ghost" size="sm" onClick={() => router.back()} className="px-2 h-9 shrink-0">
                         <ArrowLeft className="w-4 h-4 mr-1 shrink-0" />返回
                     </Button>
-                    <div className="h-6 w-px bg-slate-200 hidden xs:block" />
+                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden xs:block" />
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <h1 className="text-lg sm:text-xl font-black text-slate-800 whitespace-nowrap">
+                        <h1 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             維修單簽核作業
                         </h1>
                         <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 text-xs py-1 px-2.5 font-bold tracking-wide whitespace-nowrap flex-shrink-0">
@@ -315,7 +327,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </div>
                 </div>
                 <div className="flex items-center w-full md:w-auto">
-                    <Button variant="outline" size="sm" onClick={() => handleSave()} disabled={loading} className="w-full md:w-auto justify-center h-9 border-slate-300 text-slate-700 hover:bg-slate-50">
+                    <Button variant="outline" size="sm" onClick={() => handleSave()} disabled={loading} className="w-full md:w-auto justify-center h-9 border-slate-300 dark:border-slate-200 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
                     </Button>
                 </div>

@@ -342,17 +342,17 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 flex flex-col">
+        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col">
             <Navbar onRefresh={refreshData} />
 
-            <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3 sticky top-0 z-50">
+            <header className="bg-background/95 backdrop-blur-md border-b border-border/50 px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3 sticky top-0 z-50">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full md:w-auto">
                     <Button variant="ghost" size="sm" onClick={() => router.push('/maintenance-work/status')} className="px-2 h-9 shrink-0">
                         <ArrowLeft className="w-4 h-4 mr-1 shrink-0" />返回儀表板
                     </Button>
-                    <div className="h-6 w-px bg-slate-200 hidden xs:block" />
+                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden xs:block" />
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <h1 className="text-lg sm:text-xl font-black text-slate-800 whitespace-nowrap">
+                        <h1 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             明細列表
                         </h1>
                         <Badge className="bg-primary/10 text-primary border-primary/20 text-xs py-1 px-2.5 font-bold tracking-wide whitespace-nowrap flex-shrink-0">
@@ -411,7 +411,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                             placeholder="搜尋工單、部門、承辦人..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-white"
+                            className="pl-9 bg-white dark:bg-slate-900"
                         />
                     </div>
                 </div>
@@ -422,15 +422,15 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     </div>
                 ) : data.length === 0 ? (
                     <EmptyState
-                        icon={CheckCircle2}
-                        title="目前無此狀態的維修單"
-                        description="該階段的所有維修單皆已處理完成或尚未進入此階段。"
+                         icon={CheckCircle2}
+                         title="目前無此狀態的維修單"
+                         description="該階段的所有維修單皆已處理完成或尚未進入此階段。"
                     />
                 ) : (
                     <div className="space-y-4">
-                        <div className="hidden md:block rounded-xl border bg-white shadow-sm overflow-hidden">
+                        <div className="hidden md:block rounded-xl border bg-white dark:bg-slate-950 shadow-sm overflow-hidden">
                             <Table>
-                                <TableHeader className="bg-slate-50/80">
+                                <TableHeader className="bg-slate-50/80 dark:bg-slate-900/80">
                                     <TableRow>
                                         <TableHead className="w-[40px] px-4">
                                             <Checkbox
@@ -465,8 +465,8 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                                     onCheckedChange={() => toggleSelect(item.id)}
                                                 />
                                             </TableCell>
-                                            <TableCell className="font-mono font-bold text-slate-700">{item.work_order_id}</TableCell>
-                                            <TableCell className="text-slate-500">{item.request_date}</TableCell>
+                                            <TableCell className="font-mono font-bold text-slate-700 dark:text-slate-200">{item.work_order_id}</TableCell>
+                                            <TableCell className="text-slate-500 dark:text-slate-400">{item.request_date}</TableCell>
                                             <TableCell>{item.request_department}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
@@ -478,7 +478,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                                 const rawValue = item[col.key];
                                                 const displayValue = rawValue || '-';
                                                 return (
-                                                    <TableCell key={col.key} className="text-slate-600">
+                                                    <TableCell key={col.key} className="text-slate-600 dark:text-slate-300">
                                                         {displayValue}
                                                     </TableCell>
                                                 );

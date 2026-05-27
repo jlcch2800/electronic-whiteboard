@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
-    Activity, ArrowRight, ClipboardList, Clock, 
-    CheckCircle2, AlertCircle, FileText, Hammer, 
+    Activity, ArrowRight, ClipboardList, Clock,
+    CheckCircle2, AlertCircle, FileText, Hammer,
     Send, ShieldCheck, ShoppingCart, UserCheck
 } from 'lucide-react'
 
@@ -118,7 +118,7 @@ function StatusCard({
             className={`relative cursor-pointer group bg-gradient-to-br ${c.bg} rounded-xl border ${c.border} p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1`}
         >
             <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-xl ${c.topBar}`} />
-            
+
             <div className="flex items-start gap-3 mb-4">
                 <div className={`p-2 rounded-lg ${c.iconBg} ${c.iconColor} shrink-0`}>
                     <Icon className="w-5 h-5" />
@@ -216,7 +216,7 @@ export default function StatusDashboardClient() {
                 const itemStatus = item.status || '已驗收'
                 if (statsMap[itemStatus]) {
                     statsMap[itemStatus].count++
-                    
+
                     // 已驗收卡片顯示最近 5 筆記錄，其他卡片顯示 3 筆
                     const limit = itemStatus === '已驗收' ? 5 : 3
                     if (statsMap[itemStatus].recent.length < limit) {
@@ -244,16 +244,16 @@ export default function StatusDashboardClient() {
     }, [])
 
     return (
-        <div className="min-h-screen bg-slate-50/50 flex flex-col">
+        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col">
             <Navbar onRefresh={fetchStats} />
 
             <main className="max-w-7xl mx-auto px-6 py-8 w-full">
                 <header className="mb-8">
-                    <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                    <h1 className="text-2xl font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
                         <Activity className="w-7 h-7 text-primary" />
                         維修單狀態管理儀表板
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">追蹤各階段維修工單進度與簽核狀態</p>
+                    <p className="text-slate-400 dark:text-slate-400 text-sm mt-1">追蹤各階段維修單進度與簽核狀態</p>
                 </header>
 
                 {loading ? (
