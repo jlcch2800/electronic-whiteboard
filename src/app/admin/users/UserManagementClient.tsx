@@ -221,7 +221,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     return (
         <div className="min-h-screen bg-muted">
             {/* Header */}
-            <header className="bg-background border-b border-border px-4 md:px-6 py-4 sticky top-0 z-10 shadow-sm">
+            <header className="bg-background border-b border-border px-4 md:px-6 py-4 sticky top-0 z-50 shadow-sm">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 max-w-7xl mx-auto">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">

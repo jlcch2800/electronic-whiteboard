@@ -358,7 +358,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100">
-            <header className="glass border-b border-border/50 sticky top-0 z-10">
+            <header className="bg-background/95 backdrop-blur-md border-b border-border/50 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div className="flex items-center justify-between">
