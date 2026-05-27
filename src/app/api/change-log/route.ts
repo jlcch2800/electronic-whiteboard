@@ -10,10 +10,20 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
     try {
-        const { action_type, modify_table, modify_record_id, old_data, new_data } = await req.json()
+        const body = await req.json()
+        const { action_type, modify_table, modify_record_id, old_data, new_data } = body
+
+        console.log('[API /change-log] 收到請求:', {
+            action_type,
+            modify_table,
+            modify_record_id,
+            has_old_data: !!old_data,
+            has_new_data: !!new_data,
+        })
 
         // 驗證必要欄位
         if (!action_type || !modify_table || !modify_record_id) {
+            console.error('[API /change-log] 缺少必要參數')
             return NextResponse.json(
                 { error: '缺少必要參數 (action_type, modify_table, modify_record_id)' },
                 { status: 400 }
@@ -25,8 +35,11 @@ export async function POST(req: NextRequest) {
         // 取得當前登入使用者
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) {
+            console.error('[API /change-log] 認證失敗:', authError?.message || '無使用者')
             return NextResponse.json({ error: '未登入' }, { status: 401 })
         }
+
+        console.log('[API /change-log] 認證成功, user:', user.id)
 
         // 查詢使用者 profile（取得 user_name, user_account, unit）
         const { data: profile } = await supabase
@@ -38,8 +51,7 @@ export async function POST(req: NextRequest) {
         // 取得台灣時間日期
         const dateStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
 
-        // 寫入 system_change_log
-        const { error: insertError } = await supabase.from('system_change_log').insert({
+        const insertPayload = {
             date: dateStr,
             action_type,
             user_name: profile?.user_name || user.email || 'Unknown',
@@ -49,13 +61,23 @@ export async function POST(req: NextRequest) {
             modify_record_id,
             old_data: old_data || null,
             new_data: new_data || null,
+        }
+
+        console.log('[API /change-log] 準備寫入:', {
+            ...insertPayload,
+            old_data: old_data ? '(有資料)' : null,
+            new_data: new_data ? '(有資料)' : null,
         })
+
+        // 寫入 system_change_log
+        const { error: insertError } = await supabase.from('system_change_log').insert(insertPayload)
 
         if (insertError) {
             console.error('[API /change-log] 寫入失敗:', insertError)
             return NextResponse.json({ error: insertError.message, success: false }, { status: 500 })
         }
 
+        console.log('[API /change-log] ✅ 寫入成功!')
         return NextResponse.json({ success: true })
     } catch (error) {
         console.error('[API /change-log] 錯誤:', error)

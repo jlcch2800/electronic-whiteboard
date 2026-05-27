@@ -10,6 +10,7 @@ import { History, Download, ArrowLeft, Search, CheckCircle2, ChevronDown, Chevro
 import { AdvancedSearchFilter, SearchFilters, defaultFilters } from '@/components/AdvancedSearchFilter'
 
 import { createClient } from '@/lib/supabase/client'
+import { logBatchDeleteRecords } from '@/lib/change-log'
 import { useAppStore } from '@/stores/useAppStore'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -237,8 +238,13 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         if (deleteDialog.ids.length === 0) return
         setLoading(true)
         try {
+            const deletedItems = data.filter(item => deleteDialog.ids.includes(item.id))
             const { error } = await supabase.from('maintenance_work_orders').delete().in('id', deleteDialog.ids)
             if (error) throw error
+
+            // 寫入系統異動紀錄（使用 await 確保發送成功）
+            await logBatchDeleteRecords('maintenance_work_orders', deletedItems)
+
             toast({ title: '刪除成功', description: `已刪除 ${deleteDialog.ids.length} 筆資料` })
             setDeleteDialog({ open: false, ids: [] })
             setSelected(new Set())

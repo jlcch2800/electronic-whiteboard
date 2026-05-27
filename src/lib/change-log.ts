@@ -29,8 +29,8 @@ interface ChangeLogParams {
  * // 刪除
  * logChangeRecord({ actionType: 'Delete', modifyTable: 'vendor_today_work', modifyRecordId: id, oldData: deletedItem })
  */
-export function logChangeRecord(params: ChangeLogParams): void {
-    fetch('/api/change-log', {
+export function logChangeRecord(params: ChangeLogParams): Promise<void> {
+    return fetch('/api/change-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -40,8 +40,13 @@ export function logChangeRecord(params: ChangeLogParams): void {
             old_data: params.oldData || null,
             new_data: params.newData || null,
         }),
+    }).then(async (res) => {
+        if (!res.ok) {
+            const errText = await res.text()
+            console.warn(`[系統異動紀錄] 寫入失敗 (狀態碼 ${res.status}):`, errText)
+        }
     }).catch((err) => {
-        console.warn('[系統異動紀錄] 寫入失敗:', err)
+        console.warn('[系統異動紀錄] 網路錯誤:', err)
     })
 }
 
@@ -54,13 +59,14 @@ export function logChangeRecord(params: ChangeLogParams): void {
 export function logBatchDeleteRecords(
     modifyTable: string,
     deletedItems: Array<Record<string, any>>
-): void {
-    deletedItems.forEach((item) => {
+): Promise<void> {
+    const promises = deletedItems.map((item) =>
         logChangeRecord({
             actionType: 'Delete',
             modifyTable,
             modifyRecordId: item.id,
             oldData: item,
         })
-    })
+    )
+    return Promise.all(promises).then(() => {})
 }

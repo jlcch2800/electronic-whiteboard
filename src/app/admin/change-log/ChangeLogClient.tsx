@@ -55,6 +55,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'system_change_log': '系統異動記錄',
         'system_execution_log': '系統執行記錄',
         'work_file': '施工文件',
+        'maintenance_work_orders': '維修單',
+        'maintenance_work_orders_history': '維修單歷史記錄',
     }
 
     const FIELD_LABELS: Record<string, string> = {
@@ -79,7 +81,29 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         verify_token_hash: '驗證 Token Hash', verify_token_expire: '驗證 Token 到期時間',
         action_type: '動作類型', modify_table: '異動資料表', modify_record_id: '異動記錄ID',
         description: '說明', file_url: '文件', image_url: '照片', video_url: '影片', uploader_name: '上傳人員', work_item: '施工項目',
-        content: '內容'
+        content: '內容',
+        // 維修單 (maintenance_work_orders)
+        request_date: '開單日', request_department: '開單部門', cost_center: '成本中心',
+        maintain_content: '維修內容', requester_name: '開單人',
+        work_order_id: '工單編號', handler_name: '承辦人',
+        work_order_date: '接單日期', maint_mgr_name: '工務單位主管', maint_mgr_date: '工務單位主管日期',
+        req_dept_mgr_name: '開單主管姓名', req_dept_mgr_date: '開單主管日期',
+        quote_user_name: '報價承辦人', quote_user_date: '報價承辦人日期',
+        amount: '金額',
+        dispatch_mgr_name: '發包-工務主管', dispatch_mgr_date: '發包-工務主管日期',
+        dispatch_director_name: '發包工務主任姓名', dispatch_director_date: '發包工務主任日期',
+        vice_dean_name: '副院長姓名', vice_dean_date: '副院長日期',
+        dean_name: '院長姓名', dean_date: '院長日期',
+        project_order_id: '工程單編號',
+        procurement_name: '採購組姓名', procurement_date: '採購組日期',
+        material_name: '資材室姓名', material_date: '資材室日期',
+        rev_vice_dean_name: '審查-副院長姓名', rev_vice_dean_date: '審查-副院長日期',
+        rev_dean_name: '審查-院長姓名', rev_dean_date: '審查-院長日期',
+        construct_end_date: '施工完成日期',
+        accept_dept_mgr_name: '驗收-開單主管姓名', accept_dept_mgr_date: '驗收-開單主管日期',
+        accept_handler_name: '驗收-承辦人', accept_handler_date: '驗收-承辦人日期',
+        accept_mgr_name: '驗收-工務主管', accept_mgr_date: '驗收-工務主管日期',
+        accept_director_name: '驗收工務主任姓名', accept_director_date: '驗收工務主任日期',
     }
 
     // 定義各資料表的欄位顯示順序 (整合排序)
@@ -108,7 +132,29 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'failed_attempts', 'last_failed_at', 'locked_until',
         // Content & Note (End)
         'work_item', 'uploader_name', 'description', 'file_url', 'image_url', 'video_url',
-        'content'
+        'content',
+        // Maintenance Work Orders
+        'status', 'request_date', 'request_department', 'cost_center',
+        'maintain_content', 'requester_name',
+        'work_order_id', 'handler_name',
+        'work_order_date', 'maint_mgr_name', 'maint_mgr_date',
+        'req_dept_mgr_name', 'req_dept_mgr_date',
+        'quote_user_name', 'quote_user_date',
+        'vendor_name', 'amount',
+        'dispatch_mgr_name', 'dispatch_mgr_date',
+        'dispatch_director_name', 'dispatch_director_date',
+        'vice_dean_name', 'vice_dean_date',
+        'dean_name', 'dean_date',
+        'project_order_id',
+        'procurement_name', 'procurement_date',
+        'material_name', 'material_date',
+        'rev_vice_dean_name', 'rev_vice_dean_date',
+        'rev_dean_name', 'rev_dean_date',
+        'construct_end_date',
+        'accept_dept_mgr_name', 'accept_dept_mgr_date',
+        'accept_handler_name', 'accept_handler_date',
+        'accept_mgr_name', 'accept_mgr_date',
+        'accept_director_name', 'accept_director_date',
     ];
 
     const formatLogValue = (key: string, value: any) => {

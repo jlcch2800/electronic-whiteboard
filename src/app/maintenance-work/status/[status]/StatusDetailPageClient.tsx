@@ -10,6 +10,7 @@ import {
 import { Label } from '@/components/ui/label'
 
 import { createClient } from '@/lib/supabase/client'
+import { logBatchDeleteRecords } from '@/lib/change-log'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { useAppStore } from '@/stores/useAppStore'
 import Navbar from '@/components/Navbar'
@@ -266,8 +267,13 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
     const handleDelete = async () => {
         if (deleteDialog.ids.length === 0) return
         try {
+            const deletedItems = data.filter(item => deleteDialog.ids.includes(item.id))
             const { error } = await supabase.from('maintenance_work_orders').delete().in('id', deleteDialog.ids)
             if (error) throw error
+
+            // 寫入系統異動紀錄（使用 await 確保發送成功）
+            await logBatchDeleteRecords('maintenance_work_orders', deletedItems)
+
             toast({ title: '刪除成功', description: `已刪除 ${deleteDialog.ids.length} 筆紀錄` })
             refreshData()
         } catch (error: any) {

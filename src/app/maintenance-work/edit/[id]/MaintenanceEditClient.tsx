@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
+import { logChangeRecord } from '@/lib/change-log'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { useAppStore } from '@/stores/useAppStore'
 import Navbar from '@/components/Navbar'
@@ -38,6 +39,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const isAdmin = profile?.role === 'admin'
 
     const [formData, setFormData] = useState(() => ({
+        ...initialData,
+        dispatch_director_name: initialData.dispatch_director_name || DEFAULT_DIRECTOR_NAME,
+        accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME
+    }))
+    const [lastSavedData, setLastSavedData] = useState(() => ({
         ...initialData,
         dispatch_director_name: initialData.dispatch_director_name || DEFAULT_DIRECTOR_NAME,
         accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME
@@ -200,6 +206,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
         setLoading(true)
         try {
+            const oldData = { ...lastSavedData }
             const updateData = { ...formData }
             if (nextStatus) {
                 updateData.status = nextStatus
@@ -212,12 +219,22 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
             if (error) throw error
 
+            // 寫入系統異動紀錄（使用 await 確保發送成功，防止頁面跳轉時 fetch 被瀏覽器取消）
+            await logChangeRecord({
+                actionType: 'Update',
+                modifyTable: 'maintenance_work_orders',
+                modifyRecordId: id,
+                oldData: oldData,
+                newData: updateData,
+            })
+
             toast({ title: '儲存成功', description: nextStatus ? `狀態已更新為：${nextStatus}` : '資料已儲存' })
 
             if (nextStatus === '已驗收') {
                 router.push('/maintenance-work/history')
             } else {
                 setFormData(updateData)
+                setLastSavedData(updateData)
                 // 若是狀態1「已轉維修單」送審成功，更新 section1Completed 為 true
                 if (formData.status === '已轉維修單' && nextStatus === '開單主管簽核完成') {
                     setSection1Completed(true)
