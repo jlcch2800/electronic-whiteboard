@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { FileText, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Plus, Pencil, Trash2, ExternalLink, Video, Download, Filter, FolderOpen, FileIcon } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
 import Lightbox from "yet-another-react-lightbox"
 import "yet-another-react-lightbox/styles.css"
 import { MobileTableCard } from '@/components/MobileTableCard'
@@ -210,7 +211,7 @@ export default function WorkFileClient() {
         } catch { return url?.split('/').pop() || '' }
     }
 
-    const handleExport = async () => {
+    const exportToExcel = async () => {
         let dataToExport: WorkFileRecord[] = []
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
@@ -220,12 +221,52 @@ export default function WorkFileClient() {
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '', '日期': r.date, '廠商': r.vendor_name || '', '施工項目': r.work_item || '', '上傳人員': r.uploader_name, '說明': r.description || '', '文件連結': r.file_url || '', '照片連結': r.image_url || '', '影片連結': r.video_url || '', '備註': r.note || '' }))
-        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(sheetData)
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `施工文件_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+        
+        exportToExcelFile(sheetData, '施工文件')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+    }
+
+    const exportToPdf = async () => {
+        let dataToExport: WorkFileRecord[] = []
+        if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
+        else {
+            let q = supabase.from('work_file').select('*').gte('date', startDate).lte('date', endDate).order('date', { ascending: false })
+            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            const { data: allData } = await q; dataToExport = allData || []
+        }
+        if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
+        
+        // 排除冗長欄位，PDF 只展示最重要核心的資訊
+        const sheetData = dataToExport.map((r, i) => ({
+            '#': i + 1,
+            'ID': r.id,
+            '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '日期': r.date,
+            '廠商': r.vendor_name || '-',
+            '施工項目': r.work_item || '-',
+            '上傳人員': r.uploader_name,
+            '說明': r.description || '-',
+            '文件連結': r.file_url ? '有' : '無',
+            '照片連結': r.image_url ? '有' : '無',
+            '影片連結': r.video_url ? '有' : '無',
+            '備註': r.note || '-'
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '施工文件記錄清單',
+                sheetData,
+                filenamePrefix: '施工文件',
+                orientation: 'landscape',
+                themeColor: [79, 70, 229], // 靛藍色品牌色
+                excludeColumns: ['ID', '建立時間']
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     return (
@@ -255,7 +296,21 @@ export default function WorkFileClient() {
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、項目、上傳人..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-52" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                                <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                            <Download className="w-4 h-4 mr-1" /> 匯出
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={exportToExcel}>
+                                            匯出 Excel (.xlsx)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={exportToPdf}>
+                                            匯出 PDF (.pdf)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                                 <Button size="sm" variant="outline" onClick={() => { const id = Array.from(selected)[0]; if (id) router.push(`/work-file/${id}/edit`) }} disabled={selected.size !== 1}><Pencil className="w-4 h-4 mr-1" />修改</Button>
                                 <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setDeleteDialogOpen(true)} disabled={selected.size === 0}><Trash2 className="w-4 h-4 mr-1" />刪除</Button>
                                 <Badge variant="outline">{totalCount} 筆</Badge>

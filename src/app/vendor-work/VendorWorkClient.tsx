@@ -3,8 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
 import { motion } from 'framer-motion'
 import {
     Users, Plus, Edit, Trash2, Download, ArrowLeft, RefreshCw
@@ -31,6 +30,10 @@ import { MobileTableCard } from '@/components/MobileTableCard'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { SkeletonTable } from '@/components/SkeletonTable'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
 
 interface VendorWorkClientProps {
     initialData: any[]
@@ -221,18 +224,56 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
             '歸還人員': v.receiver_name || ''
         }))
 
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.json_to_sheet(sheetData)
-
-        // 設定欄寬
-        const wscols = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        ws['!cols'] = wscols
-
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `廠商今日施工_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
-
+        exportToExcelFile(sheetData, '廠商今日施工')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+    }
+
+    const exportToPdf = async () => {
+        const dataToExport = selected.size > 0 ? data.filter(i => selected.has(i.id)) : data
+
+        if (dataToExport.length === 0) {
+            toast({ title: '無資料可匯出', variant: 'destructive' })
+            return
+        }
+
+        const sheetData = dataToExport.map((v, index) => ({
+            '#': index + 1,
+            'ID': v.id,
+            '建立時間': v.created_at ? format(new Date(v.created_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '狀態': v.entry_status === 'arrival' ? '到院' : '離院',
+            '施工日期': v.work_date,
+            '到院時間': v.arrival_time?.slice(0, 5) || '-',
+            '離院時間': v.departure_time?.slice(0, 5) || '-',
+            '廠商名稱': v.vendor_name,
+            '工作證號': v.vendor_badge_id || '',
+            '聯絡人': v.vendor_contact || '',
+            '電話': v.vendor_contact_phone || '',
+            '施工地點': v.location || '',
+            '施工人數': v.head_count || '',
+            '施工內容': v.work_content || '',
+            '備註': v.note || '',
+            '借用動作': v.borrow_action === 'borrow' ? '借物中' : v.borrow_action === 'return' ? '已歸還' : v.borrow_action === 'partial_return' ? '部份未歸還' : '未借物',
+            '借出項目': formatItems(v.borrowed_items) || (v.entry_status === 'departure' ? formatMissingItems(data.find(r => r.id === v.ref_arrival_id), v) : ''),
+            '借出人員': v.lender_name || (v.entry_status === 'departure' ? data.find(r => r.id === v.ref_arrival_id)?.lender_name : '') || '',
+            '歸還項目': formatItems(v.returned_items),
+            '歸還人員': v.receiver_name || ''
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '廠商今日施工項目清單',
+                sheetData,
+                filenamePrefix: '廠商今日施工',
+                orientation: 'landscape',
+                themeColor: [37, 99, 235], // 藍色品牌色
+                excludeColumns: [] // 顯示所有欄位資料
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     return (
@@ -277,9 +318,21 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                 disabled={selected.size === 0}>
                                 <Trash2 className="w-4 h-4 mr-1" /> 刪除
                             </Button>
-                            <Button size="sm" variant="outline" onClick={exportToExcel}>
-                                <Download className="w-4 h-4 mr-1" /> 匯出
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                        <Download className="w-4 h-4 mr-1" /> 匯出
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={exportToExcel}>
+                                        匯出 Excel (.xlsx)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exportToPdf}>
+                                        匯出 PDF (.pdf)
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
                                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                             </Button>

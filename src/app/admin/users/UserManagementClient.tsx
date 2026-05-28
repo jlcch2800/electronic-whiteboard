@@ -10,6 +10,10 @@ import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
@@ -152,7 +156,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         }
     }
 
-    const handleExport = () => {
+    const exportToExcel = () => {
         const dataToExport = selectedId ? filteredUsers.filter(u => u.id === selectedId) : filteredUsers
         if (dataToExport.length === 0) {
             toast({ title: '無資料可匯出', variant: 'destructive' })
@@ -161,6 +165,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
 
         const sheetData = dataToExport.map((u, i) => ({
             '#': i + 1,
+            'ID': u.id,
             '建立時間': format(new Date(u.created_at), 'yyyy-MM-dd HH:mm:ss'),
             '單位': u.unit || '',
             '姓名': u.user_name || '',
@@ -173,15 +178,47 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
             '鎖定至': u.locked_until ? format(new Date(u.locked_until), 'yyyy-MM-dd HH:mm:ss') : ''
         }))
 
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.json_to_sheet(sheetData)
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        XLSX.utils.book_append_sheet(wb, ws, '帳號清單')
-
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `帳號清單_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
-
+        exportToExcelFile(sheetData, '帳號清單')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
+    }
+
+    const exportToPdf = async () => {
+        const dataToExport = selectedId ? filteredUsers.filter(u => u.id === selectedId) : filteredUsers
+        if (dataToExport.length === 0) {
+            toast({ title: '無資料可匯出', variant: 'destructive' })
+            return
+        }
+
+        const sheetData = dataToExport.map((u, i) => ({
+            '#': i + 1,
+            'ID': u.id,
+            '建立時間': format(new Date(u.created_at), 'yyyy-MM-dd HH:mm:ss'),
+            '單位': u.unit || '',
+            '姓名': u.user_name || '',
+            '帳號': u.user_account || '',
+            '群組': u.role === 'admin' ? 'Admin' : 'Staff',
+            'Email': u.email || '',
+            '狀態': u.is_active ? '啟用' : '停用',
+            '失敗計次': u.failed_attempts || 0,
+            '最後失敗時間': u.last_failed_at ? format(new Date(u.last_failed_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '鎖定至': u.locked_until ? format(new Date(u.locked_until), 'yyyy-MM-dd HH:mm:ss') : ''
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '使用者帳號清單',
+                sheetData,
+                filenamePrefix: '帳號清單',
+                orientation: 'landscape',
+                themeColor: [75, 85, 99], // 鐵灰色品牌色
+                excludeColumns: ['ID', '建立時間']
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     const filteredUsers = users.filter(user => {
@@ -259,9 +296,21 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                         </div>
 
                         <div className="flex items-center gap-2 flex-wrap">
-                            <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none">
-                                <Download className="w-4 h-4 mr-1" /> 匯出
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none text-white">
+                                        <Download className="w-4 h-4 mr-1" /> 匯出
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={exportToExcel}>
+                                        匯出 Excel (.xlsx)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exportToPdf}>
+                                        匯出 PDF (.pdf)
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 flex-1 md:flex-none">
                                 <Plus className="w-4 h-4 mr-1" /> 新增帳號
                             </Button>

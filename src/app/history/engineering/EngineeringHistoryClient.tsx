@@ -5,8 +5,11 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, subDays } from 'date-fns'
 import { motion } from 'framer-motion'
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
 import {
     HardHat, ArrowLeft, Search, ChevronLeft, ChevronRight,
     RefreshCw, Download, Filter
@@ -146,9 +149,8 @@ export default function EngineeringHistoryClient() {
     // handleSearch 已經不需要，改為偵測關鍵字變動
 
     // 匯出 Excel
-    const handleExport = async () => {
+    const getExportData = async (): Promise<EngineeringHistoryRecord[]> => {
         let dataToExport: EngineeringHistoryRecord[] = []
-
         if (selected.size > 0) {
             dataToExport = data.filter(r => selected.has(r.id))
         } else {
@@ -166,7 +168,11 @@ export default function EngineeringHistoryClient() {
             const { data: allData } = await query
             dataToExport = allData || []
         }
+        return dataToExport
+    }
 
+    const handleExport = async () => {
+        const dataToExport = await getExportData()
         if (dataToExport.length === 0) {
             toast({ title: '無資料可匯出', variant: 'destructive' })
             return
@@ -186,17 +192,45 @@ export default function EngineeringHistoryClient() {
             '備註': row.note || ''
         }))
 
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.json_to_sheet(sheetData)
-        const wscols = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        ws['!cols'] = wscols
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `工務施工歷史_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
-
-
+        exportToExcelFile(sheetData, '工務施工歷史')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+    }
+
+    const handleExportPdf = async () => {
+        const dataToExport = await getExportData()
+        if (dataToExport.length === 0) {
+            toast({ title: '無資料可匯出', variant: 'destructive' })
+            return
+        }
+
+        const sheetData = dataToExport.map((row, index) => ({
+            '#': index + 1,
+            'ID': row.id,
+            '建立時間': row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '開始日期': row.start_date,
+            '結束日期': row.end_date,
+            '時間': row.time?.slice(0, 5) || '-',
+            '廠商': row.vendor_name,
+            '單位': row.unit,
+            '負責人': row.engineering_contact,
+            '施工內容': row.work_content || '',
+            '備註': row.note || ''
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '工務施工歷史記錄清單',
+                sheetData,
+                filenamePrefix: '工務施工歷史',
+                orientation: 'landscape',
+                themeColor: [217, 119, 6] // 琥珀色品牌色
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     return (
@@ -235,7 +269,19 @@ export default function EngineeringHistoryClient() {
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、單位、施工內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-60" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                                <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline"><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={handleExport}>
+                                            匯出 Excel (.xlsx)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={handleExportPdf}>
+                                            匯出 PDF (.pdf)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                                 <Badge variant="outline">{totalCount} 筆</Badge>
                             </div>
                         </div>

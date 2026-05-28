@@ -5,8 +5,11 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, subDays } from 'date-fns'
 import { motion } from 'framer-motion'
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
 import { FileClock, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw, Download, Filter } from 'lucide-react'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
@@ -94,24 +97,58 @@ export default function PendingHistoryClient() {
 
     useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate])
 
-    const handleExport = async () => {
+    const getExportData = async (): Promise<PendingHistoryRecord[]> => {
         let dataToExport: PendingHistoryRecord[] = []
-        if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
-        else {
+        if (selected.size > 0) {
+            dataToExport = data.filter(r => selected.has(r.id))
+        } else {
             let q = supabase.from('pending_work_history').select('*').gte('start_date', startDate).lte('start_date', endDate).order('start_date', { ascending: false })
             if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,unit.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,note.ilike.%${keyword}%`)
-            const { data: allData } = await q; dataToExport = allData || []
+            const { data: allData } = await q
+            dataToExport = allData || []
         }
+        return dataToExport
+    }
+
+    const handleExport = async () => {
+        const dataToExport = await getExportData()
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '', '開始日期': r.start_date, '結束日期': r.end_date, '時間': r.time || '', '廠商': r.vendor_name, '單位': r.unit, '負責人': r.engineering_contact, '施工內容': r.work_content || '', '備註': r.note || '' }))
-        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(sheetData)
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `待處理工作歷史_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+        exportToExcelFile(sheetData, '待處理工作歷史')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+    }
+
+    const handleExportPdf = async () => {
+        const dataToExport = await getExportData()
+        if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
+        const sheetData = dataToExport.map((r, i) => ({
+            '#': i + 1,
+            'ID': r.id,
+            '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '開始日期': r.start_date,
+            '結束日期': r.end_date,
+            '時間': r.time?.slice(0, 5) || '-',
+            '廠商': r.vendor_name,
+            '單位': r.unit,
+            '負責人': r.engineering_contact,
+            '施工內容': r.work_content || '',
+            '備註': r.note || ''
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '待處理工作歷史記錄清單',
+                sheetData,
+                filenamePrefix: '待處理工作歷史',
+                orientation: 'landscape',
+                themeColor: [124, 58, 237] // 紫色品牌色
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     return (
@@ -139,7 +176,19 @@ export default function PendingHistoryClient() {
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、單位、施工內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-60" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                                <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline"><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={handleExport}>
+                                            匯出 Excel (.xlsx)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={handleExportPdf}>
+                                            匯出 PDF (.pdf)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                                 <Badge variant="outline">{totalCount} 筆</Badge>
                             </div>
                         </div>

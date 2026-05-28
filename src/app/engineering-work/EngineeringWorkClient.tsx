@@ -3,8 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
 import { motion } from 'framer-motion'
 import {
     HardHat, Plus, Edit, Trash2, Download, ArrowLeft, RefreshCw, Search
@@ -31,6 +30,10 @@ import { useTableData } from '@/hooks/useTableData'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { SkeletonTable } from '@/components/SkeletonTable'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
 
 interface EngineeringWorkClientProps {
     initialData: any[]
@@ -133,18 +136,46 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
             '備註': item.note || ''
         }))
 
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.json_to_sheet(sheetData)
-
-        // 設定欄寬
-        const wscols = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        ws['!cols'] = wscols
-
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `工務今日施工_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
-
+        exportToExcelFile(sheetData, '工務今日施工')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+    }
+
+    const exportToPdf = async () => {
+        const dataToExport = selected.size > 0 ? data.filter(i => selected.has(i.id)) : data
+
+        if (dataToExport.length === 0) {
+            toast({ title: '無資料可匯出', variant: 'destructive' })
+            return
+        }
+
+        const sheetData = dataToExport.map((item, index) => ({
+            '#': index + 1,
+            'ID': item.id,
+            '建立時間': item.created_at ? format(new Date(item.created_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '開始日期': item.start_date,
+            '結束日期': item.end_date,
+            '時間': item.time?.slice(0, 5) || '-',
+            '廠商': item.vendor_name,
+            '單位': item.unit || '',
+            '負責人': item.engineering_contact || '',
+            '內容': item.work_content || '',
+            '備註': item.note || ''
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '工務今日施工項目清單',
+                sheetData,
+                filenamePrefix: '工務今日施工',
+                orientation: 'landscape',
+                themeColor: [217, 119, 6] // 琥珀色品牌色
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     const tableData = useTableData(data, 'start_date')
@@ -191,9 +222,21 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                 disabled={selected.size === 0}>
                                 <Trash2 className="w-4 h-4 mr-1" /> 刪除
                             </Button>
-                            <Button size="sm" variant="outline" onClick={exportToExcel}>
-                                <Download className="w-4 h-4 mr-1" /> 匯出
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="outline">
+                                        <Download className="w-4 h-4 mr-1" /> 匯出
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={exportToExcel}>
+                                        匯出 Excel (.xlsx)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exportToPdf}>
+                                        匯出 PDF (.pdf)
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
                                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                             </Button>

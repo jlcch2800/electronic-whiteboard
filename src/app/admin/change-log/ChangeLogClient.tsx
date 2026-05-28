@@ -21,6 +21,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast'
 import { formatItemsDisplay } from '@/lib/utils'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 
 interface ChangeLogClientProps {
     initialLogs: any[]
@@ -277,7 +281,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
     const toggleSelectAll = () => { selected.size === paginatedLogs.length && paginatedLogs.length > 0 ? setSelected(new Set()) : setSelected(new Set(paginatedLogs.map(i => i.id))) }
 
     // 匯出 Excel
-    const handleExport = () => {
+    const exportToExcel = () => {
         const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
 
@@ -297,17 +301,47 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             '歸還項目': formatLogValue('returned_items', parseJson(r.new_data).returned_items || parseJson(r.old_data).returned_items),
         }))
 
-        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(sheetData)
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `系統異動記錄_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+        exportToExcelFile(sheetData, '系統異動記錄')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
     }
 
-    // 匯出單筆明細
-    const handleExportDetail = (log: any) => {
+    // 匯出 PDF
+    const exportToPdf = async () => {
+        const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
+        if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
+
+        const sheetData = dataToExport.map((r, i) => ({
+            '#': i + 1,
+            'ID': r.id,
+            '建立時間': format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss'),
+            '日期': r.date,
+            '單位': r.user_unit || '',
+            '姓名': r.user_name || '',
+            '帳號': r.user_account || '',
+            '動作': r.action_type,
+            '資料表': getTranslatedTableName(r.modify_table),
+            '記錄ID': r.modify_record_id
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '系統異動記錄清單',
+                sheetData,
+                filenamePrefix: '系統異動記錄',
+                orientation: 'landscape',
+                themeColor: [75, 85, 99], // 鐵灰色品牌色
+                excludeColumns: ['ID', '建立時間']
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
+    }
+
+    // 匯出單筆明細 Excel
+    const handleExportDetailExcel = (log: any) => {
         const aoa: any[][] = [];
 
         // 1. 基本資料
@@ -358,16 +392,72 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             });
         }
 
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        exportAoaToExcelFile(aoa, `異動明細_${log.id.slice(0, 8)}`, '異動明細', [25, 40, 40, 10])
+        toast({ title: 'Excel 匯出成功' })
+    }
 
-        ws['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 40 }, { wch: 10 }];
+    // 匯出單筆明細 PDF (直向 A4, 雙表格, 鐵灰色主題)
+    const handleExportDetailPdf = async (log: any) => {
+        const basicHead = [['欄位', '值']];
+        const basicBody = [
+            ['ID', log.id],
+            ['建立時間', format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')],
+            ['發生日期', log.date],
+            ['使用者單位', log.user_unit || '-'],
+            ['使用者姓名', log.user_name || '-'],
+            ['使用者帳號', log.user_account || '-'],
+            ['操作方式', log.action_type],
+            ['異動資料表', getTranslatedTableName(log.modify_table)],
+            ['異動項目的UUID', log.modify_record_id]
+        ];
 
-        XLSX.utils.book_append_sheet(wb, ws, '異動明細');
+        const oldData = parseJson(log.old_data);
+        const newData = parseJson(log.new_data);
+        const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})])).filter(key => key !== 'building' && key !== 'floor');
 
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `異動明細_${log.id.slice(0, 8)}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
-        toast({ title: '匯出成功' })
+        const sortedKeys = allKeys.sort((a, b) => {
+            const indexA = FIELD_ORDER.indexOf(a);
+            const indexB = FIELD_ORDER.indexOf(b);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return a.localeCompare(b);
+        });
+
+        const comparisonHead = [['欄位', '變更前', '變更後', '是否異動']];
+        const comparisonBody = sortedKeys.map(key => {
+            const oldVal = oldData?.[key];
+            const newVal = newData?.[key];
+            const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal);
+
+            return [
+                FIELD_LABELS[key] || key,
+                formatLogValue(key, oldVal),
+                formatLogValue(key, newVal),
+                isChanged ? '是' : '否'
+            ];
+        });
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '系統異動明細紀錄',
+                filenamePrefix: `異動明細_${log.id.slice(0, 8)}`,
+                orientation: 'portrait', // 直向
+                themeColor: [75, 85, 99], // 鐵灰色品牌色
+                head: basicHead,
+                body: basicBody,
+                secondTable: {
+                    title: '異動資料對比',
+                    head: comparisonHead,
+                    body: comparisonBody
+                }
+            })
+            toast({ title: 'PDF 匯出成功' })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     // 動作類型圖示與顏色
@@ -443,9 +533,21 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                 <Button variant="outline" onClick={fetchLogs} disabled={loading} className="flex-1 md:flex-none">
                                     <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />查詢
                                 </Button>
-                                <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none">
-                                    <Download className="w-4 h-4 mr-2" /> 匯出
-                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none text-white">
+                                            <Download className="w-4 h-4 mr-2" /> 匯出
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={exportToExcel}>
+                                            匯出 Excel (.xlsx)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={exportToPdf}>
+                                            匯出 PDF (.pdf)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                     </div>
@@ -526,9 +628,21 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                         <DialogHeader>
                                                             <DialogTitle className="flex items-center justify-between pr-8">
                                                                 異動明細
-                                                                <Button size="sm" onClick={() => handleExportDetail(log)} className="bg-green-600 hover:bg-green-700">
-                                                                    <Download className="w-4 h-4 mr-1" />匯出
-                                                                </Button>
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                                                            <Download className="w-4 h-4 mr-1" />匯出
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end">
+                                                                        <DropdownMenuItem onClick={() => handleExportDetailExcel(log)}>
+                                                                            匯出 Excel (.xlsx)
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => handleExportDetailPdf(log)}>
+                                                                            匯出 PDF (.pdf)
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
                                                             </DialogTitle>
                                                             <DialogDescription>
                                                                 異動時間：{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')} | 操作者：{log.user_name}
@@ -654,9 +768,21 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                     <DialogHeader>
                                                         <DialogTitle className="flex items-center justify-between pr-8">
                                                             異動明細
-                                                            <Button size="sm" onClick={() => handleExportDetail(log)} className="bg-green-600 hover:bg-green-700">
-                                                                <Download className="w-4 h-4 mr-1" />匯出
-                                                            </Button>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                                                        <Download className="w-4 h-4 mr-1" />匯出
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem onClick={() => handleExportDetailExcel(log)}>
+                                                                        匯出 Excel (.xlsx)
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleExportDetailPdf(log)}>
+                                                                        匯出 PDF (.pdf)
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
                                                         </DialogTitle>
                                                         <DialogDescription>
                                                             異動時間：{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')} | 操作者：{log.user_name}

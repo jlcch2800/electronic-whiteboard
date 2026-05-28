@@ -14,6 +14,10 @@ import {
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SkeletonTable } from '@/components/SkeletonTable'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 
 import { createClient } from '@/lib/supabase/client'
 import { formatItemsDisplay } from '@/lib/utils'
@@ -173,8 +177,7 @@ export default function VendorHistoryClient() {
     // handleSearch 已經不需要，改為偵測關鍵字變動
 
     // 匯出 Excel
-    const handleExport = async () => {
-        // 如果有選取，匯出選取的；否則取得全部符合篩選條件的資料
+    const exportToExcel = async () => {
         let dataToExport: VendorHistoryRecord[] = []
 
         if (selected.size > 0) {
@@ -225,17 +228,76 @@ export default function VendorHistoryClient() {
             '歸還人員': row.receiver_name || ''
         }))
 
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.json_to_sheet(sheetData)
-        const wscols = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        ws['!cols'] = wscols
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1')
-
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `廠商施工歷史_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
-
-
+        exportToExcelFile(sheetData, '廠商施工歷史')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+    }
+
+    // 匯出 PDF
+    const exportToPdf = async () => {
+        let dataToExport: VendorHistoryRecord[] = []
+
+        if (selected.size > 0) {
+            dataToExport = data.filter(r => selected.has(r.id))
+        } else {
+            // Fetch all data for export
+            let query = supabase
+                .from('vendor_today_work_history')
+                .select('*')
+                .gte('work_date', startDate)
+                .lte('work_date', endDate)
+                .order('work_date', { ascending: false })
+
+            if (keyword.trim()) {
+                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,location.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
+            }
+
+            const { data: allData } = await query
+            dataToExport = allData || []
+        }
+
+        if (dataToExport.length === 0) {
+            toast({ title: '無資料可匯出', variant: 'destructive' })
+            return
+        }
+
+        const sheetData = dataToExport.map((row, index) => ({
+            '#': index + 1,
+            'ID': row.id,
+            '建立時間': row.created_at ? format(new Date(row.created_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '狀態': row.entry_status === 'arrival' ? '到院' : '離院',
+            '施工日期': row.work_date,
+            '到院時間': row.arrival_time || '',
+            '離院時間': row.departure_time || '',
+            '廠商名稱': row.vendor_name,
+            '廠商工作證號': row.vendor_badge_id || '',
+            '廠商負責人員姓名': row.vendor_contact || '',
+            '廠商負責人員電話': row.vendor_contact_phone || '',
+            '施工地點': row.location || '',
+            '施工人數': row.head_count || '',
+            '施工內容': row.work_content || '',
+            '備註': row.note || '',
+            '借用動作': row.borrow_action === 'borrow' ? '借物中' : row.borrow_action === 'return' ? '已歸還' : row.borrow_action === 'partial_return' ? '部份未歸還' : '未借物',
+            '借出項目': formatItems(row.borrowed_items),
+            '借出人員': row.lender_name || '',
+            '歸還項目': formatItems(row.returned_items),
+            '歸還人員': row.receiver_name || ''
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '廠商施工歷史記錄列表',
+                sheetData,
+                filenamePrefix: '廠商施工歷史',
+                orientation: 'landscape',
+                themeColor: [37, 99, 235], // 藍色品牌色
+                excludeColumns: []
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     return (
@@ -276,8 +338,22 @@ export default function VendorHistoryClient() {
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商名稱、施工內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-60" /></div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                                <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
+                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                            <Download className="w-4 h-4 mr-1" /> 匯出
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={exportToExcel}>
+                                            匯出 Excel (.xlsx)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={exportToPdf}>
+                                            匯出 PDF (.pdf)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                                 <Badge variant="outline">{totalCount} 筆</Badge>
                             </div>
                         </div>

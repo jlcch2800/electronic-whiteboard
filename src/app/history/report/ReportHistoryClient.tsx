@@ -11,6 +11,10 @@ import { ClipboardCheck, ArrowLeft, Search, ChevronLeft, ChevronRight, RefreshCw
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import { SkeletonTable } from '@/components/SkeletonTable'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -104,7 +108,7 @@ export default function ReportHistoryClient() {
 
     useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate, statusFilter])
 
-    const handleExport = async () => {
+    const exportToExcel = async () => {
         let dataToExport: ReportHistoryRecord[] = []
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
@@ -115,14 +119,51 @@ export default function ReportHistoryClient() {
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '', '日期': r.report_date, '時間': r.report_time || '', '廠商': r.vendor_name, '地點': r.work_location, '負責人': r.engineering_contact, '狀態': statusLabels[r.work_status]?.text || r.work_status, '施工內容': r.work_content || '', '備註': r.note || '' }))
-        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(sheetData)
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `施工回報歷史_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+        
+        exportToExcelFile(sheetData, '施工回報歷史')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+    }
+
+    const exportToPdf = async () => {
+        let dataToExport: ReportHistoryRecord[] = []
+        if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
+        else {
+            let q = supabase.from('work_report_history').select('*').gte('report_date', startDate).lte('report_date', endDate).order('report_date', { ascending: false })
+            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
+            const { data: allData } = await q; dataToExport = allData || []
+        }
+        if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
+        
+        const sheetData = dataToExport.map((r, i) => ({
+            '#': i + 1,
+            'ID': r.id,
+            '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '',
+            '日期': r.report_date,
+            '時間': r.report_time?.slice(0, 5) || '-',
+            '廠商': r.vendor_name,
+            '地點': r.work_location,
+            '負責人': r.engineering_contact,
+            '狀態': statusLabels[r.work_status]?.text || r.work_status,
+            '施工內容': r.work_content || '',
+            '備註': r.note || ''
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '施工回報歷史記錄列表',
+                sheetData,
+                filenamePrefix: '施工回報歷史',
+                orientation: 'landscape',
+                themeColor: [16, 185, 129], // 翠綠色品牌色
+                excludeColumns: ['ID', '建立時間']
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     return (
@@ -151,7 +192,21 @@ export default function ReportHistoryClient() {
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、地點、施工內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-60" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                                <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-1" />匯出</Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                            <Download className="w-4 h-4 mr-1" /> 匯出
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={exportToExcel}>
+                                            匯出 Excel (.xlsx)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={exportToPdf}>
+                                            匯出 PDF (.pdf)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                                 <Badge variant="outline">{totalCount} 筆</Badge>
                             </div>
                         </div>

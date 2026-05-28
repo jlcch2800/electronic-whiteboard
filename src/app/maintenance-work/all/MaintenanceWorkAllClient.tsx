@@ -3,8 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
 import { motion } from 'framer-motion'
 import { History, Download, ArrowLeft, Search, CheckCircle2, ChevronDown, ChevronUp, RotateCcw, Activity, Plus, Trash2, Edit2, Eye } from 'lucide-react'
 import { AdvancedSearchFilter, SearchFilters, defaultFilters } from '@/components/AdvancedSearchFilter'
@@ -31,6 +30,10 @@ import { MobileTableCard } from '@/components/MobileTableCard'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { EmptyState } from '@/components/EmptyState'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
+} from "@/components/ui/dropdown-menu"
 
 // 完整的欄位中文對照表（供 Excel 匯出用）
 const EXPORT_LABELS: Record<string, string> = {
@@ -256,9 +259,8 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         }
     }
 
-    // 匯出 Excel
-    const exportToExcel = async () => {
-        setLoading(true)
+    // 取得匯出用資料集
+    const getExportData = async (): Promise<any[] | null> => {
         let dataToExport = []
         if (selected.size > 0) {
             dataToExport = data.filter(item => selected.has(item.id))
@@ -286,20 +288,31 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                 else if (activeFilters.amount === 'gt20k') query = query.gt('amount', 20000)
                 if (sort) query = query.order(sort.key, { ascending: sort.direction === 'asc' })
                 else query = query.order('created_at', { ascending: false })
+                
                 const { data: allResult, error } = await query
                 if (error) throw error
                 dataToExport = allResult || []
             } catch (err: any) {
                 toast({ title: '取得匯出資料失敗', description: err.message, variant: 'destructive' })
-                setLoading(false)
-                return
+                return null
             }
         }
         if (dataToExport.length === 0) {
             toast({ title: '無資料可匯出', variant: 'destructive' })
+            return null
+        }
+        return dataToExport
+    }
+
+    // 匯出 Excel
+    const exportToExcel = async () => {
+        setLoading(true)
+        const dataToExport = await getExportData()
+        if (!dataToExport) {
             setLoading(false)
             return
         }
+
         const sheetData = dataToExport.map((v: any, index: number) => {
             const row: any = { '#': index + 1 }
             for (const key of Object.keys(EXPORT_LABELS)) {
@@ -315,14 +328,56 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
             }
             return row
         })
-        const wb = XLSX.utils.book_new()
-        const ws = XLSX.utils.json_to_sheet(sheetData)
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        XLSX.utils.book_append_sheet(wb, ws, '維修單總表')
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `維修單總表_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
+
+        exportToExcelFile(sheetData, '維修單總表')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
         setLoading(false)
+    }
+
+    // 匯出 PDF
+    const exportToPdf = async () => {
+        setLoading(true)
+        const dataToExport = await getExportData()
+        if (!dataToExport) {
+            setLoading(false)
+            return
+        }
+
+        const sheetData = dataToExport.map((v: any, index: number) => {
+            const row: any = { '#': index + 1 }
+            for (const key of Object.keys(EXPORT_LABELS)) {
+                let cellValue = v[key]
+                if (key === 'created_at' && cellValue) {
+                    try {
+                        cellValue = format(new Date(cellValue), 'yyyy-MM-dd HH:mm:ss')
+                    } catch (e) {
+                        cellValue = String(cellValue)
+                    }
+                } else if (key === 'amount' && cellValue) {
+                    cellValue = `$${Number(cellValue).toLocaleString()}`
+                }
+                row[EXPORT_LABELS[key]] = cellValue || ''
+            }
+            return row
+        })
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '工務維修單總表記錄清單',
+                sheetData,
+                filenamePrefix: '維修單總表',
+                orientation: 'landscape',
+                themeColor: [234, 88, 12], // 橘色 brand color
+                excludeColumns: []
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -349,10 +404,22 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                         <Eye className="w-4 h-4 sm:mr-2" />
                         <span className="hidden sm:inline">檢視明細</span>
                     </Button>
-                    <Button variant="outline" size="sm" onClick={exportToExcel} disabled={loading} className="px-2 sm:px-4">
-                        <Download className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">匯出 Excel</span>
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" disabled={loading} className="px-2 sm:px-4">
+                                <Download className="w-4 h-4 sm:mr-2" />
+                                <span className="hidden sm:inline">匯出</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={exportToExcel}>
+                                匯出 Excel (.xlsx)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={exportToPdf}>
+                                匯出 PDF (.pdf)
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                         variant="outline"
                         size="sm"

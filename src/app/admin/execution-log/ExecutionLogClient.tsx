@@ -20,6 +20,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
+import { exportToExcelFile, exportToPdfFile, exportAoaToExcelFile } from '@/lib/export-utils'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 
 interface ExecutionLogClientProps { initialLogs: any[] }
 
@@ -162,22 +166,50 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
 
     const toggleSelectAll = () => { selected.size === paginatedLogs.length && paginatedLogs.length > 0 ? setSelected(new Set()) : setSelected(new Set(paginatedLogs.map(i => i.id))) }
 
-    const handleExport = () => {
+    // 匯出 Excel
+    const exportToExcel = () => {
         const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss'), '日期': r.date, '資料表': getTranslatedTableName(r.table_name), '記錄等級': r.log_level, '訊息': translateMessage(r.message) || '' }))
-        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(sheetData)
-        ws['!cols'] = Object.keys(sheetData[0] || {}).map(() => ({ wch: 15 }))
-        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `系統執行記錄_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
-
+        
+        exportToExcelFile(sheetData, '系統執行記錄')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
     }
 
-    // 匯出單筆明細
-    const handleExportDetail = (log: any) => {
+    // 匯出 PDF
+    const exportToPdf = async () => {
+        const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
+        if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
+
+        const sheetData = dataToExport.map((r, i) => ({
+            '#': i + 1,
+            'ID': r.id,
+            '建立時間': format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss'),
+            '日期': r.date,
+            '資料表': getTranslatedTableName(r.table_name),
+            '記錄等級': r.log_level,
+            '訊息': translateMessage(r.message) || ''
+        }))
+
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
+
+        try {
+            await exportToPdfFile({
+                title: '系統執行記錄清單',
+                sheetData,
+                filenamePrefix: '系統執行記錄',
+                orientation: 'landscape',
+                themeColor: [75, 85, 99], // 鐵灰色品牌色
+                excludeColumns: ['ID', '建立時間']
+            })
+            toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
+    }
+
+    // 匯出單筆明細 Excel
+    const handleExportDetailExcel = (log: any) => {
         const parseJson = (data: any) => {
             if (!data) return {}
             if (typeof data === 'string') { try { return JSON.parse(data) } catch { return {} } }
@@ -276,30 +308,102 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
             }
         }
 
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        exportAoaToExcelFile(aoa, `執行記錄明細_${log.id.slice(0, 8)}`, '執行記錄明細')
+        toast({ title: 'Excel 匯出成功' });
+    }
 
-        // 設定欄寬 (簡易設定)
-        // 對於 Array Snapshot 可能欄位較多，這裡做一個通用的寬度設定
-        // 計算最大欄數
-        const maxCols = aoa.reduce((max, row) => Math.max(max, row.length), 0);
-        const cols = [];
-        for (let i = 0; i < maxCols; i++) {
-            cols.push({ wch: 20 }); // Default width
+    // 匯出單筆明細 PDF (直向/橫向 A4, 雙表格, 鐵灰色主題)
+    const handleExportDetailPdf = async (log: any) => {
+        const parseJson = (data: any) => {
+            if (!data) return null
+            if (typeof data === 'string') { try { return JSON.parse(data) } catch { return null } }
+            return data
         }
-        // 特別調整前幾欄 (如果符合 Object Comparison 格式)
-        if (aoa.length > 0 && aoa[0].length === 2 && cols.length >= 2) {
-            cols[0] = { wch: 25 };
-            cols[1] = { wch: 40 };
+
+        const basicHead = [['欄位', '值']];
+        const basicBody = [
+            ['ID', log.id],
+            ['建立時間', format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')],
+            ['日期', log.date],
+            ['資料表', getTranslatedTableName(log.table_name)],
+            ['記錄等級', log.log_level],
+            ['訊息', translateMessage(log.message) || '-']
+        ];
+
+        const oldData = parseJson(log.old_data);
+        const newData = parseJson(log.new_data);
+
+        let comparisonHead: string[][] = [];
+        let comparisonBody: string[][] = [];
+        let isArraySnapshot = Array.isArray(newData);
+
+        if (log.old_data || log.new_data) {
+            if (isArraySnapshot) {
+                const allKeys = Array.from(new Set(newData.flatMap((item: any) => Object.keys(item))));
+                const sortedKeys = allKeys.sort((a, b) => {
+                    const indexA = FIELD_ORDER.indexOf(a);
+                    const indexB = FIELD_ORDER.indexOf(b);
+                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                    if (indexA !== -1) return -1;
+                    if (indexB !== -1) return 1;
+                    return a.localeCompare(b);
+                });
+
+                comparisonHead = [['#', ...sortedKeys.map(key => FIELD_LABELS[key] || key)]];
+                comparisonBody = newData.map((item: any, idx: number) => [
+                    String(idx + 1),
+                    ...sortedKeys.map(key => {
+                        const val = item[key];
+                        return val !== undefined && val !== null ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : '-';
+                    })
+                ]);
+            } else {
+                const allKeys = Array.from(new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]));
+                const sortedKeys = allKeys.sort((a, b) => {
+                    const indexA = FIELD_ORDER.indexOf(a);
+                    const indexB = FIELD_ORDER.indexOf(b);
+                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                    if (indexA !== -1) return -1;
+                    if (indexB !== -1) return 1;
+                    return a.localeCompare(b);
+                });
+
+                comparisonHead = [['欄位', '變更前', '變更後', '是否異動']];
+                comparisonBody = sortedKeys.map(key => {
+                    const oldVal = oldData?.[key];
+                    const newVal = newData?.[key];
+                    const isChanged = JSON.stringify(oldVal) !== JSON.stringify(newVal);
+
+                    return [
+                        FIELD_LABELS[key] || key,
+                        oldVal !== undefined ? JSON.stringify(oldVal) : '-',
+                        newVal !== undefined ? JSON.stringify(newVal) : '-',
+                        isChanged ? '是' : '否'
+                    ];
+                });
+            }
         }
-        ws['!cols'] = cols;
 
-        XLSX.utils.book_append_sheet(wb, ws, '執行記錄明細');
+        toast({ title: '正在準備匯出 PDF...', description: '正在載入中文字型，請稍候...' })
 
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-        saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `執行記錄明細_${log.id.slice(0, 8)}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`)
-
-        toast({ title: '匯出成功' });
+        try {
+            await exportToPdfFile({
+                title: '系統執行記錄明細',
+                filenamePrefix: `執行記錄明細_${log.id.slice(0, 8)}`,
+                orientation: isArraySnapshot ? 'landscape' : 'portrait', // 資料快照一般較寬，使用橫向；對比使用直向
+                themeColor: [75, 85, 99], // 鐵灰色品牌色
+                head: basicHead,
+                body: basicBody,
+                secondTable: (log.old_data || log.new_data) ? {
+                    title: isArraySnapshot ? '執行資料快照' : '異動資料對比',
+                    head: comparisonHead,
+                    body: comparisonBody
+                } : undefined
+            })
+            toast({ title: 'PDF 匯出成功' })
+        } catch (error: any) {
+            toast({ title: 'PDF 匯出失敗', description: error.message, variant: 'destructive' })
+        }
     }
 
     const getLevelBadge = (level: string) => {
@@ -353,9 +457,21 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                 />
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button onClick={handleExport} className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none">
-                                    <Download className="w-4 h-4 mr-2" /> 匯出
-                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button className="bg-green-600 hover:bg-green-700 flex-1 md:flex-none text-white">
+                                            <Download className="w-4 h-4 mr-2" /> 匯出
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={exportToExcel}>
+                                            匯出 Excel (.xlsx)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={exportToPdf}>
+                                            匯出 PDF (.pdf)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                                 <Button variant="outline" size="icon" onClick={fetchLogs} disabled={loading} className="hidden md:flex">
                                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                                 </Button>
@@ -399,9 +515,21 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                         <DialogHeader>
                                                             <DialogTitle className="flex items-center justify-between pr-8">
                                                                 執行記錄明細
-                                                                <Button size="sm" onClick={() => handleExportDetail(log)} className="bg-green-600 hover:bg-green-700">
-                                                                    <Download className="w-4 h-4 mr-1" />匯出
-                                                                </Button>
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                                                            <Download className="w-4 h-4 mr-1" />匯出
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end">
+                                                                        <DropdownMenuItem onClick={() => handleExportDetailExcel(log)}>
+                                                                            匯出 Excel (.xlsx)
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => handleExportDetailPdf(log)}>
+                                                                            匯出 PDF (.pdf)
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
                                                             </DialogTitle>
                                                             <DialogDescription>
                                                                 執行時間：{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}
@@ -561,9 +689,21 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                     <DialogHeader>
                                                         <DialogTitle className="flex items-center justify-between pr-8">
                                                             執行記錄明細
-                                                            <Button size="sm" onClick={() => handleExportDetail(log)} className="bg-green-600 hover:bg-green-700">
-                                                                <Download className="w-4 h-4 mr-1" />匯出
-                                                            </Button>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                                                        <Download className="w-4 h-4 mr-1" />匯出
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem onClick={() => handleExportDetailExcel(log)}>
+                                                                        匯出 Excel (.xlsx)
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleExportDetailPdf(log)}>
+                                                                        匯出 PDF (.pdf)
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
                                                         </DialogTitle>
                                                         <DialogDescription>
                                                             執行時間：{format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss')}
