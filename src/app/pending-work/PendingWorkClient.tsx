@@ -365,6 +365,31 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
 
                                 {/* 手機版卡片列表 */}
                                 <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                    {tableData.paginatedData.length > 0 && (
+                                        <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="mobile-select-all"
+                                                    checked={selected.size === tableData.paginatedData.length && tableData.paginatedData.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                />
+                                                <label htmlFor="mobile-select-all" className="text-sm font-medium cursor-pointer select-none">
+                                                    全選({selected.size}/{tableData.paginatedData.length})
+                                                </label>
+                                            </div>
+                                            {selected.size > 0 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setSelected(new Set())}
+                                                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                                >
+                                                    取消選擇
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {tableData.paginatedData.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground">
                                             查無待處理工作

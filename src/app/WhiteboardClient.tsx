@@ -587,6 +587,31 @@ export default function WhiteboardClient({
 
                                 {/* 手機版廠商卡片列表 */}
                                 <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                     {vendorTable.paginatedData.length > 0 && (
+                                         <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm mb-3">
+                                             <div className="flex items-center gap-2">
+                                                 <Checkbox
+                                                     id="mobile-vendor-select-all"
+                                                     checked={vendorSelected.size === vendorTable.paginatedData.length && vendorTable.paginatedData.length > 0}
+                                                     onCheckedChange={() => toggleSelectAll(vendorTable.paginatedData, vendorSelected, setVendorSelected)}
+                                                 />
+                                                 <label htmlFor="mobile-vendor-select-all" className="text-sm font-medium cursor-pointer select-none">
+                                                     全選({vendorSelected.size}/{vendorTable.paginatedData.length})
+                                                 </label>
+                                             </div>
+                                             {vendorSelected.size > 0 && (
+                                                 <Button
+                                                     variant="ghost"
+                                                     size="sm"
+                                                     onClick={() => setVendorSelected(new Set())}
+                                                     className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                                 >
+                                                     取消選擇
+                                                 </Button>
+                                             )}
+                                         </div>
+                                     )}
+
                                     {vendorTable.paginatedData.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground border rounded-lg bg-white/50 border-border border-dashed">
                                             目前無廠商施工項目
@@ -760,6 +785,31 @@ export default function WhiteboardClient({
 
                                 {/* 手機版工務卡片列表 */}
                                 <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                     {engTable.paginatedData.length > 0 && (
+                                         <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm mb-3">
+                                             <div className="flex items-center gap-2">
+                                                 <Checkbox
+                                                     id="mobile-eng-select-all"
+                                                     checked={engSelected.size === engTable.paginatedData.length && engTable.paginatedData.length > 0}
+                                                     onCheckedChange={() => toggleSelectAll(engTable.paginatedData, engSelected, setEngSelected)}
+                                                 />
+                                                 <label htmlFor="mobile-eng-select-all" className="text-sm font-medium cursor-pointer select-none">
+                                                     全選({engSelected.size}/{engTable.paginatedData.length})
+                                                 </label>
+                                             </div>
+                                             {engSelected.size > 0 && (
+                                                 <Button
+                                                     variant="ghost"
+                                                     size="sm"
+                                                     onClick={() => setEngSelected(new Set())}
+                                                     className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                                 >
+                                                     取消選擇
+                                                 </Button>
+                                             )}
+                                         </div>
+                                     )}
+
                                     {engTable.paginatedData.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground border rounded-lg bg-white/50 border-border border-dashed">
                                             目前無工務施工項目
@@ -915,6 +965,31 @@ export default function WhiteboardClient({
 
                                 {/* 手機版待處理卡片列表 */}
                                 <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                    {pendingTable.paginatedData.length > 0 && (
+                                        <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="mobile-pending-select-all"
+                                                    checked={pendingSelected.size === pendingTable.paginatedData.length && pendingTable.paginatedData.length > 0}
+                                                    onCheckedChange={() => toggleSelectAll(pendingTable.paginatedData, pendingSelected, setPendingSelected)}
+                                                />
+                                                <label htmlFor="mobile-pending-select-all" className="text-sm font-medium cursor-pointer select-none">
+                                                    全選({pendingSelected.size}/{pendingTable.paginatedData.length})
+                                                </label>
+                                            </div>
+                                            {pendingSelected.size > 0 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setPendingSelected(new Set())}
+                                                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                                >
+                                                    取消選擇
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {pendingTable.paginatedData.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground border rounded-lg bg-white/50 border-border border-dashed">
                                             目前無待辦事項

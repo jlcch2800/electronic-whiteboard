@@ -437,6 +437,31 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
 
                         {/* 行動版卡片 */}
                         <div className="grid grid-cols-1 gap-4 md:hidden">
+                            {data.length > 0 && (
+                                <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="mobile-select-all"
+                                            checked={selected.size === data.length && data.length > 0}
+                                            onCheckedChange={toggleSelectAll}
+                                        />
+                                        <Label htmlFor="mobile-select-all" className="text-sm font-medium cursor-pointer select-none">
+                                            全選({selected.size}/{data.length})
+                                        </Label>
+                                    </div>
+                                    {selected.size > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setSelected(new Set())}
+                                            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                        >
+                                            取消選擇
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+
                             {data.map((item) => (
                                 <MobileTableCard
                                     key={item.id}

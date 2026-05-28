@@ -453,6 +453,39 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
 
                         {/* 手機版卡片列表 */}
                         <div className="md:hidden mt-4 space-y-3 px-2 pb-4">
+                            {paginatedUsers.length > 0 && (
+                                <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="mobile-select-all"
+                                            checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.includes(u.id))}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    const pageIds = paginatedUsers.map(u => u.id)
+                                                    setSelectedIds(prev => Array.from(new Set([...prev, ...pageIds])))
+                                                } else {
+                                                    const pageIds = paginatedUsers.map(u => u.id)
+                                                    setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
+                                                }
+                                            }}
+                                        />
+                                        <Label htmlFor="mobile-select-all" className="text-sm font-medium cursor-pointer select-none">
+                                            全選({selectedIds.length}/{paginatedUsers.length})
+                                        </Label>
+                                    </div>
+                                    {selectedIds.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setSelectedIds([])}
+                                            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                        >
+                                            取消選擇
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+
                             {paginatedUsers.length === 0 ? (
                                 <EmptyState icon={UserCog} title="沒有找到使用者" description="目前沒有符合條件的使用者，請調整篩選條件或新增帳號。" />
                             ) : (

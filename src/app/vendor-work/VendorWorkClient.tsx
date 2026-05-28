@@ -429,6 +429,33 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
 
                                 {/* 手機版卡片列表 */}
                                 <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                    {sortedData.length > 0 && (
+                                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border/50 mb-3">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="mobile-select-all"
+                                                    checked={selected.size === data.length && data.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                />
+                                                <label
+                                                    htmlFor="mobile-select-all"
+                                                    className="text-sm font-medium leading-none cursor-pointer select-none"
+                                                >
+                                                    全選({selected.size}/{data.length})
+                                                </label>
+                                            </div>
+                                            {selected.size > 0 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setSelected(new Set())}
+                                                    className="text-xs text-muted-foreground hover:text-foreground h-8 px-2"
+                                                >
+                                                    取消選擇
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
                                     {sortedData.length === 0 ? (
                                         <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
                                     ) : (

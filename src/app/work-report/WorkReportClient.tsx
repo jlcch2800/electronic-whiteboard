@@ -281,6 +281,31 @@ export default function WorkReportClient() {
 
                                 {/* 手機版卡片列表 */}
                                 <div className="md:hidden mt-4 space-y-4 px-1 pb-4">
+                                    {sortedData.length > 0 && (
+                                        <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm">
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="mobile-select-all"
+                                                    checked={selected.size === sortedData.length && sortedData.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                />
+                                                <Label htmlFor="mobile-select-all" className="text-sm font-medium cursor-pointer select-none">
+                                                    全選({selected.size}/{sortedData.length})
+                                                </Label>
+                                            </div>
+                                            {selected.size > 0 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => setSelected(new Set())}
+                                                    className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                                >
+                                                    取消選擇
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {sortedData.length === 0 ? (
                                         <EmptyState icon={FileText} title="尚無施工回報" description="目前沒有施工回報記錄，您可以點擊右上方新增。" />
                                     ) : (

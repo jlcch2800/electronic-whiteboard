@@ -733,6 +733,31 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
                         {/* 手機版卡片列表 */}
                         <div className="md:hidden mt-4 space-y-3 px-2 pb-4">
+                            {paginatedLogs.length > 0 && (
+                                <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="mobile-select-all"
+                                            checked={selected.size === paginatedLogs.length && paginatedLogs.length > 0}
+                                            onCheckedChange={toggleSelectAll}
+                                        />
+                                        <label htmlFor="mobile-select-all" className="text-sm font-medium cursor-pointer select-none">
+                                            全選({selected.size}/{paginatedLogs.length})
+                                        </label>
+                                    </div>
+                                    {selected.size > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setSelected(new Set())}
+                                            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                        >
+                                            取消選擇
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+
                             {paginatedLogs.length === 0 ? (
                                 <EmptyState icon={History} title="沒有找到紀錄" description="目前沒有符合條件的異動紀錄，請調整篩選條件。" />
                             ) : (
