@@ -541,10 +541,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={exportToExcel}>
-                                            匯出 Excel (.xlsx)
+                                            匯出 Excel
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={exportToPdf}>
-                                            匯出 PDF (.pdf)
+                                            匯出 PDF
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -636,10 +636,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
                                                                         <DropdownMenuItem onClick={() => handleExportDetailExcel(log)}>
-                                                                            匯出 Excel (.xlsx)
+                                                                            匯出 Excel
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem onClick={() => handleExportDetailPdf(log)}>
-                                                                            匯出 PDF (.pdf)
+                                                                            匯出 PDF
                                                                         </DropdownMenuItem>
                                                                     </DropdownMenuContent>
                                                                 </DropdownMenu>
@@ -801,10 +801,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end">
                                                                     <DropdownMenuItem onClick={() => handleExportDetailExcel(log)}>
-                                                                        匯出 Excel (.xlsx)
+                                                                        匯出 Excel
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem onClick={() => handleExportDetailPdf(log)}>
-                                                                        匯出 PDF (.pdf)
+                                                                        匯出 PDF
                                                                     </DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>

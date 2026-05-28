@@ -288,7 +288,7 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                 else if (activeFilters.amount === 'gt20k') query = query.gt('amount', 20000)
                 if (sort) query = query.order(sort.key, { ascending: sort.direction === 'asc' })
                 else query = query.order('created_at', { ascending: false })
-                
+
                 const { data: allResult, error } = await query
                 if (error) throw error
                 dataToExport = allResult || []
@@ -413,10 +413,10 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={exportToExcel}>
-                                匯出 Excel (.xlsx)
+                                匯出 Excel
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={exportToPdf}>
-                                匯出 PDF (.pdf)
+                                匯出 PDF
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

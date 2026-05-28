@@ -78,7 +78,7 @@ export default function WorkFileClient() {
     const filteredData = useMemo(() => {
         const kw = keyword.toLowerCase().trim()
         if (!kw) return data
-        return data.filter(row => 
+        return data.filter(row =>
             row.vendor_name?.toLowerCase().includes(kw) ||
             row.work_item?.toLowerCase().includes(kw) ||
             row.uploader_name?.toLowerCase().includes(kw) ||
@@ -112,7 +112,7 @@ export default function WorkFileClient() {
             // 如果資料量非常大，才需要分頁。這裡先配合即時化，若要搜尋全部則不設 range 或設大一點
             // 但考量原本就有對齊分頁邏輯，這裡維持日期內的分頁或直接抓取分頁量
             .range((page - 1) * pageSize, page * pageSize - 1)
-            
+
         const { data: records, count, error } = await q
         if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
         else { setData(records || []); setTotalCount(count || 0) }
@@ -125,7 +125,7 @@ export default function WorkFileClient() {
 
         // 收集被刪除項目的資料以供紀錄與檔案清理
         const deletedItems = data.filter(item => ids.includes(item.id))
-        
+
         // 1. 蒐集所有相關檔案的網址與資料夾
         const allUrls: string[] = []
         const uniqueFolders = new Set<string>()
@@ -149,20 +149,20 @@ export default function WorkFileClient() {
                         const folderPath = parts.slice(uploadIndex + 2, parts.length - 1).join('/')
                         if (folderPath) uniqueFolders.add(folderPath)
                     }
-                } catch (e) {}
+                } catch (e) { }
             })
         })
 
         // 使用 .select() 來確認到底有沒有刪除成功
         const { data: deletedData, error } = await supabase.from('work_file').delete().in('id', ids).select('id')
-        
+
         if (error) {
             toast({ title: '刪除失敗', description: error.message, variant: 'destructive' })
         } else if (!deletedData || deletedData.length === 0) {
-            toast({ 
-                title: '刪除未生效', 
-                description: '您可能沒有權限刪除此資料，或該資料已被他人刪除。', 
-                variant: 'destructive' 
+            toast({
+                title: '刪除未生效',
+                description: '您可能沒有權限刪除此資料，或該資料已被他人刪除。',
+                variant: 'destructive'
             })
         } else {
             // 2. 資料庫刪除成功後，背景執行 Cloudinary 清理
@@ -190,7 +190,7 @@ export default function WorkFileClient() {
             logBatchDeleteRecords('work_file', deletedItems)
 
             toast({ title: '刪除成功', description: `已刪除 ${deletedData.length} 筆資料 (雲端檔案同步清理中)` })
-            
+
             // 手動過濾本地資料，確保介面立即更新
             setData(prev => prev.filter(item => !ids.includes(item.id)))
             fetchData()
@@ -221,7 +221,7 @@ export default function WorkFileClient() {
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '', '日期': r.date, '廠商': r.vendor_name || '', '施工項目': r.work_item || '', '上傳人員': r.uploader_name, '說明': r.description || '', '文件連結': r.file_url || '', '照片連結': r.image_url || '', '影片連結': r.video_url || '', '備註': r.note || '' }))
-        
+
         exportToExcelFile(sheetData, '施工文件')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
@@ -235,7 +235,7 @@ export default function WorkFileClient() {
             const { data: allData } = await q; dataToExport = allData || []
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
-        
+
         // 排除冗長欄位，PDF 只展示最重要核心的資訊
         const sheetData = dataToExport.map((r, i) => ({
             '#': i + 1,
@@ -304,10 +304,10 @@ export default function WorkFileClient() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={exportToExcel}>
-                                            匯出 Excel (.xlsx)
+                                            匯出 Excel
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={exportToPdf}>
-                                            匯出 PDF (.pdf)
+                                            匯出 PDF
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -382,16 +382,16 @@ export default function WorkFileClient() {
                                                             if (urls.length === 0) return <span className="text-muted-foreground/50">-</span>
                                                             return (
                                                                 <div className="relative inline-block">
-                                                                    <img 
-                                                                        src={urls[0]} 
-                                                                        alt="Photo" 
-                                                                        className="w-12 h-12 object-cover rounded-md shadow-sm border border-border cursor-pointer hover:opacity-80 transition-opacity bg-white" 
+                                                                    <img
+                                                                        src={urls[0]}
+                                                                        alt="Photo"
+                                                                        className="w-12 h-12 object-cover rounded-md shadow-sm border border-border cursor-pointer hover:opacity-80 transition-opacity bg-white"
                                                                         onClick={() => {
                                                                             setLightboxSlides(urls.map(src => ({ src })))
                                                                             setLightboxIndex(0)
                                                                             setLightboxOpen(true)
                                                                         }}
-                                                                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100?text=Error' }} 
+                                                                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100?text=Error' }}
                                                                     />
                                                                     {urls.length > 1 && (
                                                                         <div className="absolute -bottom-1 -right-1 bg-black/70 text-white text-[10px] px-1 rounded shadow-sm pointer-events-none">
@@ -492,46 +492,52 @@ export default function WorkFileClient() {
                                                 details={[
                                                     { label: '施工項目', value: row.work_item },
                                                     { label: '說明', value: row.description },
-                                                    { label: '文件', value: (() => {
-                                                        const urls = parseUrls(row.file_url)
-                                                        if (urls.length === 0) return null
-                                                        return (
-                                                            <div className="flex flex-wrap gap-2 mt-1">
-                                                                {urls.map((url, i) => (
-                                                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-teal-50 text-teal-700 px-2 py-1 rounded border border-teal-100 truncate max-w-[120px]" onClick={(e) => e.stopPropagation()}>
-                                                                        {getFileName(url)}
-                                                                    </a>
-                                                                ))}
-                                                            </div>
-                                                        )
-                                                    })() },
-                                                    { label: '照片', value: (() => {
-                                                        const urls = parseUrls(row.image_url)
-                                                        if (urls.length === 0) return null
-                                                        return (
-                                                            <button type="button" onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                setLightboxSlides(urls.map(src => ({ src })))
-                                                                setLightboxIndex(0)
-                                                                setLightboxOpen(true)
-                                                            }} className="text-teal-600 hover:underline flex items-center gap-1 text-sm font-medium">
-                                                                查看照片 ({urls.length} 張)
-                                                            </button>
-                                                        )
-                                                    })() },
-                                                    { label: '影片', value: (() => {
-                                                        const urls = parseUrls(row.video_url)
-                                                        if (urls.length === 0) return null
-                                                        return (
-                                                            <div className="flex flex-wrap gap-2 mt-1">
-                                                                {urls.map((url, i) => (
-                                                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100 truncate max-w-[120px]" onClick={(e) => e.stopPropagation()}>
-                                                                        {getFileName(url)}
-                                                                    </a>
-                                                                ))}
-                                                            </div>
-                                                        )
-                                                    })() },
+                                                    {
+                                                        label: '文件', value: (() => {
+                                                            const urls = parseUrls(row.file_url)
+                                                            if (urls.length === 0) return null
+                                                            return (
+                                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                                    {urls.map((url, i) => (
+                                                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-teal-50 text-teal-700 px-2 py-1 rounded border border-teal-100 truncate max-w-[120px]" onClick={(e) => e.stopPropagation()}>
+                                                                            {getFileName(url)}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )
+                                                        })()
+                                                    },
+                                                    {
+                                                        label: '照片', value: (() => {
+                                                            const urls = parseUrls(row.image_url)
+                                                            if (urls.length === 0) return null
+                                                            return (
+                                                                <button type="button" onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    setLightboxSlides(urls.map(src => ({ src })))
+                                                                    setLightboxIndex(0)
+                                                                    setLightboxOpen(true)
+                                                                }} className="text-teal-600 hover:underline flex items-center gap-1 text-sm font-medium">
+                                                                    查看照片 ({urls.length} 張)
+                                                                </button>
+                                                            )
+                                                        })()
+                                                    },
+                                                    {
+                                                        label: '影片', value: (() => {
+                                                            const urls = parseUrls(row.video_url)
+                                                            if (urls.length === 0) return null
+                                                            return (
+                                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                                    {urls.map((url, i) => (
+                                                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100 truncate max-w-[120px]" onClick={(e) => e.stopPropagation()}>
+                                                                            {getFileName(url)}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )
+                                                        })()
+                                                    },
                                                     { label: '備註', value: row.note },
                                                 ]}
                                             />

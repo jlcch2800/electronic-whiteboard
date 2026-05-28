@@ -72,7 +72,7 @@ export default function WorkReportClient() {
     const filteredData = useMemo(() => {
         const kw = keyword.toLowerCase().trim()
         if (!kw) return data
-        return data.filter(row => 
+        return data.filter(row =>
             row.vendor_name?.toLowerCase().includes(kw) ||
             row.work_content?.toLowerCase().includes(kw) ||
             row.work_location?.toLowerCase().includes(kw) ||
@@ -103,10 +103,10 @@ export default function WorkReportClient() {
             .gte('report_date', startDate).lte('report_date', endDate)
             .order('report_date', { ascending: false }).order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
-        
+
         // 關鍵字搜尋改在前端處理，這裡不帶 or 條件
         if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
-        
+
         const { data: records, count, error } = await q
         if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
         else { setData(records || []); setTotalCount(count || 0) }
@@ -149,7 +149,7 @@ export default function WorkReportClient() {
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '', '日期': r.report_date, '時間': r.report_time || '', '廠商': r.vendor_name, '地點': r.work_location, '負責人': r.engineering_contact, '狀態': statusLabels[r.work_status]?.text || r.work_status, '施工內容': r.work_content || '', '備註': r.note || '' }))
-        
+
         exportToExcelFile(sheetData, '施工回報')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
@@ -164,7 +164,7 @@ export default function WorkReportClient() {
             const { data: allData } = await q; dataToExport = allData || []
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
-        
+
         const sheetData = dataToExport.map((r, i) => ({
             '#': i + 1,
             'ID': r.id,
@@ -232,10 +232,10 @@ export default function WorkReportClient() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={exportToExcel}>
-                                            匯出 Excel (.xlsx)
+                                            匯出 Excel
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={exportToPdf}>
-                                            匯出 PDF (.pdf)
+                                            匯出 PDF
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

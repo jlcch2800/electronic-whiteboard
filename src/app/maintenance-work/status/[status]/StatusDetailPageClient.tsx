@@ -437,10 +437,10 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={exportToExcel}>
-                                匯出 Excel (.xlsx)
+                                匯出 Excel
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={exportToPdf}>
-                                匯出 PDF (.pdf)
+                                匯出 PDF
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

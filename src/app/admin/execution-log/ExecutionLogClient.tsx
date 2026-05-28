@@ -171,7 +171,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
         const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss'), '日期': r.date, '資料表': getTranslatedTableName(r.table_name), '記錄等級': r.log_level, '訊息': translateMessage(r.message) || '' }))
-        
+
         exportToExcelFile(sheetData, '系統執行記錄')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆記錄` })
     }
@@ -433,27 +433,27 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                         </div>
                         <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
                             <div className="flex items-center gap-2">
-                                <Input 
-                                    type="date" 
-                                    value={startDate} 
-                                    onChange={(e) => setStartDate(e.target.value)} 
-                                    className="w-full md:w-36" 
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-full md:w-36"
                                 />
                                 <span className="text-muted-foreground">~</span>
-                                <Input 
-                                    type="date" 
-                                    value={endDate} 
-                                    onChange={(e) => setEndDate(e.target.value)} 
-                                    className="w-full md:w-36" 
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="w-full md:w-36"
                                 />
                             </div>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input 
-                                    value={searchTerm} 
-                                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} 
-                                    placeholder="搜尋..." 
-                                    className="pl-10 w-full md:w-48" 
+                                <Input
+                                    value={searchTerm}
+                                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+                                    placeholder="搜尋..."
+                                    className="pl-10 w-full md:w-48"
                                 />
                             </div>
                             <div className="flex items-center gap-2">
@@ -465,10 +465,10 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={exportToExcel}>
-                                            匯出 Excel (.xlsx)
+                                            匯出 Excel
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={exportToPdf}>
-                                            匯出 PDF (.pdf)
+                                            匯出 PDF
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -523,10 +523,10 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
                                                                         <DropdownMenuItem onClick={() => handleExportDetailExcel(log)}>
-                                                                            匯出 Excel (.xlsx)
+                                                                            匯出 Excel
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuItem onClick={() => handleExportDetailPdf(log)}>
-                                                                            匯出 PDF (.pdf)
+                                                                            匯出 PDF
                                                                         </DropdownMenuItem>
                                                                     </DropdownMenuContent>
                                                                 </DropdownMenu>
@@ -722,10 +722,10 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end">
                                                                     <DropdownMenuItem onClick={() => handleExportDetailExcel(log)}>
-                                                                        匯出 Excel (.xlsx)
+                                                                        匯出 Excel
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem onClick={() => handleExportDetailPdf(log)}>
-                                                                        匯出 PDF (.pdf)
+                                                                        匯出 PDF
                                                                     </DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>

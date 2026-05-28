@@ -79,7 +79,7 @@ export default function EngineeringHistoryClient() {
     const filteredData = useMemo(() => {
         const kw = keyword.toLowerCase().trim()
         if (!kw) return data
-        return data.filter(row => 
+        return data.filter(row =>
             row.vendor_name?.toLowerCase().includes(kw) ||
             row.work_content?.toLowerCase().includes(kw) ||
             row.unit?.toLowerCase().includes(kw) ||
@@ -275,10 +275,10 @@ export default function EngineeringHistoryClient() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={handleExport}>
-                                            匯出 Excel (.xlsx)
+                                            匯出 Excel
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={handleExportPdf}>
-                                            匯出 PDF (.pdf)
+                                            匯出 PDF
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

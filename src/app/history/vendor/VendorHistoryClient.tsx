@@ -99,7 +99,7 @@ export default function VendorHistoryClient() {
     const filteredData = useMemo(() => {
         const kw = keyword.toLowerCase().trim()
         if (!kw) return data
-        return data.filter(row => 
+        return data.filter(row =>
             row.vendor_name?.toLowerCase().includes(kw) ||
             row.work_content?.toLowerCase().includes(kw) ||
             row.note?.toLowerCase().includes(kw) ||
@@ -338,7 +338,7 @@ export default function VendorHistoryClient() {
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商名稱、施工內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-60" /></div>
                             </div>
-                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline" size="sm">
@@ -347,10 +347,10 @@ export default function VendorHistoryClient() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={exportToExcel}>
-                                            匯出 Excel (.xlsx)
+                                            匯出 Excel
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={exportToPdf}>
-                                            匯出 PDF (.pdf)
+                                            匯出 PDF
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

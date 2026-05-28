@@ -59,7 +59,7 @@ export default function PendingHistoryClient() {
     const filteredData = useMemo(() => {
         const kw = keyword.toLowerCase().trim()
         if (!kw) return data
-        return data.filter(row => 
+        return data.filter(row =>
             row.vendor_name?.toLowerCase().includes(kw) ||
             row.work_content?.toLowerCase().includes(kw) ||
             row.unit?.toLowerCase().includes(kw) ||
@@ -89,7 +89,7 @@ export default function PendingHistoryClient() {
             .gte('start_date', startDate).lte('start_date', endDate)
             .order('start_date', { ascending: false }).order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
-        
+
         // 關鍵字搜尋改在前端處理，這裡不帶 or 條件
         const { data: records, count } = await q
         setData(records || []); setTotalCount(count || 0); setSelected(new Set()); setLoading(false)
@@ -182,10 +182,10 @@ export default function PendingHistoryClient() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={handleExport}>
-                                            匯出 Excel (.xlsx)
+                                            匯出 Excel
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={handleExportPdf}>
-                                            匯出 PDF (.pdf)
+                                            匯出 PDF
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

@@ -305,10 +305,10 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuItem onClick={exportToExcel}>
-                                        匯出 Excel (.xlsx)
+                                        匯出 Excel
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={exportToPdf}>
-                                        匯出 PDF (.pdf)
+                                        匯出 PDF
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -335,7 +335,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                             <TableHeader>
                                 <TableRow className="bg-muted">
                                     <TableHead className="w-12">
-                                        <Checkbox 
+                                        <Checkbox
                                             checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.includes(u.id))}
                                             onCheckedChange={(checked) => {
                                                 if (checked) {
@@ -388,7 +388,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                             }}
                                         >
                                             <TableCell onClick={(e) => e.stopPropagation()}>
-                                                <Checkbox 
+                                                <Checkbox
                                                     checked={selectedIds.includes(user.id)}
                                                     onCheckedChange={(checked) => {
                                                         if (checked) {
