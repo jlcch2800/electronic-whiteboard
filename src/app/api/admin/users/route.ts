@@ -279,53 +279,59 @@ export async function DELETE(request: NextRequest) {
         }
 
         const { searchParams } = new URL(request.url)
-        const id = searchParams.get('id')
+        const idParam = searchParams.get('id')
 
-        if (!id) {
+        if (!idParam) {
             return NextResponse.json({ error: '缺少使用者 ID' }, { status: 400 })
         }
 
-        // Prevent self-deletion
-        if (id === user.id) {
+        // 支援以逗號分隔的多個 ID 進行批次刪除
+        const ids = idParam.split(',').filter(Boolean)
+
+        // 防止自刪
+        if (ids.includes(user.id)) {
             return NextResponse.json({ error: '不能刪除自己的帳號' }, { status: 400 })
         }
 
         const supabaseAdmin = createAdminClient()
 
-        // Fetch OLD data for logging before deletion
-        const { data: oldUserData } = await supabaseAdmin
-            .from('users')
-            .select('*')
-            .eq('id', id)
-            .single()
+        // 遍歷所有 ID 進行批次刪除與紀錄
+        for (const deleteId of ids) {
+            // Fetch OLD data for logging before deletion
+            const { data: oldUserData } = await supabaseAdmin
+                .from('users')
+                .select('*')
+                .eq('id', deleteId)
+                .single()
 
-        // Delete from public.users (cascade will handle related data)
-        const { error: profileError } = await supabaseAdmin
-            .from('users')
-            .delete()
-            .eq('id', id)
+            // Delete from public.users (cascade will handle related data)
+            const { error: profileError } = await supabaseAdmin
+                .from('users')
+                .delete()
+                .eq('id', deleteId)
 
-        if (profileError) {
-            return NextResponse.json({ error: profileError.message }, { status: 400 })
-        }
+            if (profileError) {
+                return NextResponse.json({ error: `刪除 ${deleteId} 失敗: ${profileError.message}` }, { status: 400 })
+            }
 
-        // Delete from auth
-        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id)
+            // Delete from auth
+            const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(deleteId)
 
-        if (authError) {
-            console.warn('Failed to delete auth user:', authError.message)
-        }
+            if (authError) {
+                console.warn(`Failed to delete auth user ${deleteId}:`, authError.message)
+            }
 
-        // Log the deletion
-        if (oldUserData) {
-            await logChange(
-                supabaseAdmin,
-                adminUserWithProfile,
-                'Delete',
-                id,
-                oldUserData,
-                null
-            )
+            // Log the deletion
+            if (oldUserData) {
+                await logChange(
+                    supabaseAdmin,
+                    adminUserWithProfile,
+                    'Delete',
+                    deleteId,
+                    oldUserData,
+                    null
+                )
+            }
         }
 
         return NextResponse.json({ success: true })

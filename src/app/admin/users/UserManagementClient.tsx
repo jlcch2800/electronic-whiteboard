@@ -44,7 +44,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     const [users, setUsers] = useState(initialUsers)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
-    const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [showForm, setShowForm] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [editingUser, setEditingUser] = useState<any | null>(null)
@@ -71,7 +71,8 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     }
 
     const handleEdit = () => {
-        if (!selectedId) return
+        if (selectedIds.length !== 1) return
+        const selectedId = selectedIds[0]
         const user = users.find(u => u.id === selectedId)
         if (!user) return
 
@@ -93,21 +94,21 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     }
 
     const handleDeleteClick = () => {
-        if (!selectedId) return
+        if (selectedIds.length === 0) return
         setShowDeleteConfirm(true)
     }
 
     const handleDeleteConfirm = async () => {
-        if (!selectedId) return
+        if (selectedIds.length === 0) return
 
         try {
-            const res = await fetch(`/api/admin/users?id=${selectedId}`, { method: 'DELETE' })
+            const res = await fetch(`/api/admin/users?id=${selectedIds.join(',')}`, { method: 'DELETE' })
             const result = await res.json()
 
             if (!res.ok) throw new Error(result.error)
 
             toast({ title: '刪除成功' })
-            setSelectedId(null)
+            setSelectedIds([])
             setShowDeleteConfirm(false)
             fetchUsers()
         } catch (error: any) {
@@ -149,7 +150,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
             toast({ title: editingUser ? '更新成功' : '建立帳號成功' })
             setShowForm(false)
             setEditingUser(null)
-            setSelectedId(null)
+            setSelectedIds([])
             fetchUsers()
         } catch (error: any) {
             toast({ title: '操作失敗', description: error.message, variant: 'destructive' })
@@ -157,7 +158,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     }
 
     const exportToExcel = () => {
-        const dataToExport = selectedId ? filteredUsers.filter(u => u.id === selectedId) : filteredUsers
+        const dataToExport = selectedIds.length > 0 ? filteredUsers.filter(u => selectedIds.includes(u.id)) : filteredUsers
         if (dataToExport.length === 0) {
             toast({ title: '無資料可匯出', variant: 'destructive' })
             return
@@ -183,7 +184,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     }
 
     const exportToPdf = async () => {
-        const dataToExport = selectedId ? filteredUsers.filter(u => u.id === selectedId) : filteredUsers
+        const dataToExport = selectedIds.length > 0 ? filteredUsers.filter(u => selectedIds.includes(u.id)) : filteredUsers
         if (dataToExport.length === 0) {
             toast({ title: '無資料可匯出', variant: 'destructive' })
             return
@@ -277,10 +278,10 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
 
                     <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
                         <div className="flex items-center gap-2 bg-muted p-1 rounded-xl">
-                            <Button variant="ghost" size="sm" onClick={handleEdit} disabled={!selectedId} className="text-blue-600">
+                            <Button variant="ghost" size="sm" onClick={handleEdit} disabled={selectedIds.length !== 1} className="text-blue-600">
                                 <Edit className="w-4 h-4 mr-1" /> 修改
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={handleDeleteClick} disabled={!selectedId} className="text-red-600">
+                            <Button variant="ghost" size="sm" onClick={handleDeleteClick} disabled={selectedIds.length === 0} className="text-red-600">
                                 <Trash2 className="w-4 h-4 mr-1" /> 刪除
                             </Button>
                         </div>
@@ -333,7 +334,20 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                         <Table className="hidden md:table">
                             <TableHeader>
                                 <TableRow className="bg-muted">
-                                    <TableHead className="w-12">選取</TableHead>
+                                    <TableHead className="w-12">
+                                        <Checkbox 
+                                            checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.includes(u.id))}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    const pageIds = paginatedUsers.map(u => u.id)
+                                                    setSelectedIds(prev => Array.from(new Set([...prev, ...pageIds])))
+                                                } else {
+                                                    const pageIds = paginatedUsers.map(u => u.id)
+                                                    setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
+                                                }
+                                            }}
+                                        />
+                                    </TableHead>
                                     <TableHead className="w-12">#</TableHead>
                                     <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
                                     <SortableTableHead label="單位" sortKey="unit" currentSort={sort} onSort={handleSort} />
@@ -363,11 +377,27 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                     paginatedUsers.map((user, index) => (
                                         <TableRow
                                             key={user.id}
-                                            className={`cursor-pointer transition-colors ${selectedId === user.id ? 'bg-blue-50 dark:bg-blue-900/40' : 'hover:bg-muted dark:hover:bg-slate-800/50'}`}
-                                            onClick={() => setSelectedId(selectedId === user.id ? null : user.id)}
+                                            className={`cursor-pointer transition-colors ${selectedIds.includes(user.id) ? 'bg-blue-50 dark:bg-blue-900/40' : 'hover:bg-muted dark:hover:bg-slate-800/50'}`}
+                                            onClick={() => {
+                                                const isSelected = selectedIds.includes(user.id)
+                                                if (isSelected) {
+                                                    setSelectedIds(prev => prev.filter(id => id !== user.id))
+                                                } else {
+                                                    setSelectedIds(prev => [...prev, user.id])
+                                                }
+                                            }}
                                         >
-                                            <TableCell>
-                                                <Checkbox checked={selectedId === user.id} />
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                                <Checkbox 
+                                                    checked={selectedIds.includes(user.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        if (checked) {
+                                                            setSelectedIds(prev => [...prev, user.id])
+                                                        } else {
+                                                            setSelectedIds(prev => prev.filter(id => id !== user.id))
+                                                        }
+                                                    }}
+                                                />
                                             </TableCell>
                                             <TableCell className="font-mono text-muted-foreground">
                                                 {(page - 1) * pageSize + index + 1}
@@ -438,8 +468,14 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                         }}
                                         date={format(new Date(user.created_at), 'yyyy-MM-dd')}
                                         time={format(new Date(user.created_at), 'HH:mm')}
-                                        isSelected={selectedId === user.id}
-                                        onSelect={() => setSelectedId(selectedId === user.id ? null : user.id)}
+                                        isSelected={selectedIds.includes(user.id)}
+                                        onSelect={() => {
+                                            if (selectedIds.includes(user.id)) {
+                                                setSelectedIds(prev => prev.filter(id => id !== user.id))
+                                            } else {
+                                                setSelectedIds(prev => [...prev, user.id])
+                                            }
+                                        }}
                                         details={[
                                             { label: '單位', value: user.unit },
                                             { label: 'Email', value: user.email },
@@ -469,7 +505,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 setPageSize(size)
                                 setPage(1)
                             }}
-                            selectedCount={selectedId ? 1 : 0}
+                            selectedCount={selectedIds.length}
                         />
                     </div>
                 </motion.div>
@@ -606,7 +642,15 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                     <AlertDialogHeader>
                         <AlertDialogTitle>確認刪除帳號</AlertDialogTitle>
                         <AlertDialogDescription>
-                            確定要刪除 <strong>{users.find(u => u.id === selectedId)?.user_name}</strong> 嗎？
+                            {selectedIds.length === 1 ? (
+                                <>
+                                    確定要刪除 <strong>{users.find(u => u.id === selectedIds[0])?.user_name}</strong> 嗎？
+                                </>
+                            ) : (
+                                <>
+                                    確定要刪除選取的 <strong>{selectedIds.length}</strong> 筆帳號嗎？
+                                </>
+                            )}
                             <br />此操作無法復原。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
