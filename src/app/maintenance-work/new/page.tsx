@@ -155,7 +155,7 @@ export default function MaintenanceWorkNewPage() {
             toast({ title: '新增成功', description: '維修單已成功建立，狀態為「已轉維修單」' })
 
             // 1.5 秒後跳轉
-            setTimeout(() => router.push('/'), 1500)
+            setTimeout(() => router.push('/maintenance-work/status'), 1500)
         } catch (error: any) {
             toast({ title: '新增失敗', description: error.message, variant: 'destructive' })
         }
