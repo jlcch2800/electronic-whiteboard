@@ -265,12 +265,20 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             if (prev?.key === key && prev.direction === 'desc') return null
             return { key, direction: 'asc' }
         })
+        setCurrentPage(1)
     }
     const sortedLogs = useMemo(() => {
         if (!sort) return filteredLogs
         return [...filteredLogs].sort((a, b) => {
             const valA = (a as any)[sort.key] ?? ''
             const valB = (b as any)[sort.key] ?? ''
+
+            if (typeof valA === 'string' && typeof valB === 'string') {
+                return sort.direction === 'asc'
+                    ? valA.localeCompare(valB, 'zh-Hant')
+                    : valB.localeCompare(valA, 'zh-Hant')
+            }
+
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1
             return 0

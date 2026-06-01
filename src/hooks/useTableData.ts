@@ -20,6 +20,13 @@ export function useTableData<T>(data: T[], initialSortKey?: ExtractStringKey<T>)
         return [...data].sort((a, b) => {
             const valA = a[sort.key] === null || a[sort.key] === undefined ? '' : a[sort.key]
             const valB = b[sort.key] === null || b[sort.key] === undefined ? '' : b[sort.key]
+
+            if (typeof valA === 'string' && typeof valB === 'string') {
+                return sort.direction === 'asc'
+                    ? valA.localeCompare(valB, 'zh-Hant')
+                    : valB.localeCompare(valA, 'zh-Hant')
+            }
+
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1
             return 0
