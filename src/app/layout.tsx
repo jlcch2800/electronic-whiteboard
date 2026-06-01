@@ -3,6 +3,7 @@ import { Inter, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import IdleTimerListener from "@/components/providers/IdleTimerListener";
 import { Toaster } from "@/components/ui/toaster";
 import { Agentation } from "agentation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -36,6 +37,7 @@ export default function RootLayout({
           <ThemeProvider>
             <AuthProvider>
               {children}
+              <IdleTimerListener />
               <Toaster />
               <Agentation />
               <GlobalErrorHandler />
