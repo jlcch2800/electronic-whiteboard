@@ -243,12 +243,20 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
             if (prev?.key === key && prev.direction === 'desc') return null
             return { key, direction: 'asc' }
         })
+        setPage(1) // 點擊排序時重設回第一頁，確保使用者能從最前面的排序結果開始看起
     }
     const sortedUsers = useMemo(() => {
         if (!sort) return filteredUsers
         return [...filteredUsers].sort((a, b) => {
             const valA = (a as any)[sort.key] ?? ''
             const valB = (b as any)[sort.key] ?? ''
+
+            if (typeof valA === 'string' && typeof valB === 'string') {
+                return sort.direction === 'asc'
+                    ? valA.localeCompare(valB, 'zh-Hant')
+                    : valB.localeCompare(valA, 'zh-Hant')
+            }
+
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1
             return 0
@@ -352,12 +360,12 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                     <SortableTableHead label="建立時間" sortKey="created_at" currentSort={sort} onSort={handleSort} />
                                     <SortableTableHead label="單位" sortKey="unit" currentSort={sort} onSort={handleSort} />
                                     <SortableTableHead label="姓名" sortKey="user_name" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="帳號" sortKey="account" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="帳號" sortKey="user_account" currentSort={sort} onSort={handleSort} />
                                     <TableHead className="text-xs">密碼雜湊</TableHead>
-                                    <SortableTableHead label="群組" sortKey="group_name" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="群組" sortKey="role" currentSort={sort} onSort={handleSort} />
                                     <SortableTableHead label="Email" sortKey="email" currentSort={sort} onSort={handleSort} />
                                     <SortableTableHead label="啟用" sortKey="is_active" currentSort={sort} onSort={handleSort} />
-                                    <SortableTableHead label="失敗計次" sortKey="failed_login_attempts" currentSort={sort} onSort={handleSort} />
+                                    <SortableTableHead label="失敗計次" sortKey="failed_attempts" currentSort={sort} onSort={handleSort} />
                                     <TableHead>最後失敗時間</TableHead>
                                     <TableHead>鎖定至</TableHead>
                                     <TableHead className="text-xs">resetTokenHash</TableHead>
