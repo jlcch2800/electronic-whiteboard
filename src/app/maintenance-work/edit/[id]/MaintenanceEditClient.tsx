@@ -59,6 +59,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         !!(initialData.handler_name && initialData.work_order_date && initialData.maint_mgr_name && initialData.maint_mgr_date)
     )
 
+    // 使用 state 記錄「開單主管簽核」是否已完成
+    const [section2Completed, setSection2Completed] = useState(
+        !!(initialData.req_dept_mgr_name && initialData.req_dept_mgr_date)
+    )
+
     // 使用 state 記錄「報價階段」是否已完成，避免輸入時即時判定導致鎖死與自動收合/展開
     const [quoteCompleted, setQuoteCompleted] = useState(
         !!(initialData.quote_user_name && initialData.quote_user_date)
@@ -69,12 +74,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         // 特殊邏輯：已驗收則全部不可編輯
         if (formData.status === '已驗收') return false
 
-        // 特殊處理：「已轉維修單」涵蓋 Section 1（基本資料）＋ Section 2（開單主管簽核）
-        // 狀態1未完成 → Section 1 (index 0) 可編輯，Section 2 (index 1) 不可編輯
-        // 狀態1已完成 → Section 1 (index 0) 唯讀，Section 2 (index 1) 可編輯
-        if (formData.status === '已轉維修單') {
+        // 特殊處理：「已轉維修單」與「開單主管簽核完成」
+        if (formData.status === '已轉維修單' || formData.status === '開單主管簽核完成') {
             if (sectionIndex === 0) return !section1Completed
-            if (sectionIndex === 1) return section1Completed
+            if (sectionIndex === 1) return section1Completed && !section2Completed
+            if (sectionIndex === 2) return section1Completed && section2Completed
             return false
         }
 
@@ -106,9 +110,15 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
     // 初始化展開區塊
     useEffect(() => {
-        // 特殊處理：「已轉維修單」依完成度決定展開 section1 或 section2
-        if (formData.status === '已轉維修單') {
-            setOpenSections({ [section1Completed ? 'section2' : 'section1']: true })
+        // 特殊處理：「已轉維修單」或「開單主管簽核完成」依完成度決定展開
+        if (formData.status === '已轉維修單' || formData.status === '開單主管簽核完成') {
+            if (!section1Completed) {
+                setOpenSections({ section1: true })
+            } else if (!section2Completed) {
+                setOpenSections({ section2: true })
+            } else {
+                setOpenSections({ section3: true })
+            }
             return
         }
         // 特殊處理：報價階段依完成度決定展開 section3 或 section4
@@ -128,7 +138,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         }
         const activeSection = statusMap[formData.status] || 'section1'
         setOpenSections({ [activeSection]: true })
-    }, [formData.status, section1Completed, quoteCompleted])
+    }, [formData.status, section1Completed, section2Completed, quoteCompleted])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
@@ -140,7 +150,25 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     }
 
     // 驗證目前狀態的必填欄位
-    const validateCurrentSection = (): string | null => {
+    const validateCurrentSection = (targetStatus?: string): string | null => {
+        // 特別處理：目標狀態為「開單主管簽核完成」時
+        if (targetStatus === '開單主管簽核完成') {
+            // 如果是在狀態 2 區塊內進行的「開單主管簽核完成」儲存（原本狀態為開單主管簽核完成，或者基本資料已完成送審）
+            if (formData.status === '開單主管簽核完成' || (formData.status === '已轉維修單' && section1Completed)) {
+                if (!formData.req_dept_mgr_name) return '請輸入開單主管姓名'
+                if (!formData.req_dept_mgr_date) return '請輸入開單主管日期'
+                return null
+            }
+            // 否則，是在狀態 1 區塊內的「確認基本資料並送審」
+            if (formData.status === '已轉維修單') {
+                if (!formData.handler_name) return '請選擇承辦人'
+                if (!formData.work_order_date) return '請輸入接單日期'
+                if (!formData.maint_mgr_name) return '請選擇工務單位主管'
+                if (!formData.maint_mgr_date) return '請輸入工務單位主管日期'
+            }
+            return null
+        }
+
         switch (formData.status) {
             case '已轉維修單':
                 if (!formData.handler_name) return '請選擇承辦人'
@@ -197,7 +225,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const handleSave = async (nextStatus?: string) => {
         // 狀態推進時必須驗證當前區塊必填欄位
         if (nextStatus) {
-            const error = validateCurrentSection()
+            const error = validateCurrentSection(nextStatus)
             if (error) {
                 toast({ title: '驗證失敗', description: error, variant: 'destructive' })
                 return
@@ -238,6 +266,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 // 若是狀態1「已轉維修單」送審成功，更新 section1Completed 為 true
                 if (formData.status === '已轉維修單' && nextStatus === '開單主管簽核完成') {
                     setSection1Completed(true)
+                }
+                // 若是狀態2「開單主管簽核完成」儲存成功，更新 section2Completed 為 true
+                if (nextStatus === '開單主管簽核完成') {
+                    setSection2Completed(true)
                 }
                 // 狀態3：工務部門報價主管簽核中，點擊「報價完成，送工務主管簽核」成功儲存後，更新 quoteCompleted 為 true
                 if (formData.status === '工務部門報價，主管簽核中' && nextStatus === '工務部門報價，主管簽核中') {
@@ -433,7 +465,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     {isSectionEditable(1) && (
                                         <div className="col-span-full pt-4">
-                                            <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => handleSave('工務部門報價，主管簽核中')}>開單主管簽核完成，進入報價階段</Button>
+                                            <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => handleSave('開單主管簽核完成')}>開單主管簽核完成</Button>
                                         </div>
                                     )}
                                 </CardContent>
