@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast'
 
 // 閒置時間上限：5 分鐘 (5 * 60 * 1000 ms)
 // 閒置10秒 const IDLE_TIMEOUT = 10 * 1000
-const IDLE_TIMEOUT = 5 * 60 * 1000
+const IDLE_TIMEOUT = 15 * 60 * 1000
 
 // 節流間隔：1 秒，避免高頻事件（mousemove、scroll）重複重設計時器
 const THROTTLE_MS = 1000
