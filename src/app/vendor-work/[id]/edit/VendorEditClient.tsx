@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
@@ -48,8 +48,15 @@ const FIELD_LABELS: Record<string, string> = {
 
 export default function VendorEditClient({ initialData }: { initialData: any }) {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const isGuest = searchParams?.get('guest') === 'true'
+    const [isGuest, setIsGuest] = useState(false)
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search)
+            setIsGuest(params.get('guest') === 'true')
+        }
+    }, [])
+
     const supabase = createClient()
     const { toast } = useToast()
 

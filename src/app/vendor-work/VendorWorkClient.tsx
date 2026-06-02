@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
 import { motion } from 'framer-motion'
@@ -73,8 +73,15 @@ const formatMissingItems = (arrival: any, departure: any): string => {
 
 export default function VendorWorkClient({ initialData, hideHomeButton: propHideHomeButton }: VendorWorkClientProps) {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const isGuest = searchParams?.get('guest') === 'true'
+    const [isGuest, setIsGuest] = useState(false)
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search)
+            setIsGuest(params.get('guest') === 'true')
+        }
+    }, [])
+
     const hideHomeButton = propHideHomeButton || isGuest
     const supabase = createClient()
     const { toast } = useToast()
