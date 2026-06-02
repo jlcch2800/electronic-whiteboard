@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast'
 import { formatItemsDisplay } from '@/lib/utils'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
-import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
+import { exportToExcelFile, exportToPdfFile, exportAoaToExcelFile } from '@/lib/export-utils'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
