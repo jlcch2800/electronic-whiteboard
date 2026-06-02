@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
@@ -48,6 +48,8 @@ const FIELD_LABELS: Record<string, string> = {
 
 export default function VendorEditClient({ initialData }: { initialData: any }) {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const isGuest = searchParams?.get('guest') === 'true'
     const supabase = createClient()
     const { toast } = useToast()
 
@@ -251,7 +253,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
 
             setIsSuccess(true)
             toast({ title: '修改成功', description: '廠商施工項目已更新' })
-            setTimeout(() => router.push('/'), 1500)
+            setTimeout(() => router.push(isGuest ? '/vendor-work-guest' : '/'), 1500)
         } catch (error: any) {
             toast({ title: '修改失敗', description: error.message, variant: 'destructive' })
         }

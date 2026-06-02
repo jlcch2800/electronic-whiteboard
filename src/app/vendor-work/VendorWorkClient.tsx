@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
 import { motion } from 'framer-motion'
@@ -37,6 +37,7 @@ import {
 
 interface VendorWorkClientProps {
     initialData: any[]
+    hideHomeButton?: boolean
 }
 
 const formatItems = (data: any): string => {
@@ -70,8 +71,11 @@ const formatMissingItems = (arrival: any, departure: any): string => {
     return result.join('、')
 }
 
-export default function VendorWorkClient({ initialData }: VendorWorkClientProps) {
+export default function VendorWorkClient({ initialData, hideHomeButton: propHideHomeButton }: VendorWorkClientProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const isGuest = searchParams?.get('guest') === 'true'
+    const hideHomeButton = propHideHomeButton || isGuest
     const supabase = createClient()
     const { toast } = useToast()
     const { profile } = useAppStore()
@@ -281,11 +285,15 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
             {/* Header */}
             <header className="glass border-b border-border/50 px-6 py-4 flex justify-between items-center shadow-card sticky top-0 z-50">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
-                        <ArrowLeft className="w-4 h-4 mr-1" />
-                        返回首頁
-                    </Button>
-                    <div className="h-6 w-px bg-border" />
+                    {!hideHomeButton && (
+                        <>
+                            <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
+                                <ArrowLeft className="w-4 h-4 mr-1" />
+                                返回首頁
+                            </Button>
+                            <div className="h-6 w-px bg-border" />
+                        </>
+                    )}
                     <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                         <Users className="w-6 h-6 text-blue-500" />
                         廠商今日施工項目
@@ -303,13 +311,13 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                     <div className="p-4 border-b border-border/50 flex flex-wrap justify-between items-center gap-4">
 
                         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                            <Button size="sm" onClick={() => router.push('/vendor-work/new')} className="bg-green-600 hover:bg-green-700">
+                            <Button size="sm" onClick={() => router.push(`/vendor-work/new${hideHomeButton ? '?guest=true' : ''}`)} className="bg-green-600 hover:bg-green-700">
                                 <Plus className="w-4 h-4 mr-1" /> 新增
                             </Button>
 
                             <Button size="sm" variant="outline" onClick={() => {
                                 const id = Array.from(selected)[0]
-                                if (id) router.push(`/vendor-work/${id}/edit`)
+                                if (id) router.push(`/vendor-work/${id}/edit${hideHomeButton ? '?guest=true' : ''}`)
                             }} disabled={selected.size !== 1}>
                                 <Edit className="w-4 h-4 mr-1" /> 修改
                             </Button>
@@ -474,7 +482,7 @@ export default function VendorWorkClient({ initialData }: VendorWorkClientProps)
                                                 time={v.entry_status === 'arrival' ? (v.arrival_time?.slice(0, 5) || '-') : (v.departure_time?.slice(0, 5) || '-')}
                                                 isSelected={selected.has(v.id)}
                                                 onSelect={() => toggleSelect(v.id)}
-                                                onClick={() => router.push(`/vendor-work/${v.id}/edit`)}
+                                                onClick={() => router.push(`/vendor-work/${v.id}/edit${hideHomeButton ? '?guest=true' : ''}`)}
                                                 details={[
                                                     { label: "狀態", value: v.entry_status === 'arrival' ? '到院' : '離院' },
                                                     {

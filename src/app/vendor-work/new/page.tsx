@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
@@ -52,6 +52,8 @@ const FIELD_LABELS: Record<string, string> = {
 
 export default function VendorWorkNewPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const isGuest = searchParams?.get('guest') === 'true'
     const supabase = createClient()
     const { toast } = useToast()
 
@@ -318,7 +320,7 @@ export default function VendorWorkNewPage() {
             toast({ title: '新增成功', description: '廠商今日施工項目已新增' })
 
             // 1.5 秒後跳轉
-            setTimeout(() => router.push('/'), 1500)
+            setTimeout(() => router.push(isGuest ? '/vendor-work-guest' : '/'), 1500)
         } catch (error: any) {
             toast({ title: '新增失敗', description: error.message, variant: 'destructive' })
         }
