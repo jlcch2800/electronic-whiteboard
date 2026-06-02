@@ -316,10 +316,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     // 動態取得狀態 7（施工完成/已發包）的標題
     const getSection7Title = () => {
         if (formData.status === '工務已發包') {
-            return '狀態 7：工務已發包 (施工中)'
+            return '狀態 7：工務已發包'
         }
         if (formData.status === '採購已發包') {
-            return '狀態 7：採購已發包 (施工中)'
+            return '狀態 7：採購已發包'
         }
         // 若已完成施工，依據發包金額判斷當初是採購還是工務發包
         const isProcurement = Number(formData.amount) > 20000

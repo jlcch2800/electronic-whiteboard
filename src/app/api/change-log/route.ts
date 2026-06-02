@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
         // 取得當前登入使用者
         const { data: { user } } = await supabase.auth.getUser()
 
-        let user_name = '特定人員(免登入)'
+        let user_name = '免登入'
         let user_account = 'guest'
         let user_unit = '外部人員'
 
