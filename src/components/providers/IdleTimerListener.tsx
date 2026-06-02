@@ -102,11 +102,9 @@ export default function IdleTimerListener() {
 
         lastActiveRef.current = Date.now()
         resetTimer()
-        // eslint-disable-next-line no-console
-        console.log('[IdleTimer] 路由切換偵測到活動:', pathname)
     }, [pathname, resetTimer])
 
-    // 主要 effect：監聽使用者操作事件，管理閒置計時器
+    // 主要 effect：監聯使用者操作事件，管理閒置計時器
     useEffect(() => {
         // 使用者操作事件處理器（含節流）
         const handleActivity = () => {
