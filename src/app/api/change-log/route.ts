@@ -33,20 +33,27 @@ export async function POST(req: NextRequest) {
         const supabase = await createClient()
 
         // 取得當前登入使用者
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-            console.error('[API /change-log] 認證失敗:', authError?.message || '無使用者')
-            return NextResponse.json({ error: '未登入' }, { status: 401 })
+        const { data: { user } } = await supabase.auth.getUser()
+
+        let user_name = '特定人員(免登入)'
+        let user_account = 'guest'
+        let user_unit = '外部人員'
+
+        if (user) {
+            console.log('[API /change-log] 認證成功, user:', user.id)
+            // 查詢使用者 profile（取得 user_name, user_account, unit）
+            const { data: profile } = await supabase
+                .from('users')
+                .select('user_name, user_account, unit')
+                .eq('id', user.id)
+                .single()
+
+            user_name = profile?.user_name || user.email || 'Unknown'
+            user_account = profile?.user_account || user.email || 'Unknown'
+            user_unit = profile?.unit || null
+        } else {
+            console.log('[API /change-log] 無登入使用者，將以特定人員(免登入)身份紀錄')
         }
-
-        console.log('[API /change-log] 認證成功, user:', user.id)
-
-        // 查詢使用者 profile（取得 user_name, user_account, unit）
-        const { data: profile } = await supabase
-            .from('users')
-            .select('user_name, user_account, unit')
-            .eq('id', user.id)
-            .single()
 
         // 取得台灣時間日期
         const dateStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
@@ -54,9 +61,9 @@ export async function POST(req: NextRequest) {
         const insertPayload = {
             date: dateStr,
             action_type,
-            user_name: profile?.user_name || user.email || 'Unknown',
-            user_account: profile?.user_account || user.email || 'Unknown',
-            user_unit: profile?.unit || null,
+            user_name,
+            user_account,
+            user_unit,
             modify_table,
             modify_record_id,
             old_data: old_data || null,
