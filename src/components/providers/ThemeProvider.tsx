@@ -13,7 +13,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-    theme: 'system',
+    theme: 'light', // 預設主題改為 'light' (淺色模式)
     resolvedTheme: 'light',
     setTheme: () => { },
 })
@@ -21,10 +21,10 @@ const ThemeContext = createContext<ThemeContextType>({
 const STORAGE_KEY = 'whiteboard-theme'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>('system')
+    const [theme, setThemeState] = useState<Theme>('light') // 預設狀態設為 'light' (淺色模式)
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light')
 
-    // 初始化：從 localStorage 讀取或使用系統偏好
+    // 初始化：從 localStorage 讀取偏好設定，若無則維持預設的 'light'
     useEffect(() => {
         const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
         if (stored && ['light', 'dark', 'system'].includes(stored)) {
