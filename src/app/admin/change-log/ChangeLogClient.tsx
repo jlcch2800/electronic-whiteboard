@@ -87,15 +87,18 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         description: '說明', file_url: '文件', image_url: '照片', video_url: '影片', uploader_name: '上傳人員', work_item: '施工項目',
         content: '內容',
         // 維修單 (maintenance_work_orders)
-        request_date: '開單日', request_department: '開單部門', cost_center: '成本中心',
+        request_date: '開單日', cost_center: '成本中心',
         maintain_content: '維修內容', requester_name: '開單人',
+        printer_name: '印單人', submit_date: '送呈日期',
+        plan_start_date: '施工預計開始日期', plan_end_date: '施工預計結束日期',
+        installment_count: '分期', installment_note: '分期說明',
         work_order_id: '工單編號', handler_name: '承辦人',
         work_order_date: '接單日期', maint_mgr_name: '工務單位主管', maint_mgr_date: '工務單位主管日期',
         req_dept_mgr_name: '開單主管姓名', req_dept_mgr_date: '開單主管日期',
         quote_user_name: '報價承辦人', quote_user_date: '報價承辦人日期',
         amount: '金額',
-        dispatch_mgr_name: '發包-工務主管', dispatch_mgr_date: '發包-工務主管日期',
-        dispatch_director_name: '發包工務主任姓名', dispatch_director_date: '發包工務主任日期',
+        dispatch_mgr_name: '發包單位主管', dispatch_mgr_date: '發包單位主管日期',
+        dispatch_director_name: '發包部門主管', dispatch_director_date: '發包部門主管日期',
         vice_dean_name: '副院長姓名', vice_dean_date: '副院長日期',
         dean_name: '院長姓名', dean_date: '院長日期',
         project_order_id: '工程單編號',
@@ -106,8 +109,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         construct_end_date: '施工完成日期',
         accept_dept_mgr_name: '驗收-開單主管姓名', accept_dept_mgr_date: '驗收-開單主管日期',
         accept_handler_name: '驗收-承辦人', accept_handler_date: '驗收-承辦人日期',
-        accept_mgr_name: '驗收-工務主管', accept_mgr_date: '驗收-工務主管日期',
-        accept_director_name: '驗收工務主任姓名', accept_director_date: '驗收工務主任日期',
+        accept_mgr_name: '驗收單位主管', accept_mgr_date: '驗收單位主管日期',
+        accept_director_name: '驗收部門主管', accept_director_date: '驗收部門主管日期',
     }
 
     // 定義各資料表的欄位顯示順序 (整合排序)
@@ -138,8 +141,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'work_item', 'uploader_name', 'description', 'file_url', 'image_url', 'video_url',
         'content',
         // Maintenance Work Orders
-        'status', 'request_date', 'request_department', 'cost_center',
-        'maintain_content', 'requester_name',
+        'status', 'request_date', 'cost_center',
+        'maintain_content', 'requester_name', 'printer_name', 'submit_date',
         'work_order_id', 'handler_name',
         'work_order_date', 'maint_mgr_name', 'maint_mgr_date',
         'req_dept_mgr_name', 'req_dept_mgr_date',
@@ -150,6 +153,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'vice_dean_name', 'vice_dean_date',
         'dean_name', 'dean_date',
         'project_order_id',
+        'plan_start_date', 'plan_end_date',
         'procurement_name', 'procurement_date',
         'material_name', 'material_date',
         'rev_vice_dean_name', 'rev_vice_dean_date',
@@ -159,6 +163,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'accept_handler_name', 'accept_handler_date',
         'accept_mgr_name', 'accept_mgr_date',
         'accept_director_name', 'accept_director_date',
+        'installment_count', 'installment_note',
     ];
 
     const formatLogValue = (key: string, value: any) => {

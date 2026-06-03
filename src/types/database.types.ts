@@ -577,8 +577,13 @@ export interface Database {
           created_at: string
           status: MaintenanceStatus
           request_date: string
-          request_department: string
           cost_center: string
+          printer_name: string | null
+          submit_date: string | null
+          plan_start_date: string | null
+          plan_end_date: string | null
+          installment_count: number | null
+          installment_note: string | null
           maintain_content: string
           requester_name: string
           work_order_id: string
@@ -624,8 +629,13 @@ export interface Database {
           created_at?: string
           status?: MaintenanceStatus
           request_date: string
-          request_department: string
           cost_center: string
+          printer_name?: string | null
+          submit_date?: string | null
+          plan_start_date?: string | null
+          plan_end_date?: string | null
+          installment_count?: number | null
+          installment_note?: string | null
           maintain_content: string
           requester_name: string
           work_order_id: string
@@ -671,8 +681,13 @@ export interface Database {
           created_at?: string
           status?: MaintenanceStatus
           request_date?: string
-          request_department?: string
           cost_center?: string
+          printer_name?: string | null
+          submit_date?: string | null
+          plan_start_date?: string | null
+          plan_end_date?: string | null
+          installment_count?: number | null
+          installment_note?: string | null
           maintain_content?: string
           requester_name?: string
           work_order_id?: string
@@ -720,8 +735,13 @@ export interface Database {
           created_at: string
           status: MaintenanceStatus
           request_date: string
-          request_department: string
           cost_center: string
+          printer_name: string | null
+          submit_date: string | null
+          plan_start_date: string | null
+          plan_end_date: string | null
+          installment_count: number | null
+          installment_note: string | null
           maintain_content: string
           requester_name: string
           work_order_id: string
@@ -767,8 +787,13 @@ export interface Database {
           created_at?: string
           status: MaintenanceStatus
           request_date: string
-          request_department: string
           cost_center: string
+          printer_name?: string | null
+          submit_date?: string | null
+          plan_start_date?: string | null
+          plan_end_date?: string | null
+          installment_count?: number | null
+          installment_note?: string | null
           maintain_content: string
           requester_name: string
           work_order_id: string
@@ -814,8 +839,13 @@ export interface Database {
           created_at?: string
           status?: MaintenanceStatus
           request_date?: string
-          request_department?: string
           cost_center?: string
+          printer_name?: string | null
+          submit_date?: string | null
+          plan_start_date?: string | null
+          plan_end_date?: string | null
+          installment_count?: number | null
+          installment_note?: string | null
           maintain_content?: string
           requester_name?: string
           work_order_id?: string

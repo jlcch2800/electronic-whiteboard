@@ -11,6 +11,7 @@ export const MAINTENANCE_STATUS = [
     '院長室簽核中',
     '採購發包簽核中',
     '採購已發包',
+    '廠商施工中',
     '施工完成，開單單位驗收中',
     '維修部門驗收中',
     '已驗收'
@@ -54,6 +55,7 @@ export const STATUS_COLORS: Record<string, string> = {
     '院長室簽核中': 'purple',
     '採購發包簽核中': 'violet',
     '採購已發包': 'emerald',
+    '廠商施工中': 'rose',
     '施工完成，開單單位驗收中': 'orange',
     '維修部門驗收中': 'cyan',
     '已驗收': 'green'

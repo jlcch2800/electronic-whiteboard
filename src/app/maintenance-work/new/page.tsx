@@ -52,12 +52,14 @@ export default function MaintenanceWorkNewPage() {
             request_date: todayStr(),
             work_order_date: todayStr(),
             maint_mgr_date: todayStr(),
+            submit_date: todayStr(),
             handler_name: '',
             maint_mgr_name: '',
+            printer_name: '',
         }
     })
 
-    // 失焦觸發單欄驗證
+    // 失氣觸發單欄驗證
     const handleFieldBlur = useCallback((fieldName: string) => {
         setTouchedFields(prev => ({ ...prev, [fieldName]: true }))
         trigger(fieldName as any)
@@ -69,9 +71,9 @@ export default function MaintenanceWorkNewPage() {
         const values = getValues()
         let step = 1
         // 步驟 1：基本資訊已填
-        if (values.request_date && values.request_department && values.requester_name) step = 2
+        if (values.request_date && values.requester_name) step = 2
         // 步驟 2：工單資訊已填
-        if (step >= 2 && values.work_order_id && values.handler_name && values.maintain_content) step = 3
+        if (step >= 2 && values.work_order_id && values.handler_name && values.printer_name && values.maintain_content) step = 3
         return Math.min(step, totalSteps)
     }
     const currentStep = getFilledSteps()
@@ -123,7 +125,6 @@ export default function MaintenanceWorkNewPage() {
             const payload = {
                 status: '已轉維修單' as const,
                 request_date: pendingData.request_date,
-                request_department: pendingData.request_department,
                 cost_center: pendingData.cost_center,
                 maintain_content: pendingData.maintain_content,
                 requester_name: pendingData.requester_name,
@@ -132,6 +133,8 @@ export default function MaintenanceWorkNewPage() {
                 work_order_date: pendingData.work_order_date,
                 maint_mgr_name: pendingData.maint_mgr_name,
                 maint_mgr_date: pendingData.maint_mgr_date,
+                printer_name: pendingData.printer_name,
+                submit_date: pendingData.submit_date,
             }
 
             const { data: inserted, error } = await supabase
@@ -186,12 +189,12 @@ export default function MaintenanceWorkNewPage() {
                     </div>
                 </div>
             </header>
-
+ 
             {/* 表單 */}
             <main className="max-w-3xl mx-auto p-6 pb-16">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                     <form onSubmit={handleSubmit(onPreSubmit)} className="space-y-6">
-
+ 
                         {/* 區塊 1：基本資訊 */}
                         <Card>
                             <CardHeader>
@@ -205,21 +208,18 @@ export default function MaintenanceWorkNewPage() {
                                     <FormField label="開單日" required error={errors.request_date?.message} touched={touchedFields.request_date}>
                                         <Input type="date" {...register('request_date')} onBlur={() => handleFieldBlur('request_date')} />
                                     </FormField>
-                                    <FormField label="開單部門" required error={errors.request_department?.message} touched={touchedFields.request_department}>
-                                        <Input {...register('request_department')} placeholder="請輸入開單部門" onBlur={() => handleFieldBlur('request_department')} />
-                                    </FormField>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="成本中心" required error={errors.cost_center?.message} touched={touchedFields.cost_center}>
                                         <Input {...register('cost_center')} placeholder="請輸入成本中心" onBlur={() => handleFieldBlur('cost_center')} />
                                     </FormField>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="開單人" required error={errors.requester_name?.message} touched={touchedFields.requester_name}>
                                         <Input {...register('requester_name')} placeholder="請輸入開單人姓名" onBlur={() => handleFieldBlur('requester_name')} />
                                     </FormField>
                                 </div>
                             </CardContent>
                         </Card>
-
+ 
                         {/* 區塊 2：工單資訊 */}
                         <Card>
                             <CardHeader>
@@ -234,21 +234,26 @@ export default function MaintenanceWorkNewPage() {
                                         <Input type="date" {...register('work_order_date')} onBlur={() => handleFieldBlur('work_order_date')} />
                                     </FormField>
                                 </div>
-                                <FormField label="承辦人" required error={errors.handler_name?.message} touched={touchedFields.handler_name}>
-                                    <select
-                                        {...register('handler_name')}
-                                        onBlur={() => handleFieldBlur('handler_name')}
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                    >
-                                        <option value="">請選擇承辦人</option>
-                                        {HANDLER_OPTIONS.map(name => (
-                                            <option key={name} value={name}>{name}</option>
-                                        ))}
-                                    </select>
-                                </FormField>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField label="印單人" required error={errors.printer_name?.message} touched={touchedFields.printer_name}>
+                                        <Input {...register('printer_name')} placeholder="請輸入印單人姓名" onBlur={() => handleFieldBlur('printer_name')} />
+                                    </FormField>
+                                    <FormField label="承辦人" required error={errors.handler_name?.message} touched={touchedFields.handler_name}>
+                                        <select
+                                            {...register('handler_name')}
+                                            onBlur={() => handleFieldBlur('handler_name')}
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        >
+                                            <option value="">請選擇承辦人</option>
+                                            {HANDLER_OPTIONS.map(name => (
+                                                <option key={name} value={name}>{name}</option>
+                                            ))}
+                                        </select>
+                                    </FormField>
+                                </div>
                             </CardContent>
                         </Card>
-
+ 
                         {/* 區塊 3：維修內容 */}
                         <Card>
                             <CardHeader>
@@ -265,7 +270,7 @@ export default function MaintenanceWorkNewPage() {
                                 </FormField>
                             </CardContent>
                         </Card>
-
+ 
                         {/* 區塊 4：主管簽核 */}
                         <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900/50 dark:bg-orange-950/20">
                             <CardHeader>
@@ -291,9 +296,14 @@ export default function MaintenanceWorkNewPage() {
                                         <Input type="date" {...register('maint_mgr_date')} onBlur={() => handleFieldBlur('maint_mgr_date')} />
                                     </FormField>
                                 </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField label="送呈日期" required error={errors.submit_date?.message} touched={touchedFields.submit_date}>
+                                        <Input type="date" {...register('submit_date')} onBlur={() => handleFieldBlur('submit_date')} />
+                                    </FormField>
+                                </div>
                             </CardContent>
                         </Card>
-
+ 
                         {/* 提交按鈕 */}
                         <SubmitButton
                             isSubmitting={isSubmitting}
@@ -304,7 +314,7 @@ export default function MaintenanceWorkNewPage() {
                     </form>
                 </motion.div>
             </main>
-
+ 
             {/* 確認對話框 */}
             <ConfirmDialog
                 open={showConfirm}

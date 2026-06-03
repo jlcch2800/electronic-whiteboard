@@ -35,8 +35,8 @@ const EXPORT_LABELS: Record<string, string> = {
     'id': 'ID',
     'created_at': '建立時間',
     'status': '狀態',
+    // 步驟 1
     'request_date': '開單日',
-    'request_department': '開單部門',
     'cost_center': '成本中心',
     'maintain_content': '維修內容',
     'requester_name': '開單人',
@@ -45,21 +45,30 @@ const EXPORT_LABELS: Record<string, string> = {
     'work_order_date': '接單日期',
     'maint_mgr_name': '工務單位主管',
     'maint_mgr_date': '工務單位主管日期',
+    'printer_name': '印單人',
+    'submit_date': '送呈日期',
+    // 步驟 2
     'req_dept_mgr_name': '開單主管姓名',
     'req_dept_mgr_date': '開單主管日期',
+    // 步驟 3
     'quote_user_name': '報價承辦人',
     'quote_user_date': '報價承辦人日期',
+    // 步驟 4
     'vendor_name': '廠商',
     'amount': '金額',
-    'dispatch_mgr_name': '發包-工務主管',
-    'dispatch_mgr_date': '發包-工務主管日期',
-    'dispatch_director_name': '發包工務主任姓名',
-    'dispatch_director_date': '發包工務主任日期',
+    'dispatch_mgr_name': '發包單位主管',
+    'dispatch_mgr_date': '發包單位主管日期',
+    'dispatch_director_name': '發包部門主管',
+    'dispatch_director_date': '發包部門主管日期',
+    // 步驟 6
     'vice_dean_name': '副院長姓名',
     'vice_dean_date': '副院長日期',
     'dean_name': '院長姓名',
     'dean_date': '院長日期',
+    // 步驟 7
     'project_order_id': '工程單編號',
+    'plan_start_date': '施工預計開始日期',
+    'plan_end_date': '施工預計結束日期',
     'procurement_name': '採購組姓名',
     'procurement_date': '採購組日期',
     'material_name': '資材室姓名',
@@ -68,15 +77,20 @@ const EXPORT_LABELS: Record<string, string> = {
     'rev_vice_dean_date': '審查-副院長日期',
     'rev_dean_name': '審查-院長姓名',
     'rev_dean_date': '審查-院長日期',
+    // 步驟 8
     'construct_end_date': '施工完成日期',
+    // 步驟 9
     'accept_dept_mgr_name': '驗收-開單主管姓名',
     'accept_dept_mgr_date': '驗收-開單主管日期',
+    // 步驟 10
+    'installment_count': '分期',
+    'installment_note': '分期說明',
     'accept_handler_name': '驗收-承辦人',
     'accept_handler_date': '驗收-承辦人日期',
-    'accept_mgr_name': '驗收-工務主管',
-    'accept_mgr_date': '驗收-工務主管日期',
-    'accept_director_name': '驗收工務主任姓名',
-    'accept_director_date': '驗收工務主任日期',
+    'accept_mgr_name': '驗收單位主管',
+    'accept_mgr_date': '驗收單位主管日期',
+    'accept_director_name': '驗收部門主管',
+    'accept_director_date': '驗收部門主管日期',
 }
 
 interface MaintenanceWorkHistoryClientProps {
@@ -124,12 +138,11 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
             let query = supabase.from('maintenance_work_orders_history').select('*', { count: 'exact' })
 
             if (activeFilters.customSearch) {
-                query = query.or(`work_order_id.ilike.%${activeFilters.customSearch}%,maintain_content.ilike.%${activeFilters.customSearch}%,request_department.ilike.%${activeFilters.customSearch}%,handler_name.ilike.%${activeFilters.customSearch}%`)
+                query = query.or(`work_order_id.ilike.%${activeFilters.customSearch}%,maintain_content.ilike.%${activeFilters.customSearch}%,printer_name.ilike.%${activeFilters.customSearch}%,handler_name.ilike.%${activeFilters.customSearch}%`)
             }
             if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
             if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
             if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
-            if (activeFilters.department) query = query.ilike('request_department', `%${activeFilters.department}%`)
             if (activeFilters.costCenter) query = query.ilike('cost_center', `%${activeFilters.costCenter}%`)
             if (activeFilters.content) query = query.ilike('maintain_content', `%${activeFilters.content}%`)
             if (activeFilters.requester) query = query.ilike('requester_name', `%${activeFilters.requester}%`)
@@ -140,6 +153,11 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
             if (activeFilters.projectOrderId) query = query.ilike('project_order_id', `%${activeFilters.projectOrderId}%`)
             if (activeFilters.procurement) query = query.ilike('procurement_name', `%${activeFilters.procurement}%`)
             if (activeFilters.acceptHandler) query = query.ilike('accept_handler_name', `%${activeFilters.acceptHandler}%`)
+
+            if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
+            if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
+            if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
+            if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
 
             if (activeFilters.amount === 'lte20k') query = query.lte('amount', 20000)
             else if (activeFilters.amount === 'gt20k') query = query.gt('amount', 20000)
@@ -210,12 +228,11 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
             try {
                 let query = supabase.from('maintenance_work_orders_history').select('*')
                 if (activeFilters.customSearch) {
-                    query = query.or(`work_order_id.ilike.%${activeFilters.customSearch}%,maintain_content.ilike.%${activeFilters.customSearch}%,request_department.ilike.%${activeFilters.customSearch}%,handler_name.ilike.%${activeFilters.customSearch}%`)
+                    query = query.or(`work_order_id.ilike.%${activeFilters.customSearch}%,maintain_content.ilike.%${activeFilters.customSearch}%,printer_name.ilike.%${activeFilters.customSearch}%,handler_name.ilike.%${activeFilters.customSearch}%`)
                 }
                 if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
                 if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
                 if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
-                if (activeFilters.department) query = query.ilike('request_department', `%${activeFilters.department}%`)
                 if (activeFilters.costCenter) query = query.ilike('cost_center', `%${activeFilters.costCenter}%`)
                 if (activeFilters.content) query = query.ilike('maintain_content', `%${activeFilters.content}%`)
                 if (activeFilters.requester) query = query.ilike('requester_name', `%${activeFilters.requester}%`)
@@ -226,6 +243,12 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                 if (activeFilters.projectOrderId) query = query.ilike('project_order_id', `%${activeFilters.projectOrderId}%`)
                 if (activeFilters.procurement) query = query.ilike('procurement_name', `%${activeFilters.procurement}%`)
                 if (activeFilters.acceptHandler) query = query.ilike('accept_handler_name', `%${activeFilters.acceptHandler}%`)
+                
+                if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
+                if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
+                if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
+                if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
+
                 if (activeFilters.amount === 'lte20k') query = query.lte('amount', 20000)
                 else if (activeFilters.amount === 'gt20k') query = query.gt('amount', 20000)
                 if (sort) query = query.order(sort.key, { ascending: sort.direction === 'asc' })
@@ -395,9 +418,9 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                         <SortableTableHead sortKey="work_order_id" currentSort={sort} onSort={handleSort} label="工單編號" />
                                         <SortableTableHead sortKey="status" currentSort={sort} onSort={handleSort} label="狀態" />
                                         <SortableTableHead sortKey="request_date" currentSort={sort} onSort={handleSort} label="開單日" />
-                                        <SortableTableHead sortKey="request_department" currentSort={sort} onSort={handleSort} label="開單部門" />
                                         <SortableTableHead sortKey="cost_center" currentSort={sort} onSort={handleSort} label="成本中心" />
                                         <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
+                                        <SortableTableHead sortKey="printer_name" currentSort={sort} onSort={handleSort} label="印單人" />
                                         <TableHead>維修內容</TableHead>
                                         <SortableTableHead sortKey="handler_name" currentSort={sort} onSort={handleSort} label="承辦人" />
                                         <SortableTableHead sortKey="amount" currentSort={sort} onSort={handleSort} label="金額" />
@@ -420,9 +443,9 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">{item.request_date}</TableCell>
-                                            <TableCell>{item.request_department}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
+                                            <TableCell>{item.printer_name || '-'}</TableCell>
                                             <TableCell className="max-w-[200px] truncate" title={item.maintain_content}>
                                                 {item.maintain_content}
                                             </TableCell>
@@ -467,7 +490,7 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                     key={item.id}
                                     id={item.id}
                                     title={item.work_order_id}
-                                    subtitle={item.request_department}
+                                    subtitle={item.cost_center}
                                     status={{
                                         label: item.status,
                                         variant: "secondary",
@@ -476,6 +499,7 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                     date={item.request_date}
                                     dateLabel="開單日"
                                     details={[
+                                        { label: '印單人', value: item.printer_name || '-' },
                                         { label: '承辦人', value: item.handler_name },
                                         { label: '維修內容', value: item.maintain_content },
                                     ]}
@@ -509,7 +533,6 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold tracking-wider">工務維修單單筆記錄明細</h2>
-
                             </div>
                         </div>
                         {viewingItem && (
@@ -519,8 +542,6 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                             </div>
                         )}
                     </div>
-
-
 
                     {/* 卡片主體 */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30 dark:bg-slate-900/10">
@@ -532,7 +553,7 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                         iconColor: "text-blue-600 dark:text-blue-400",
                                         bgColor: "bg-blue-50/50 dark:bg-blue-950/20",
                                         borderColor: "border-blue-100 dark:border-blue-900/40",
-                                        fields: ['work_order_id', 'status', 'request_date', 'request_department', 'cost_center', 'requester_name', 'created_at']
+                                        fields: ['work_order_id', 'status', 'request_date', 'cost_center', 'requester_name', 'printer_name', 'submit_date', 'created_at']
                                     },
                                     {
                                         title: "🔧 故障描述與承辦接單",
@@ -553,14 +574,14 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                         iconColor: "text-indigo-600 dark:text-indigo-400",
                                         bgColor: "bg-indigo-50/50 dark:bg-indigo-950/20",
                                         borderColor: "border-indigo-100 dark:border-indigo-900/40",
-                                        fields: ['project_order_id', 'procurement_name', 'procurement_date', 'material_name', 'material_date', 'rev_vice_dean_name', 'rev_vice_dean_date', 'rev_dean_name', 'rev_dean_date']
+                                        fields: ['project_order_id', 'plan_start_date', 'plan_end_date', 'procurement_name', 'procurement_date', 'material_name', 'material_date', 'rev_vice_dean_name', 'rev_vice_dean_date', 'rev_dean_name', 'rev_dean_date']
                                     },
                                     {
                                         title: "✅ 施工完工與驗收簽章",
                                         iconColor: "text-teal-600 dark:text-teal-400",
                                         bgColor: "bg-teal-50/50 dark:bg-teal-950/20",
                                         borderColor: "border-teal-100 dark:border-teal-900/40",
-                                        fields: ['construct_end_date', 'accept_dept_mgr_name', 'accept_dept_mgr_date', 'accept_handler_name', 'accept_handler_date', 'accept_mgr_name', 'accept_mgr_date', 'accept_director_name', 'accept_director_date']
+                                        fields: ['construct_end_date', 'installment_count', 'installment_note', 'accept_dept_mgr_name', 'accept_dept_mgr_date', 'accept_handler_name', 'accept_handler_date', 'accept_mgr_name', 'accept_mgr_date', 'accept_director_name', 'accept_director_date']
                                     }
                                 ].map((group, gIdx) => (
                                     <div
@@ -592,6 +613,8 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                                         } catch (e) {
                                                             formattedVal = String(rawVal);
                                                         }
+                                                    } else if (key === 'installment_count') {
+                                                        formattedVal = `${rawVal} 期`;
                                                     } else {
                                                         formattedVal = String(rawVal);
                                                     }

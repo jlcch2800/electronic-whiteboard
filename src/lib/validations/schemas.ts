@@ -255,13 +255,12 @@ export const DEAN_OPTIONS = ['田宇峯'] as const
 export const MAINTENANCE_STATUS_OPTIONS = [
     '已轉維修單', '開單主管簽核完成', '工務部門報價，主管簽核中',
     '工務已發包', '院長室簽核中', '採購發包簽核中', '採購已發包',
-    '施工完成，開單單位驗收中', '維修部門驗收中', '已驗收'
+    '廠商施工中', '施工完成，開單單位驗收中', '維修部門驗收中', '已驗收'
 ] as const
 
 /** 維修單欄位中文對照表（供 ConfirmDialog 使用） */
 export const MAINTENANCE_FIELD_LABELS: Record<string, string> = {
     request_date: '開單日',
-    request_department: '開單部門',
     cost_center: '成本中心',
     maintain_content: '維修內容',
     requester_name: '開單人',
@@ -270,12 +269,25 @@ export const MAINTENANCE_FIELD_LABELS: Record<string, string> = {
     work_order_date: '接單日期',
     maint_mgr_name: '工務單位主管',
     maint_mgr_date: '工務單位主管日期',
+    printer_name: '印單人',
+    submit_date: '送呈日期',
+    plan_start_date: '施工預計開始日期',
+    plan_end_date: '施工預計結束日期',
+    installment_count: '分期',
+    installment_note: '分期說明',
+    dispatch_mgr_name: '發包單位主管',
+    dispatch_mgr_date: '發包單位主管日期',
+    dispatch_director_name: '發包部門主管',
+    dispatch_director_date: '發包部門主管日期',
+    accept_mgr_name: '驗收單位主管',
+    accept_mgr_date: '驗收單位主管日期',
+    accept_director_name: '驗收部門主管',
+    accept_director_date: '驗收部門主管日期',
 }
 
 /** 新增維修單表單 Schema（步驟 1：已轉維修單） */
 export const maintenanceWorkOrderSchema = z.object({
     request_date: z.string().min(1, '請選擇開單日'),
-    request_department: z.string().min(1, '請輸入開單部門'),
     cost_center: z.string().min(1, '請輸入成本中心'),
     maintain_content: z.string().min(1, '請輸入維修內容'),
     requester_name: z.string().min(1, '請輸入開單人'),
@@ -284,5 +296,7 @@ export const maintenanceWorkOrderSchema = z.object({
     work_order_date: z.string().min(1, '請選擇接單日期'),
     maint_mgr_name: z.string().min(1, '請選擇工務單位主管'),
     maint_mgr_date: z.string().min(1, '請選擇工務單位主管日期'),
+    printer_name: z.string().min(1, '請輸入印單人'),
+    submit_date: z.string().min(1, '請選擇送呈日期'),
 })
 export type MaintenanceWorkOrderFormValues = z.infer<typeof maintenanceWorkOrderSchema>

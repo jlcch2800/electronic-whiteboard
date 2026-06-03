@@ -6,19 +6,20 @@ import { motion } from 'framer-motion'
 import {
     Activity, ArrowRight, ClipboardList, Clock,
     CheckCircle2, AlertCircle, FileText, Hammer,
-    Send, ShieldCheck, ShoppingCart, UserCheck
+    Send, ShieldCheck, ShoppingCart, UserCheck, Wrench
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import Navbar from '@/components/Navbar'
 import { MAINTENANCE_STATUS, STATUS_COLORS } from '@/lib/maintenance-constants'
+import { Badge } from '@/components/ui/badge'
 
 interface SummaryItem {
     id: string
     request_date: string
-    request_department: string
     maintain_content: string
     work_order_id: string
+    cost_center: string
 }
 
 interface StatusStat {
@@ -62,6 +63,7 @@ const STATUS_ICONS: Record<string, any> = {
     '院長室簽核中': ShieldCheck,
     '採購發包簽核中': ShoppingCart,
     '採購已發包': Send,
+    '廠商施工中': Wrench,
     '施工完成，開單單位驗收中': Clock,
     '維修部門驗收中': Activity,
     '已驗收': CheckCircle2
@@ -96,6 +98,7 @@ function StatusCard({
         purple: { bg: 'from-purple-50 to-white', iconBg: 'bg-purple-100', iconColor: 'text-purple-600', border: 'border-purple-100', topBar: 'bg-purple-600' },
         violet: { bg: 'from-violet-50 to-white', iconBg: 'bg-violet-100', iconColor: 'text-violet-600', border: 'border-violet-100', topBar: 'bg-violet-600' },
         emerald: { bg: 'from-emerald-50 to-white', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', border: 'border-emerald-100', topBar: 'bg-emerald-600' },
+        rose: { bg: 'from-rose-50 to-white', iconBg: 'bg-rose-100', iconColor: 'text-rose-600', border: 'border-rose-100', topBar: 'bg-rose-600' },
         orange: { bg: 'from-orange-50 to-white', iconBg: 'bg-orange-100', iconColor: 'text-orange-600', border: 'border-orange-100', topBar: 'bg-orange-600' },
         cyan: { bg: 'from-cyan-50 to-white', iconBg: 'bg-cyan-100', iconColor: 'text-cyan-600', border: 'border-cyan-100', topBar: 'bg-cyan-600' },
         green: { bg: 'from-green-50 to-white', iconBg: 'bg-green-100', iconColor: 'text-green-600', border: 'border-green-100', topBar: 'bg-green-600' },
@@ -109,11 +112,7 @@ function StatusCard({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay, duration: 0.4 }}
             onClick={() => {
-                if (status === '已驗收') {
-                    router.push('/maintenance-work/history')
-                } else {
-                    router.push(`/maintenance-work/status/${encodeURIComponent(status)}`)
-                }
+                router.push(`/maintenance-work/status/${encodeURIComponent(status)}`)
             }}
             className={`relative cursor-pointer group bg-gradient-to-br ${c.bg} rounded-xl border ${c.border} p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1`}
         >
@@ -129,11 +128,6 @@ function StatusCard({
             <div className="flex items-baseline gap-1 mb-4 flex-wrap">
                 <span className={`text-4xl font-black ${c.iconColor}`}>{animatedCount}</span>
                 <span className="text-xs text-gray-400 font-medium mr-1">筆</span>
-                {lastYearCount !== undefined && (
-                    <span className="text-[10.5px] text-gray-400 font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60 inline-flex items-center shrink-0">
-                        去年：{lastYearCount} 筆
-                    </span>
-                )}
             </div>
 
             <div className="space-y-2 mb-4">
@@ -142,11 +136,10 @@ function StatusCard({
                 ) : (
                     recent.map((item, idx) => (
                         <div key={item.id} className="text-[11px] leading-tight text-gray-600 border-l-2 border-gray-100 pl-2">
-                            <div className="flex justify-between text-gray-400 mb-0.5">
+                            <div className="flex justify-between text-gray-600 font-medium mb-0.5">
                                 <span>
-                                    {idx + 1}. {item.request_date}
+                                    {idx + 1}. {item.request_date} {item.cost_center ? `| ${item.cost_center}` : ''}
                                 </span>
-                                <span className="font-medium text-gray-500">{item.request_department}</span>
                             </div>
                             <p className="truncate font-medium">{item.maintain_content}</p>
                         </div>
@@ -163,6 +156,7 @@ function StatusCard({
 }
 
 export default function StatusDashboardClient() {
+    const router = useRouter()
     const supabase = createClient()
     const [stats, setStats] = useState<StatusStat[]>([])
     const [loading, setLoading] = useState(true)
@@ -173,7 +167,7 @@ export default function StatusDashboardClient() {
             // 1. 查詢活動表資料
             const { data: activeData, error: activeError } = await supabase
                 .from('maintenance_work_orders')
-                .select('id, status, request_date, request_department, maintain_content, work_order_id')
+                .select('id, status, request_date, maintain_content, work_order_id, cost_center')
                 .order('request_date', { ascending: false })
 
             if (activeError) throw activeError
@@ -181,7 +175,7 @@ export default function StatusDashboardClient() {
             // 2. 查詢歷史表資料 (已驗收歸檔的資料)
             const { data: historyData, error: historyError } = await supabase
                 .from('maintenance_work_orders_history')
-                .select('id, status, request_date, request_department, maintain_content, work_order_id')
+                .select('id, status, request_date, maintain_content, work_order_id, cost_center')
                 .order('request_date', { ascending: false })
 
             if (historyError) throw historyError
@@ -189,16 +183,15 @@ export default function StatusDashboardClient() {
             // 合併兩者
             const allData = [...(activeData || []), ...(historyData || [])]
 
-            // 3. 計算去年的已驗收總筆數 (去年為今年減 1)
+            // 3. 計算今年與去年的已驗收總筆數
             const currentYear = new Date().getFullYear()
-            const lastYear = currentYear - 1
-            let lastYearHistoryCount = 0
+            let thisYearHistoryCount = 0
 
             historyData?.forEach((item: any) => {
                 if (item.request_date) {
                     const itemYear = new Date(item.request_date).getFullYear()
-                    if (itemYear === lastYear) {
-                        lastYearHistoryCount++
+                    if (itemYear === currentYear) {
+                        thisYearHistoryCount++
                     }
                 }
             })
@@ -209,23 +202,26 @@ export default function StatusDashboardClient() {
                 statsMap[s] = { status: s, count: 0, recent: [] }
             })
 
-            // 注入去年的統計數值給已驗收狀態
-            statsMap['已驗收'].lastYearCount = lastYearHistoryCount
+            // 注入今年的已驗收統計數值
+            statsMap['已驗收'].count = thisYearHistoryCount
 
             allData.forEach((item: any) => {
                 const itemStatus = item.status || '已驗收'
+                if (itemStatus === '已驗收') {
+                    // 已驗收卡片不顯示簡易維修單資料，亦不在此疊加（因已在上面計算好今年驗收數）
+                    return
+                }
                 if (statsMap[itemStatus]) {
                     statsMap[itemStatus].count++
 
-                    // 已驗收卡片顯示最近 5 筆記錄，其他卡片顯示 3 筆
-                    const limit = itemStatus === '已驗收' ? 5 : 3
+                    const limit = 3
                     if (statsMap[itemStatus].recent.length < limit) {
                         statsMap[itemStatus].recent.push({
                             id: item.id,
                             request_date: item.request_date,
-                            request_department: item.request_department,
                             maintain_content: item.maintain_content,
-                            work_order_id: item.work_order_id
+                            work_order_id: item.work_order_id,
+                            cost_center: item.cost_center
                         })
                     }
                 }
@@ -248,12 +244,23 @@ export default function StatusDashboardClient() {
             <Navbar onRefresh={fetchStats} />
 
             <main className="max-w-7xl mx-auto px-6 py-8 w-full">
-                <header className="mb-8">
-                    <h1 className="text-2xl font-black text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                        <Activity className="w-7 h-7 text-primary" />
-                        維修單狀態管理儀表板
-                    </h1>
-                    <p className="text-slate-400 dark:text-slate-400 text-sm mt-1">追蹤各階段維修單進度與簽核狀態</p>
+                <header className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-black text-slate-800 dark:text-slate-200 flex items-center gap-2 flex-wrap">
+                            <Activity className="w-7 h-7 text-primary" />
+                            維修單狀態管理儀表板
+                            {!loading && (
+                                <Badge 
+                                    variant="outline" 
+                                    className="ml-2 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800 text-sm py-1 px-3 font-bold cursor-pointer hover:bg-green-100 transition-colors"
+                                    onClick={() => router.push('/maintenance-work/history')}
+                                >
+                                    今年已驗收：{stats.find(s => s.status === '已驗收')?.count ?? 0} 筆
+                                </Badge>
+                            )}
+                        </h1>
+                        <p className="text-slate-400 dark:text-slate-400 text-sm mt-1">追蹤各階段維修單進度與簽核狀態</p>
+                    </div>
                 </header>
 
                 {loading ? (
@@ -264,7 +271,7 @@ export default function StatusDashboardClient() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                        {stats.map((stat, index) => (
+                        {stats.filter(stat => stat.status !== '已驗收').map((stat, index) => (
                             <StatusCard
                                 key={stat.status}
                                 status={stat.status}
@@ -272,7 +279,6 @@ export default function StatusDashboardClient() {
                                 recent={stat.recent}
                                 color={STATUS_COLORS[stat.status]}
                                 delay={index * 0.05}
-                                lastYearCount={stat.lastYearCount}
                             />
                         ))}
                     </div>

@@ -31,6 +31,53 @@ interface MaintenanceEditClientProps {
     initialData: any
 }
 
+interface InstallmentItem {
+    percent: string
+    amount: string
+    date: string
+    handler: string
+}
+
+const parseInstallmentNote = (note: string, count: number): InstallmentItem[] => {
+    const list: InstallmentItem[] = Array.from({ length: count }, () => ({
+        percent: '',
+        amount: '',
+        date: '',
+        handler: ''
+    }))
+
+    if (!note) return list
+
+    // 以換行符拆分
+    const lines = note.split('\n')
+    
+    // 正則表達式匹配：第\s*\d+\s*期合約訂定請款\s*([^％]+)\s*％，請款金額\s*:\s*([^，\s]+)，日期\s*:\s*([^，\s]+)，經辦人\s*:\s*([^．\s]+)．?
+    const regex = /第\s*\d+\s*期合約訂定請款\s*([^％]+)\s*％，請款金額\s*:\s*([^，]+)，日期\s*:\s*([^，]+)，經辦人\s*:\s*([^．]+)．?/
+
+    for (let i = 0; i < Math.min(lines.length, count); i++) {
+        const match = lines[i].match(regex)
+        if (match) {
+            list[i] = {
+                percent: match[1].trim(),
+                amount: match[2].trim(),
+                date: match[3].trim(),
+                handler: match[4].trim()
+            }
+        }
+    }
+    return list
+}
+
+const stringifyInstallments = (list: InstallmentItem[]): string => {
+    return list.map((item, index) => {
+        const percent = item.percent || ''
+        const amount = item.amount || ''
+        const date = item.date || ''
+        const handler = item.handler || ''
+        return `第${index + 1}期合約訂定請款${percent}％，請款金額:${amount}，日期:${date}，經辦人:${handler}．`
+    }).join('\n')
+}
+
 export default function MaintenanceEditClient({ id, initialData }: MaintenanceEditClientProps) {
     const router = useRouter()
     const { user } = useAuth()
@@ -41,22 +88,97 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const [formData, setFormData] = useState(() => ({
         ...initialData,
         dispatch_director_name: initialData.dispatch_director_name || DEFAULT_DIRECTOR_NAME,
-        accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME
+        accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME,
+        installment_count: initialData.installment_count !== undefined && initialData.installment_count !== null ? initialData.installment_count : null,
+        installment_note: initialData.installment_note || '',
+        printer_name: initialData.printer_name || '',
+        submit_date: initialData.submit_date || '',
     }))
     const [lastSavedData, setLastSavedData] = useState(() => ({
         ...initialData,
         dispatch_director_name: initialData.dispatch_director_name || DEFAULT_DIRECTOR_NAME,
-        accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME
+        accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME,
+        installment_count: initialData.installment_count !== undefined && initialData.installment_count !== null ? initialData.installment_count : null,
+        installment_note: initialData.installment_note || '',
+        printer_name: initialData.printer_name || '',
+        submit_date: initialData.submit_date || '',
     }))
     const [loading, setLoading] = useState(false)
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
+
+    const [installmentList, setInstallmentList] = useState<InstallmentItem[]>([])
+
+    // 初始化載入分期資訊
+    useEffect(() => {
+        const count = Number(formData.installment_count) || 0
+        if (count >= 2) {
+            setInstallmentList(parseInstallmentNote(formData.installment_note, count))
+        } else {
+            setInstallmentList([])
+        }
+    }, [initialData])
+
+    // 當期數改變時的處理函數
+    const handleInstallmentCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value
+        if (val === '') {
+            setFormData(prev => ({ ...prev, installment_count: null, installment_note: '' }))
+            setInstallmentList([])
+            return
+        }
+        
+        const count = parseInt(val, 10)
+        if (isNaN(count)) return
+
+        setFormData(prev => {
+            const nextNote = count >= 2 ? prev.installment_note : ''
+            return { ...prev, installment_count: count, installment_note: nextNote }
+        })
+
+        if (count >= 2) {
+            setInstallmentList(prev => {
+                const newList = Array.from({ length: count }, (_, i) => {
+                    return prev[i] || { percent: '', amount: '', date: '', handler: '' }
+                })
+                const noteStr = stringifyInstallments(newList)
+                setFormData(prevForm => ({ ...prevForm, installment_note: noteStr }))
+                return newList
+            })
+        } else {
+            setInstallmentList([])
+        }
+    }
+
+    // 當每一期的欄位變更時
+    const handleInstallmentItemChange = (index: number, field: keyof InstallmentItem, value: string) => {
+        setInstallmentList(prev => {
+            const newList = [...prev]
+            newList[index] = { ...newList[index], [field]: value }
+            const noteStr = stringifyInstallments(newList)
+            setFormData(prevForm => ({ ...prevForm, installment_note: noteStr }))
+            return newList
+        })
+    }
+
+    // 取得當前尚未填寫完成的第一個期數索引
+    const getActiveIndex = () => {
+        const count = Number(formData.installment_count) || 0
+        const savedList = parseInstallmentNote(lastSavedData.installment_note, count)
+        for (let i = 0; i < count; i++) {
+            const item = savedList[i]
+            if (!item.percent || !item.amount || !item.date || !item.handler) {
+                return i
+            }
+        }
+        return count
+    }
 
     // 取得當前狀態索引
     const currentStatusIndex = MAINTENANCE_STATUS.indexOf(formData.status)
 
     // 使用 state 記錄「基本資料階段」是否已完成，避免已存檔仍可修改或下一階段被鎖死
     const [section1Completed, setSection1Completed] = useState(
-        !!(initialData.handler_name && initialData.work_order_date && initialData.maint_mgr_name && initialData.maint_mgr_date)
+        !!(initialData.handler_name && initialData.work_order_date && initialData.maint_mgr_name && initialData.maint_mgr_date && initialData.printer_name && initialData.submit_date)
     )
 
     // 使用 state 記錄「開單主管簽核」是否已完成
@@ -92,7 +214,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         }
 
         // 其他狀態：一對一映射
-        // sectionIndex 對應：0=狀態1, 1=狀態2, 4=狀態5, 5=狀態6, 6=狀態7, 7=狀態8, 8=狀態9
+        // sectionIndex 對應：0=狀態1, 1=狀態2, 4=狀態5, 5=狀態6, 6=狀態7, 7=狀態8, 8=狀態9, 9=狀態10
         const statusMap: Record<string, number> = {
             '已轉維修單': 0,
             '開單主管簽核完成': 1,
@@ -100,8 +222,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             '採購發包簽核中': 5,
             '工務已發包': 6,
             '採購已發包': 6,
-            '施工完成，開單單位驗收中': 7,
-            '維修部門驗收中': 8,
+            '廠商施工中': 7,
+            '施工完成，開單單位驗收中': 8,
+            '維修部門驗收中': 9,
         }
 
         const targetSection = statusMap[formData.status] ?? 0
@@ -133,6 +256,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             '採購發包簽核中': 'section5',
             '工務已發包': 'section7',
             '採購已發包': 'section7',
+            '廠商施工中': 'section7_construct',
             '施工完成，開單單位驗收中': 'section8',
             '維修部門驗收中': 'section9',
         }
@@ -156,7 +280,6 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             // 如果是在狀態 2 區塊內進行的「開單主管簽核完成」儲存（原本狀態為開單主管簽核完成，或者基本資料已完成送審）
             if (formData.status === '開單主管簽核完成' || (formData.status === '已轉維修單' && section1Completed)) {
                 if (!formData.req_dept_mgr_name) return '請輸入開單主管姓名'
-                if (!formData.req_dept_mgr_date) return '請輸入開單主管日期'
                 return null
             }
             // 否則，是在狀態 1 區塊內的「確認基本資料並送審」
@@ -165,6 +288,8 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 if (!formData.work_order_date) return '請輸入接單日期'
                 if (!formData.maint_mgr_name) return '請選擇工務單位主管'
                 if (!formData.maint_mgr_date) return '請輸入工務單位主管日期'
+                if (!formData.printer_name) return '請輸入印單人姓名'
+                if (!formData.submit_date) return '請輸入送呈日期'
             }
             return null
         }
@@ -175,10 +300,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 if (!formData.work_order_date) return '請輸入接單日期'
                 if (!formData.maint_mgr_name) return '請選擇工務單位主管'
                 if (!formData.maint_mgr_date) return '請輸入工務單位主管日期'
+                if (!formData.printer_name) return '請輸入印單人姓名'
+                if (!formData.submit_date) return '請輸入送呈日期'
                 break
             case '開單主管簽核完成':
                 if (!formData.req_dept_mgr_name) return '請輸入開單主管姓名'
-                if (!formData.req_dept_mgr_date) return '請輸入開單主管日期'
                 break
             case '工務部門報價，主管簽核中':
                 if (!formData.quote_user_name) return '請選擇報價承辦人'
@@ -186,37 +312,52 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 break
             case '院長室簽核中':
                 if (!formData.vice_dean_name) return '請選擇副院長'
-                if (!formData.vice_dean_date) return '請輸入副院長日期'
                 if (!formData.dean_name) return '請選擇院長'
-                if (!formData.dean_date) return '請輸入院長日期'
                 break
             case '採購發包簽核中':
-                if (!formData.project_order_id) return '請輸入工程單編號'
                 if (!formData.procurement_name) return '請輸入採購組姓名'
-                if (!formData.procurement_date) return '請輸入採購組日期'
                 if (!formData.material_name) return '請輸入資材室姓名'
-                if (!formData.material_date) return '請輸入資材室日期'
                 if (!formData.rev_vice_dean_name) return '請選擇審查-副院長'
-                if (!formData.rev_vice_dean_date) return '請輸入審查-副院長日期'
                 if (!formData.rev_dean_name) return '請選擇審查-院長'
-                if (!formData.rev_dean_date) return '請輸入審查-院長日期'
                 break
             case '工務已發包':
             case '採購已發包':
+                if (!formData.project_order_id) return '請輸入工程單編號'
+                if (!formData.plan_start_date) return '請輸入施工預計開始日期'
+                if (!formData.plan_end_date) return '請輸入施工預計結束日期'
+                break
+            case '廠商施工中':
                 if (!formData.construct_end_date) return '請輸入施工完成日期'
                 break
             case '施工完成，開單單位驗收中':
                 if (!formData.accept_dept_mgr_name) return '請輸入驗收-開單主管姓名'
-                if (!formData.accept_dept_mgr_date) return '請輸入驗收-開單主管日期'
                 break
-            case '維修部門驗收中':
+            case '維修部門驗收中': {
+                const count = formData.installment_count
+                if (count === null || count === undefined || isNaN(Number(count))) {
+                    return '請輸入分期期數'
+                }
+                const numCount = Number(count)
+                if (numCount < 0) {
+                    return '分期期數不能為負數'
+                }
+                if (numCount >= 2) {
+                    for (let i = 0; i < installmentList.length; i++) {
+                        const item = installmentList[i]
+                        if (!item.percent) return `請輸入第 ${i + 1} 期的請款比例`
+                        if (!item.amount) return `請輸入第 ${i + 1} 期的請款金額`
+                        if (!item.date) return `請輸入第 ${i + 1} 期的日期`
+                        if (!item.handler) return `請輸入第 ${i + 1} 期的經辦人`
+                    }
+                }
                 if (!formData.accept_handler_name) return '請選擇驗收-承辦人'
                 if (!formData.accept_handler_date) return '請輸入驗收-承辦人日期'
-                if (!formData.accept_mgr_name) return '請選擇驗收-工務主管'
-                if (!formData.accept_mgr_date) return '請輸入驗收-工務主管日期'
-                if (!formData.accept_director_name) return '請輸入驗收工務主任姓名'
-                if (!formData.accept_director_date) return '請輸入驗收工務主任日期'
+                if (!formData.accept_mgr_name) return '請選擇驗收單位主管'
+                if (!formData.accept_mgr_date) return '請輸入驗收單位主管日期'
+                if (!formData.accept_director_name) return '請輸入驗收部門主管姓名'
+                if (!formData.accept_director_date) return '請輸入驗收部門主管日期'
                 break
+            }
         }
         return null
     }
@@ -229,6 +370,23 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             if (error) {
                 toast({ title: '驗證失敗', description: error, variant: 'destructive' })
                 return
+            }
+        } else {
+            // 僅儲存不變更狀態時的特殊驗證：若在狀態 10 且分期 >= 2，必須驗證當前正在填寫的這一期是否已填寫完整
+            if (formData.status === '維修部門驗收中' && formData.installment_count !== null && Number(formData.installment_count) >= 2) {
+                const activeIndex = getActiveIndex()
+                const count = Number(formData.installment_count)
+                if (activeIndex < count) {
+                    const item = installmentList[activeIndex]
+                    if (!item || !item.percent || !item.amount || !item.date || !item.handler) {
+                        toast({ 
+                            title: '驗證失敗', 
+                            description: `請完整填寫第 ${activeIndex + 1} 期的分期明細（比例、金額、日期、經辦人），方可進行儲存。`, 
+                            variant: 'destructive' 
+                        })
+                        return
+                    }
+                }
             }
         }
 
@@ -295,16 +453,20 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             toast({ title: '驗證失敗', description: '請輸入有效的發包金額', variant: 'destructive' })
             return
         }
-        if (amount <= 20000 && !formData.project_order_id) {
-            toast({ title: '驗證失敗', description: '金額小於或等於 2 萬，工程單編號為必填', variant: 'destructive' })
-            return
-        }
         if (!formData.dispatch_mgr_name) {
-            toast({ title: '驗證失敗', description: '請選擇發包-工務主管', variant: 'destructive' })
+            toast({ title: '驗證失敗', description: '請選擇發包單位主管', variant: 'destructive' })
             return
         }
         if (!formData.dispatch_mgr_date) {
-            toast({ title: '驗證失敗', description: '請輸入發包-工務主管日期', variant: 'destructive' })
+            toast({ title: '驗證失敗', description: '請輸入發包單位主管日期', variant: 'destructive' })
+            return
+        }
+        if (!formData.dispatch_director_name) {
+            toast({ title: '驗證失敗', description: '請輸入發包部門主管姓名', variant: 'destructive' })
+            return
+        }
+        if (!formData.dispatch_director_date) {
+            toast({ title: '驗證失敗', description: '請輸入發包部門主管日期', variant: 'destructive' })
             return
         }
 
@@ -356,6 +518,8 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         </div>
     )
 
+    const activeIndex = getActiveIndex()
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
             <Navbar />
@@ -375,11 +539,6 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                         </Badge>
                     </div>
                 </div>
-                <div className="flex items-center w-full md:w-auto">
-                    <Button variant="outline" size="sm" onClick={() => handleSave()} disabled={loading} className="w-full md:w-auto justify-center h-9 border-slate-300 dark:border-slate-200 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
-                    </Button>
-                </div>
             </header>
 
             <main className="max-w-4xl mx-auto px-6 py-8 w-full space-y-6">
@@ -392,54 +551,63 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>工單編號</Label>
+                                        <Label>工單編號 <span className="text-red-500">*</span></Label>
                                         <Input name="work_order_id" value={formData.work_order_id} disabled />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>開單日</Label>
+                                        <Label>開單日 <span className="text-red-500">*</span></Label>
                                         <Input name="request_date" type="date" value={formData.request_date} disabled />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>開單部門</Label>
-                                        <Input name="request_department" value={formData.request_department} disabled />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>成本中心</Label>
+                                        <Label>成本中心 <span className="text-red-500">*</span></Label>
                                         <Input name="cost_center" value={formData.cost_center} disabled />
                                     </div>
+                                    <div className="space-y-2">
+                                        <Label>開單人 <span className="text-red-500">*</span></Label>
+                                        <Input name="requester_name" value={formData.requester_name} disabled />
+                                    </div>
                                     <div className="col-span-full space-y-2">
-                                        <Label>維修內容</Label>
+                                        <Label>維修內容 <span className="text-red-500">*</span></Label>
                                         <Textarea name="maintain_content" value={formData.maintain_content} disabled />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>開單人</Label>
-                                        <Input name="requester_name" value={formData.requester_name} disabled />
+                                        <Label>印單人 <span className="text-red-500">*</span></Label>
+                                        <Input name="printer_name" value={formData.printer_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(0)} placeholder="請輸入印單人姓名" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>承辦人</Label>
+                                        <Label>承辦人 <span className="text-red-500">*</span></Label>
                                         <Select value={formData.handler_name} onValueChange={(v) => handleSelectChange('handler_name', v)} disabled={!isSectionEditable(0)}>
                                             <SelectTrigger><SelectValue placeholder="請選擇承辦人" /></SelectTrigger>
                                             <SelectContent>{HANDLER_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>接單日期</Label>
+                                        <Label>接單日期 <span className="text-red-500">*</span></Label>
                                         <Input name="work_order_date" type="date" value={formData.work_order_date} onChange={handleInputChange} disabled={!isSectionEditable(0)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>工務單位主管</Label>
+                                        <Label>工務單位主管 <span className="text-red-500">*</span></Label>
                                         <Select value={formData.maint_mgr_name} onValueChange={(v) => handleSelectChange('maint_mgr_name', v)} disabled={!isSectionEditable(0)}>
                                             <SelectTrigger><SelectValue placeholder="請選擇主管" /></SelectTrigger>
                                             <SelectContent>{MAINT_MGR_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>工務單位主管日期</Label>
+                                        <Label>工務單位主管日期 <span className="text-red-500">*</span></Label>
                                         <Input name="maint_mgr_date" type="date" value={formData.maint_mgr_date} onChange={handleInputChange} disabled={!isSectionEditable(0)} />
                                     </div>
-                                    {isSectionEditable(0) && formData.status === '已轉維修單' && (
-                                        <div className="col-span-full pt-4">
-                                            <Button className="w-full" onClick={() => handleSave('開單主管簽核完成')}>確認基本資料並送審</Button>
+                                    <div className="space-y-2">
+                                        <Label>送呈日期 <span className="text-red-500">*</span></Label>
+                                        <Input name="submit_date" type="date" value={formData.submit_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(0)} />
+                                    </div>
+                                    {isSectionEditable(0) && (
+                                        <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                            {formData.status === '已轉維修單' && (
+                                                <Button className="flex-1" onClick={() => handleSave('開單主管簽核完成')}>確認基本資料並送審</Button>
+                                            )}
+                                            <Button variant="outline" className={formData.status === '已轉維修單' ? "flex-1 border-slate-300 dark:border-slate-700" : "w-full border-slate-300 dark:border-slate-700"} onClick={() => handleSave()} disabled={loading}>
+                                                <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                            </Button>
                                         </div>
                                     )}
                                 </CardContent>
@@ -456,7 +624,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>開單主管姓名</Label>
+                                        <Label>開單主管姓名 <span className="text-red-500">*</span></Label>
                                         <Input name="req_dept_mgr_name" value={formData.req_dept_mgr_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(1)} />
                                     </div>
                                     <div className="space-y-2">
@@ -464,8 +632,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         <Input name="req_dept_mgr_date" type="date" value={formData.req_dept_mgr_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(1)} />
                                     </div>
                                     {isSectionEditable(1) && (
-                                        <div className="col-span-full pt-4">
-                                            <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => handleSave('開單主管簽核完成')}>開單主管簽核完成</Button>
+                                        <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                            <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleSave('開單主管簽核完成')}>開單主管簽核完成</Button>
+                                            <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                            </Button>
                                         </div>
                                     )}
                                 </CardContent>
@@ -482,19 +653,22 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>報價承辦人</Label>
+                                        <Label>報價承辦人 <span className="text-red-500">*</span></Label>
                                         <Select value={formData.quote_user_name || ''} onValueChange={(v) => handleSelectChange('quote_user_name', v)} disabled={!isSectionEditable(2)}>
                                             <SelectTrigger><SelectValue placeholder="選擇承辦人" /></SelectTrigger>
                                             <SelectContent>{HANDLER_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>報價承辦人日期</Label>
+                                        <Label>報價承辦人日期 <span className="text-red-500">*</span></Label>
                                         <Input name="quote_user_date" type="date" value={formData.quote_user_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(2)} />
                                     </div>
                                     {isSectionEditable(2) && (
-                                        <div className="col-span-full pt-4">
-                                            <Button className="w-full bg-indigo-600 hover:bg-indigo-700" onClick={() => handleSave('工務部門報價，主管簽核中')}>報價完成，送工務主管簽核</Button>
+                                        <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                            <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={() => handleSave('工務部門報價，主管簽核中')}>報價完成，送工務主管簽核</Button>
+                                            <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                            </Button>
                                         </div>
                                     )}
                                 </CardContent>
@@ -511,39 +685,38 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>廠商</Label>
+                                        <Label>廠商 <span className="text-red-500">*</span></Label>
                                         <Input name="vendor_name" value={formData.vendor_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-orange-600 font-bold">金額 (≤ 2萬 走簡易流程)</Label>
+                                        <Label className="text-orange-600 font-bold">金額 (≤ 2萬 走簡易流程) <span className="text-red-500">*</span></Label>
                                         <Input name="amount" type="number" value={formData.amount || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} className="border-orange-200 focus:border-orange-500" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>發包-工務主管</Label>
+                                        <Label>發包單位主管 <span className="text-red-500">*</span></Label>
                                         <Select value={formData.dispatch_mgr_name || ''} onValueChange={(v) => handleSelectChange('dispatch_mgr_name', v)} disabled={!isSectionEditable(3)}>
                                             <SelectTrigger><SelectValue placeholder="選擇主管" /></SelectTrigger>
                                             <SelectContent>{MAINT_MGR_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>發包-工務主管日期</Label>
+                                        <Label>發包單位主管日期 <span className="text-red-500">*</span></Label>
                                         <Input name="dispatch_mgr_date" type="date" value={formData.dispatch_mgr_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>發包工務主任</Label>
+                                        <Label>發包部門主管 <span className="text-red-500">*</span></Label>
                                         <Input name="dispatch_director_name" value={formData.dispatch_director_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>發包工務主任日期</Label>
+                                        <Label>發包部門主管日期 <span className="text-red-500">*</span></Label>
                                         <Input name="dispatch_director_date" type="date" value={formData.dispatch_director_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
                                     </div>
-                                    <div className="space-y-2 col-span-full">
-                                        <Label>工程單編號 {Number(formData.amount) <= 20000 && <span className="text-red-500">*</span>}</Label>
-                                        <Input name="project_order_id" value={formData.project_order_id || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
-                                    </div>
                                     {isSectionEditable(3) && (
-                                        <div className="col-span-full pt-4">
-                                            <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={handleDispatchSignoff}>發包簽核完成 (系統將依金額判斷流程)</Button>
+                                        <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                            <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={handleDispatchSignoff}>發包簽核完成 (系統將依金額判斷流程)</Button>
+                                            <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                            </Button>
                                         </div>
                                     )}
                                 </CardContent>
@@ -561,7 +734,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                     <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>副院長姓名</Label>
+                                            <Label>副院長姓名 <span className="text-red-500">*</span></Label>
                                             <Select value={formData.vice_dean_name || ''} onValueChange={(v) => handleSelectChange('vice_dean_name', v)} disabled={!isSectionEditable(4)}>
                                                 <SelectTrigger><SelectValue placeholder="選擇副院長" /></SelectTrigger>
                                                 <SelectContent>{VICE_DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
@@ -572,7 +745,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <Input name="vice_dean_date" type="date" value={formData.vice_dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(4)} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>院長姓名</Label>
+                                            <Label>院長姓名 <span className="text-red-500">*</span></Label>
                                             <Select value={formData.dean_name || ''} onValueChange={(v) => handleSelectChange('dean_name', v)} disabled={!isSectionEditable(4)}>
                                                 <SelectTrigger><SelectValue placeholder="選擇院長" /></SelectTrigger>
                                                 <SelectContent>{DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
@@ -583,8 +756,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <Input name="dean_date" type="date" value={formData.dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(4)} />
                                         </div>
                                         {isSectionEditable(4) && (
-                                            <div className="col-span-full pt-4">
-                                                <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={() => handleSave('採購發包簽核中')}>院長室核准完成，送採購發包</Button>
+                                            <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                                <Button className="flex-1 bg-purple-600 hover:bg-purple-700" onClick={() => handleSave('採購發包簽核中')}>院長室核准完成，送採購發包</Button>
+                                                <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                    <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                                </Button>
                                             </div>
                                         )}
                                     </CardContent>
@@ -603,11 +779,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                     <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>工程單編號</Label>
-                                            <Input name="project_order_id" value={formData.project_order_id || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>採購組姓名</Label>
+                                            <Label>採購組姓名 <span className="text-red-500">*</span></Label>
                                             <Input name="procurement_name" value={formData.procurement_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
                                         </div>
                                         <div className="space-y-2">
@@ -615,7 +787,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <Input name="procurement_date" type="date" value={formData.procurement_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>資材室姓名</Label>
+                                            <Label>資材室姓名 <span className="text-red-500">*</span></Label>
                                             <Input name="material_name" value={formData.material_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
                                         </div>
                                         <div className="space-y-2">
@@ -624,7 +796,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         </div>
                                         <div className="col-span-full h-px bg-slate-100 my-2" />
                                         <div className="space-y-2">
-                                            <Label>審查-副院長</Label>
+                                            <Label>審查-副院長 <span className="text-red-500">*</span></Label>
                                             <Select value={formData.rev_vice_dean_name || ''} onValueChange={(v) => handleSelectChange('rev_vice_dean_name', v)} disabled={!isSectionEditable(5)}>
                                                 <SelectTrigger><SelectValue placeholder="選擇副院長" /></SelectTrigger>
                                                 <SelectContent>{VICE_DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
@@ -635,7 +807,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <Input name="rev_vice_dean_date" type="date" value={formData.rev_vice_dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>審查-院長</Label>
+                                            <Label>審查-院長 <span className="text-red-500">*</span></Label>
                                             <Select value={formData.rev_dean_name || ''} onValueChange={(v) => handleSelectChange('rev_dean_name', v)} disabled={!isSectionEditable(5)}>
                                                 <SelectTrigger><SelectValue placeholder="選擇院長" /></SelectTrigger>
                                                 <SelectContent>{DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
@@ -646,8 +818,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <Input name="rev_dean_date" type="date" value={formData.rev_dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
                                         </div>
                                         {isSectionEditable(5) && (
-                                            <div className="col-span-full pt-4">
-                                                <Button className="w-full bg-violet-600 hover:bg-violet-700" onClick={() => handleSave('採購已發包')}>審查完成，採購已發包</Button>
+                                            <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                                <Button className="flex-1 bg-violet-600 hover:bg-violet-700" onClick={() => handleSave('採購已發包')}>審查完成，採購已發包</Button>
+                                                <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                    <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                                </Button>
                                             </div>
                                         )}
                                     </CardContent>
@@ -657,7 +832,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </Card>
                 )}
 
-                {/* 狀態 7: 施工已完成 */}
+                {/* 狀態 7: 工務已發包 / 採購已發包 */}
                 <Card className="overflow-hidden border-slate-200 shadow-sm">
                     <SectionHeader title={getSection7Title()} sectionKey="section7" index={6} />
                     <AnimatePresence>
@@ -665,12 +840,25 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2 col-span-full">
-                                        <Label>施工完成日期</Label>
-                                        <Input name="construct_end_date" type="date" value={formData.construct_end_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(6)} />
+                                        <Label>工程單編號 <span className="text-red-500">*</span></Label>
+                                        <Input name="project_order_id" value={formData.project_order_id || ''} onChange={handleInputChange} disabled={!isSectionEditable(6)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>施工預計開始日期 <span className="text-red-500">*</span></Label>
+                                        <Input name="plan_start_date" type="date" value={formData.plan_start_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(6)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>施工預計結束日期 <span className="text-red-500">*</span></Label>
+                                        <Input name="plan_end_date" type="date" value={formData.plan_end_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(6)} />
                                     </div>
                                     {isSectionEditable(6) && (
-                                        <div className="col-span-full pt-4">
-                                            <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={() => handleSave('施工完成，開單單位驗收中')}>施工完成，送開單單位驗收</Button>
+                                        <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                            <Button className="flex-1 bg-orange-600 hover:bg-orange-700" onClick={() => handleSave('廠商施工中')}>
+                                                維修單狀態進入廠商施工中
+                                            </Button>
+                                            <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                            </Button>
                                         </div>
                                     )}
                                 </CardContent>
@@ -679,24 +867,56 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </AnimatePresence>
                 </Card>
 
-                {/* 狀態 8: 施工完成，開單單位驗收中 */}
+                {/* 狀態 8: 廠商施工中 */}
+                <Card className="overflow-hidden border-slate-200 shadow-sm border-l-4 border-l-rose-500">
+                    <SectionHeader title="狀態 8：廠商施工中" sectionKey="section7_construct" index={7} />
+                    <AnimatePresence>
+                        {openSections.section7_construct && (
+                            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                                <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2 col-span-full">
+                                        <Label>施工完成日期 <span className="text-red-500">*</span></Label>
+                                        <Input name="construct_end_date" type="date" value={formData.construct_end_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(7)} />
+                                    </div>
+                                    {isSectionEditable(7) && (
+                                        <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                            <Button className="flex-1 bg-rose-600 hover:bg-rose-700 text-white" onClick={() => handleSave('施工完成，開單單位驗收中')}>
+                                                施工完成，送開單單位驗收
+                                            </Button>
+                                            <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                            </Button>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </Card>
+
+                {/* 狀態 9: 施工完成，開單單位驗收中 */}
                 <Card className="overflow-hidden border-slate-200 shadow-sm">
-                    <SectionHeader title="狀態 8：施工完成，開單單位驗收中" sectionKey="section8" index={7} />
+                    <SectionHeader title="狀態 9：施工完成，開單單位驗收中" sectionKey="section8" index={8} />
                     <AnimatePresence>
                         {openSections.section8 && (
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>驗收-開單主管姓名</Label>
-                                        <Input name="accept_dept_mgr_name" value={formData.accept_dept_mgr_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(7)} />
+                                        <Label>驗收-開單主管姓名 <span className="text-red-500">*</span></Label>
+                                        <Input name="accept_dept_mgr_name" value={formData.accept_dept_mgr_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(8)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>驗收-開單主管日期</Label>
-                                        <Input name="accept_dept_mgr_date" type="date" value={formData.accept_dept_mgr_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(7)} />
+                                        <Input name="accept_dept_mgr_date" type="date" value={formData.accept_dept_mgr_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(8)} />
                                     </div>
-                                    {isSectionEditable(7) && (
-                                        <div className="col-span-full pt-4">
-                                            <Button className="w-full bg-cyan-600 hover:bg-cyan-700" onClick={() => handleSave('維修部門驗收中')}>開單單位驗收完成，回傳工務驗收</Button>
+                                    {isSectionEditable(8) && (
+                                        <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                            <Button className="flex-1 bg-cyan-600 hover:bg-cyan-700" onClick={() => handleSave('維修部門驗收中')}>
+                                                開單單位驗收完成，回傳工務驗收
+                                            </Button>
+                                            <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                            </Button>
                                         </div>
                                     )}
                                 </CardContent>
@@ -705,48 +925,159 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     </AnimatePresence>
                 </Card>
 
-                {/* 狀態 9: 維修部門驗收中 */}
+                {/* 狀態 10: 維修部門驗收中 */}
                 <Card className="overflow-hidden border-slate-200 shadow-sm border-b-4 border-b-green-500">
-                    <SectionHeader title="狀態 9：維修部門驗收中" sectionKey="section9" index={8} />
+                    <SectionHeader title="狀態 10：維修部門驗收中" sectionKey="section9" index={9} />
                     <AnimatePresence>
                         {openSections.section9 && (
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label>驗收-承辦人</Label>
-                                        <Select value={formData.accept_handler_name || ''} onValueChange={(v) => handleSelectChange('accept_handler_name', v)} disabled={!isSectionEditable(8)}>
+                                        <Label>分期 <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            name="installment_count"
+                                            type="number"
+                                            min={0}
+                                            value={formData.installment_count !== null && formData.installment_count !== undefined ? formData.installment_count : ''}
+                                            onChange={handleInstallmentCountChange}
+                                            disabled={!isSectionEditable(9)}
+                                            placeholder="請輸入分期期數"
+                                        />
+                                    </div>
+                                    
+                                    {/* 當期數為 0 時的提示 */}
+                                    {formData.installment_count !== null && Number(formData.installment_count) === 0 && (
+                                        <div className="col-span-full text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md border border-amber-200 dark:border-amber-800/30">
+                                            系統提示：已輸入為「0」期，代表無分期，無需填寫分期說明。
+                                        </div>
+                                    )}
+
+                                    {/* 當期數為 1 時的提示 */}
+                                    {formData.installment_count !== null && Number(formData.installment_count) === 1 && (
+                                        <div className="col-span-full text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-md border border-blue-200 dark:border-blue-800/30">
+                                            系統提示：已輸入為「1」期，無需填寫分期說明。
+                                        </div>
+                                    )}
+
+                                    {/* 當期數 >= 2 時，動態呈現每一期的填寫欄位 */}
+                                    {formData.installment_count !== null && Number(formData.installment_count) >= 2 && (
+                                        <div className="col-span-full space-y-4 border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-900/30">
+                                            <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">
+                                                分期明細填寫 (共 {formData.installment_count} 期) <span className="text-red-500">*</span>
+                                            </h4>
+                                            <div className="space-y-3">
+                                                {installmentList.map((item, index) => {
+                                                    // 1. 第二期以後的期數（相對於當前正在填寫的 activeIndex + 1 之後的期數）完全不顯示
+                                                    if (index > activeIndex + 1) {
+                                                        return null
+                                                    }
+
+                                                    // 2. 已經存檔且鎖定的前幾期，只用一行極簡短的文字摘要顯示，不渲染 4 個輸入框以節省手機版版面高度
+                                                    if (index < activeIndex) {
+                                                        return (
+                                                            <div key={index} className="flex justify-between items-center p-2 px-3 bg-slate-50/70 dark:bg-slate-900/10 border border-slate-100 dark:border-slate-800 rounded-md text-[11px] text-slate-500">
+                                                                <span className="font-bold">第 {index + 1} 期 (🔒 已存檔鎖定)</span>
+                                                                <span className="font-medium text-slate-600 dark:text-slate-400">
+                                                                    請款: {item.percent || 0}% | 金額: {item.amount || 0}元 | 日期: {item.date || '無'} | 經辦: {item.handler || '無'}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    }
+
+                                                    // 3. 只有當前正在編輯的 activeIndex 這一期，和未來的下一期 activeIndex + 1 會顯示完整的輸入框
+                                                    return (
+                                                        <div key={index} className={`grid grid-cols-1 sm:grid-cols-4 gap-3 p-3 border rounded-md shadow-sm transition-all ${index === activeIndex ? 'bg-white dark:bg-slate-900 border-primary/20 ring-1 ring-primary/10' : 'bg-slate-50/50 dark:bg-slate-900/30 border-slate-100 dark:border-slate-800 opacity-80'}`}>
+                                                            <div className="col-span-full font-bold text-xs text-primary/80 flex justify-between">
+                                                                <span>第 {index + 1} 期 {index > activeIndex ? ' (尚未開放)' : ' (編輯中)'}</span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[11px] text-slate-500">請款比例 (%) <span className="text-red-500">*</span></Label>
+                                                                <Input
+                                                                    type="text"
+                                                                    placeholder="例如: 40"
+                                                                    value={item.percent}
+                                                                    onChange={(e) => handleInstallmentItemChange(index, 'percent', e.target.value)}
+                                                                    disabled={!isSectionEditable(9) || index !== activeIndex}
+                                                                    className="h-8 text-xs"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[11px] text-slate-500">請款金額 (元) <span className="text-red-500">*</span></Label>
+                                                                <Input
+                                                                    type="text"
+                                                                    placeholder="例如: 100000"
+                                                                    value={item.amount}
+                                                                    onChange={(e) => handleInstallmentItemChange(index, 'amount', e.target.value)}
+                                                                    disabled={!isSectionEditable(9) || index !== activeIndex}
+                                                                    className="h-8 text-xs"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[11px] text-slate-500">日期 <span className="text-red-500">*</span></Label>
+                                                                <Input
+                                                                    type="text"
+                                                                    placeholder="例如: 115年6月2日"
+                                                                    value={item.date}
+                                                                    onChange={(e) => handleInstallmentItemChange(index, 'date', e.target.value)}
+                                                                    disabled={!isSectionEditable(9) || index !== activeIndex}
+                                                                    className="h-8 text-xs"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-[11px] text-slate-500">經辦人 <span className="text-red-500">*</span></Label>
+                                                                <Input
+                                                                    type="text"
+                                                                    placeholder="例如: 蔡先生"
+                                                                    value={item.handler}
+                                                                    onChange={(e) => handleInstallmentItemChange(index, 'handler', e.target.value)}
+                                                                    disabled={!isSectionEditable(9) || index !== activeIndex}
+                                                                    className="h-8 text-xs"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="space-y-2">
+                                        <Label>驗收-承辦人 <span className="text-red-500">*</span></Label>
+                                        <Select value={formData.accept_handler_name || ''} onValueChange={(v) => handleSelectChange('accept_handler_name', v)} disabled={!isSectionEditable(9)}>
                                             <SelectTrigger><SelectValue placeholder="選擇承辦人" /></SelectTrigger>
                                             <SelectContent>{HANDLER_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>驗收-承辦人日期</Label>
-                                        <Input name="accept_handler_date" type="date" value={formData.accept_handler_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(8)} />
+                                        <Label>驗收-承辦人日期 <span className="text-red-500">*</span></Label>
+                                        <Input name="accept_handler_date" type="date" value={formData.accept_handler_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(9)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>驗收-工務主管</Label>
-                                        <Select value={formData.accept_mgr_name || ''} onValueChange={(v) => handleSelectChange('accept_mgr_name', v)} disabled={!isSectionEditable(8)}>
+                                        <Label>驗收單位主管 <span className="text-red-500">*</span></Label>
+                                        <Select value={formData.accept_mgr_name || ''} onValueChange={(v) => handleSelectChange('accept_mgr_name', v)} disabled={!isSectionEditable(9)}>
                                             <SelectTrigger><SelectValue placeholder="選擇主管" /></SelectTrigger>
                                             <SelectContent>{MAINT_MGR_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>驗收-工務主管日期</Label>
-                                        <Input name="accept_mgr_date" type="date" value={formData.accept_mgr_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(8)} />
+                                        <Label>驗收單位主管日期 <span className="text-red-500">*</span></Label>
+                                        <Input name="accept_mgr_date" type="date" value={formData.accept_mgr_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(9)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>驗收工務主任</Label>
-                                        <Input name="accept_director_name" value={formData.accept_director_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(8)} />
+                                        <Label>驗收部門主管 <span className="text-red-500">*</span></Label>
+                                        <Input name="accept_director_name" value={formData.accept_director_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(9)} />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>驗收工務主任日期</Label>
-                                        <Input name="accept_director_date" type="date" value={formData.accept_director_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(8)} />
+                                        <Label>驗收部門主管日期 <span className="text-red-500">*</span></Label>
+                                        <Input name="accept_director_date" type="date" value={formData.accept_director_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(9)} />
                                     </div>
-                                    {isSectionEditable(8) && (
-                                        <div className="col-span-full pt-4">
-                                            <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => handleSave('已驗收')}>
+                                    {isSectionEditable(9) && (
+                                        <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                            <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => handleSave('已驗收')}>
                                                 <CheckCircle2 className="w-4 h-4 mr-2" />
                                                 驗收完成 (將自動歸檔)
+                                            </Button>
+                                            <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
                                             </Button>
                                         </div>
                                     )}

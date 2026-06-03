@@ -116,18 +116,32 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
     }, [pathname])
 
     const handleLogout = async () => {
-        if (profile?.id) {
-            await serverHandleLogout(profile.id)
+        try {
+            if (profile?.id) {
+                await serverHandleLogout(profile.id)
+            }
+        } catch (e) {
+            console.error('Failed to log logout event on server:', e)
         }
-        await supabase.auth.signOut()
+
+        try {
+            await supabase.auth.signOut()
+        } catch (e) {
+            console.error('Failed to sign out from Supabase:', e)
+        }
+
         storeLogout()
         router.push('/login')
     }
 
-    // 所有有效的導覽項目（含 admin）
+    // 所有有效的導覽項目（未登入隱藏歷史記錄，admin 顯示系統管理）
+    const baseNavItems = profile
+        ? NAV_ITEMS
+        : NAV_ITEMS.filter(item => item.label !== '歷史記錄')
+
     const allNavItems = profile?.role === 'admin'
-        ? [...NAV_ITEMS, ADMIN_ITEMS]
-        : NAV_ITEMS
+        ? [...baseNavItems, ADMIN_ITEMS]
+        : baseNavItems
 
     // === 桌面版單一導覽項目 ===
     const renderDesktopNavItem = (item: NavItem) => {

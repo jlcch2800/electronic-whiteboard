@@ -44,7 +44,6 @@ const EXPORT_LABELS: Record<string, string> = {
     'status': '狀態',
     // 步驟 1
     'request_date': '開單日',
-    'request_department': '開單部門',
     'cost_center': '成本中心',
     'maintain_content': '維修內容',
     'requester_name': '開單人',
@@ -53,6 +52,8 @@ const EXPORT_LABELS: Record<string, string> = {
     'work_order_date': '接單日期',
     'maint_mgr_name': '工務單位主管',
     'maint_mgr_date': '工務單位主管日期',
+    'printer_name': '印單人',
+    'submit_date': '送呈日期',
     // 步驟 2
     'req_dept_mgr_name': '開單主管姓名',
     'req_dept_mgr_date': '開單主管日期',
@@ -62,10 +63,10 @@ const EXPORT_LABELS: Record<string, string> = {
     // 步驟 4
     'vendor_name': '廠商',
     'amount': '金額',
-    'dispatch_mgr_name': '發包-工務主管',
-    'dispatch_mgr_date': '發包-工務主管日期',
-    'dispatch_director_name': '發包工務主任姓名',
-    'dispatch_director_date': '發包工務主任日期',
+    'dispatch_mgr_name': '發包單位主管',
+    'dispatch_mgr_date': '發包單位主管日期',
+    'dispatch_director_name': '發包部門主管',
+    'dispatch_director_date': '發包部門主管日期',
     // 步驟 6
     'vice_dean_name': '副院長姓名',
     'vice_dean_date': '副院長日期',
@@ -73,6 +74,8 @@ const EXPORT_LABELS: Record<string, string> = {
     'dean_date': '院長日期',
     // 步驟 7
     'project_order_id': '工程單編號',
+    'plan_start_date': '施工預計開始日期',
+    'plan_end_date': '施工預計結束日期',
     'procurement_name': '採購組姓名',
     'procurement_date': '採購組日期',
     'material_name': '資材室姓名',
@@ -81,18 +84,20 @@ const EXPORT_LABELS: Record<string, string> = {
     'rev_vice_dean_date': '審查-副院長日期',
     'rev_dean_name': '審查-院長姓名',
     'rev_dean_date': '審查-院長日期',
-    // 步驟 8
+    // 步驟 8 & 廠商施工中
     'construct_end_date': '施工完成日期',
     // 步驟 9
     'accept_dept_mgr_name': '驗收-開單主管姓名',
     'accept_dept_mgr_date': '驗收-開單主管日期',
     // 步驟 10
+    'installment_count': '分期',
+    'installment_note': '分期說明',
     'accept_handler_name': '驗收-承辦人',
     'accept_handler_date': '驗收-承辦人日期',
-    'accept_mgr_name': '驗收-工務主管',
-    'accept_mgr_date': '驗收-工務主管日期',
-    'accept_director_name': '驗收工務主任姓名',
-    'accept_director_date': '驗收工務主任日期',
+    'accept_mgr_name': '驗收單位主管',
+    'accept_mgr_date': '驗收單位主管日期',
+    'accept_director_name': '驗收部門主管',
+    'accept_director_date': '驗收部門主管日期',
 }
 
 interface ExtraColumn {
@@ -119,30 +124,28 @@ const getExtraColumns = (status: string): ExtraColumn[] => {
                 { key: 'quote_user_date', label: '報價承辦人日期' }
             ];
         case '工務已發包':
+        case '採購已發包':
             return [
                 { key: 'project_order_id', label: '工程單編號' },
-                { key: 'dispatch_director_name', label: '發包-工務主任' },
-                { key: 'dispatch_director_date', label: '發包-工務主任日期' }
+                { key: 'plan_start_date', label: '施工預計開始日期' },
+                { key: 'plan_end_date', label: '施工預計結束日期' }
+            ];
+        case '廠商施工中':
+            return [
+                { key: 'project_order_id', label: '工程單編號' },
+                { key: 'plan_start_date', label: '施工預計開始日期' },
+                { key: 'plan_end_date', label: '施工預計結束日期' },
+                { key: 'construct_end_date', label: '施工完成日期' }
             ];
         case '院長室簽核中':
             return [
-                { key: 'dispatch_director_name', label: '發包-工務主任' },
-                { key: 'dispatch_director_date', label: '發包-工務主任日期' }
+                { key: 'dispatch_director_name', label: '發包部門主管' },
+                { key: 'dispatch_director_date', label: '發包部門主管日期' }
             ];
         case '採購發包簽核中':
             return [
                 { key: 'dean_name', label: '院長姓名' },
                 { key: 'dean_date', label: '院長日期' }
-            ];
-        case '採購已發包':
-            return [
-                { key: 'project_order_id', label: '工程單編號' },
-                { key: 'procurement_name', label: '採購組姓名' },
-                { key: 'procurement_date', label: '採購組日期' },
-                { key: 'material_name', label: '資材室姓名' },
-                { key: 'material_date', label: '資材室日期' },
-                { key: 'rev_dean_name', label: '審查-院長姓名' },
-                { key: 'rev_dean_date', label: '審查-院長日期' }
             ];
         case '施工完成，開單單位驗收中':
             return [
@@ -153,18 +156,22 @@ const getExtraColumns = (status: string): ExtraColumn[] => {
             return [
                 { key: 'project_order_id', label: '工程單編號' },
                 { key: 'construct_end_date', label: '施工完成日期' },
+                { key: 'installment_count', label: '分期' },
+                { key: 'installment_note', label: '分期說明' },
                 { key: 'accept_dept_mgr_name', label: '驗收-開單主管' },
                 { key: 'accept_dept_mgr_date', label: '驗收-開單主管日期' }
             ];
         case '已驗收':
             return [
                 { key: 'project_order_id', label: '工程單編號' },
+                { key: 'installment_count', label: '分期' },
+                { key: 'installment_note', label: '分期說明' },
                 { key: 'accept_handler_name', label: '驗收-承辦人' },
                 { key: 'accept_handler_date', label: '驗收-承辦人日期' },
-                { key: 'accept_mgr_name', label: '驗收-工務主管' },
-                { key: 'accept_mgr_date', label: '驗收-工務主管日期' },
-                { key: 'accept_director_name', label: '驗收工務主任姓名' },
-                { key: 'accept_director_date', label: '驗收工務主任日期' }
+                { key: 'accept_mgr_name', label: '驗收單位主管' },
+                { key: 'accept_mgr_date', label: '驗收單位主管日期' },
+                { key: 'accept_director_name', label: '驗收部門主管' },
+                { key: 'accept_director_date', label: '驗收部門主管日期' }
             ];
         default:
             return [];
@@ -218,7 +225,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                 .eq('status', status)
 
             if (searchTerm) {
-                query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,request_department.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
             }
 
             if (sort) {
@@ -299,7 +306,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     .eq('status', status)
 
                 if (searchTerm) {
-                    query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,request_department.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                    query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
                 }
 
                 if (sort) {
@@ -477,7 +484,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     <div className="relative w-72">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
-                            placeholder="搜尋工單、部門、承辦人..."
+                            placeholder="搜尋工單、印單人、承辦人..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9 bg-white dark:bg-slate-900"
@@ -509,9 +516,10 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                         </TableHead>
                                         <SortableTableHead sortKey="work_order_id" currentSort={sort} onSort={handleSort} label="工單編號" />
                                         <SortableTableHead sortKey="request_date" currentSort={sort} onSort={handleSort} label="開單日" />
-                                        <SortableTableHead sortKey="request_department" currentSort={sort} onSort={handleSort} label="開單部門" />
                                         <SortableTableHead sortKey="cost_center" currentSort={sort} onSort={handleSort} label="成本中心" />
                                         <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
+                                        <SortableTableHead sortKey="printer_name" currentSort={sort} onSort={handleSort} label="印單人" />
+                                        <SortableTableHead sortKey="submit_date" currentSort={sort} onSort={handleSort} label="送呈日期" />
                                         <TableHead>維修內容</TableHead>
                                         <SortableTableHead sortKey="handler_name" currentSort={sort} onSort={handleSort} label="承辦人" />
                                         {extraCols.map((col) => (
@@ -536,16 +544,20 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                             </TableCell>
                                             <TableCell className="font-mono font-bold text-slate-700 dark:text-slate-200">{item.work_order_id}</TableCell>
                                             <TableCell className="text-slate-500 dark:text-slate-400">{item.request_date}</TableCell>
-                                            <TableCell>{item.request_department}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
+                                            <TableCell>{item.printer_name || '-'}</TableCell>
+                                            <TableCell>{item.submit_date || '-'}</TableCell>
                                             <TableCell className="max-w-xs truncate" title={item.maintain_content}>
                                                 {item.maintain_content}
                                             </TableCell>
                                             <TableCell>{item.handler_name}</TableCell>
                                             {extraCols.map((col) => {
                                                 const rawValue = item[col.key];
-                                                const displayValue = rawValue || '-';
+                                                let displayValue = rawValue || '-';
+                                                if (col.key === 'installment_count' && rawValue !== null && rawValue !== undefined) {
+                                                    displayValue = `${rawValue} 期`;
+                                                }
                                                 return (
                                                     <TableCell key={col.key} className="text-slate-600 dark:text-slate-300">
                                                         {displayValue}
@@ -590,17 +602,25 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                     key={item.id}
                                     id={item.id}
                                     title={item.work_order_id}
-                                    subtitle={item.request_department}
+                                    subtitle={item.cost_center}
                                     status={{ label: item.status, variant: 'default' }}
                                     date={item.request_date}
                                     dateLabel="開單日"
                                     details={[
+                                        { label: '印單人', value: item.printer_name || '-' },
+                                        { label: '送呈日期', value: item.submit_date || '-' },
                                         { label: '承辦人', value: item.handler_name },
                                         { label: '內容', value: item.maintain_content },
-                                        ...extraCols.map((col) => ({
-                                            label: col.label,
-                                            value: item[col.key] || '-',
-                                        })),
+                                        ...extraCols.map((col) => {
+                                            let val = item[col.key] || '-';
+                                            if (col.key === 'installment_count' && item[col.key] !== null && item[col.key] !== undefined) {
+                                                val = `${item[col.key]} 期`;
+                                            }
+                                            return {
+                                                label: col.label,
+                                                value: val,
+                                            };
+                                        }),
                                     ]}
                                     isSelected={selected.has(item.id)}
                                     onSelect={() => toggleSelect(item.id)}
@@ -645,7 +665,6 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold tracking-wider">工務維修單單筆記錄明細</h2>
-
                             </div>
                         </div>
                         {viewingItem && (
@@ -666,7 +685,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                         iconColor: "text-blue-600 dark:text-blue-400",
                                         bgColor: "bg-blue-50/50 dark:bg-blue-950/20",
                                         borderColor: "border-blue-100 dark:border-blue-900/40",
-                                        fields: ['work_order_id', 'status', 'request_date', 'request_department', 'cost_center', 'requester_name', 'created_at']
+                                        fields: ['work_order_id', 'status', 'request_date', 'cost_center', 'requester_name', 'printer_name', 'submit_date', 'created_at']
                                     },
                                     {
                                         title: "🔧 故障描述與承辦接單",
@@ -687,14 +706,14 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                         iconColor: "text-indigo-600 dark:text-indigo-400",
                                         bgColor: "bg-indigo-50/50 dark:bg-indigo-950/20",
                                         borderColor: "border-indigo-100 dark:border-indigo-900/40",
-                                        fields: ['project_order_id', 'procurement_name', 'procurement_date', 'material_name', 'material_date', 'rev_vice_dean_name', 'rev_vice_dean_date', 'rev_dean_name', 'rev_dean_date']
+                                        fields: ['project_order_id', 'plan_start_date', 'plan_end_date', 'procurement_name', 'procurement_date', 'material_name', 'material_date', 'rev_vice_dean_name', 'rev_vice_dean_date', 'rev_dean_name', 'rev_dean_date']
                                     },
                                     {
                                         title: "✅ 施工完工與驗收簽章",
                                         iconColor: "text-teal-600 dark:text-teal-400",
                                         bgColor: "bg-teal-50/50 dark:bg-teal-950/20",
                                         borderColor: "border-teal-100 dark:border-teal-900/40",
-                                        fields: ['construct_end_date', 'accept_dept_mgr_name', 'accept_dept_mgr_date', 'accept_handler_name', 'accept_handler_date', 'accept_mgr_name', 'accept_mgr_date', 'accept_director_name', 'accept_director_date']
+                                        fields: ['construct_end_date', 'installment_count', 'installment_note', 'accept_dept_mgr_name', 'accept_dept_mgr_date', 'accept_handler_name', 'accept_handler_date', 'accept_mgr_name', 'accept_mgr_date', 'accept_director_name', 'accept_director_date']
                                     }
                                 ].map((group, gIdx) => (
                                     <div
@@ -726,6 +745,8 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                                         } catch (e) {
                                                             formattedVal = String(rawVal);
                                                         }
+                                                    } else if (key === 'installment_count') {
+                                                        formattedVal = `${rawVal} 期`;
                                                     } else {
                                                         formattedVal = String(rawVal);
                                                     }

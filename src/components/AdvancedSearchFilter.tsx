@@ -9,7 +9,6 @@ export interface SearchFilters {
     startDate: string;
     endDate: string;
     status: string;
-    department: string;
     costCenter: string;
     content: string;
     requester: string;
@@ -22,13 +21,16 @@ export interface SearchFilters {
     procurement: string;
     acceptHandler: string;
     customSearch: string;
+    planStartDate: string;
+    planEndDate: string;
+    installmentCountGte: string;
+    installmentCountLte: string;
 }
 
 export const defaultFilters: SearchFilters = {
     startDate: '',
     endDate: '',
     status: '',
-    department: '',
     costCenter: '',
     content: '',
     requester: '',
@@ -40,7 +42,11 @@ export const defaultFilters: SearchFilters = {
     projectOrderId: '',
     procurement: '',
     acceptHandler: '',
-    customSearch: ''
+    customSearch: '',
+    planStartDate: '',
+    planEndDate: '',
+    installmentCountGte: '',
+    installmentCountLte: ''
 };
 
 interface AdvancedSearchFilterProps {
@@ -80,7 +86,7 @@ export function AdvancedSearchFilter({ onSearch, onReset }: AdvancedSearchFilter
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
-                            placeholder="搜尋編號、部門、承辦人或內容..."
+                            placeholder="搜尋編號、印單人、承辦人或內容..."
                             value={filters.customSearch}
                             onChange={(e) => handleChange('customSearch', e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -123,10 +129,6 @@ export function AdvancedSearchFilter({ onSearch, onReset }: AdvancedSearchFilter
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">工單編號</label>
                                 <Input value={filters.workOrderId} onChange={(e) => handleChange('workOrderId', e.target.value)} placeholder="工單編號" />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">開單部門</label>
-                                <Input value={filters.department} onChange={(e) => handleChange('department', e.target.value)} placeholder="開單部門" />
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">開單人</label>
@@ -172,6 +174,22 @@ export function AdvancedSearchFilter({ onSearch, onReset }: AdvancedSearchFilter
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">工程單編號</label>
                                 <Input value={filters.projectOrderId} onChange={(e) => handleChange('projectOrderId', e.target.value)} placeholder="工程單編號" />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計開始</label>
+                                <Input type="date" value={filters.planStartDate} onChange={(e) => handleChange('planStartDate', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計結束</label>
+                                <Input type="date" value={filters.planEndDate} onChange={(e) => handleChange('planEndDate', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">分期期數大於</label>
+                                <Input type="number" min="0" value={filters.installmentCountGte} onChange={(e) => handleChange('installmentCountGte', e.target.value)} placeholder="期數" />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">分期期數小於</label>
+                                <Input type="number" min="0" value={filters.installmentCountLte} onChange={(e) => handleChange('installmentCountLte', e.target.value)} placeholder="期數" />
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">採購組姓名</label>
