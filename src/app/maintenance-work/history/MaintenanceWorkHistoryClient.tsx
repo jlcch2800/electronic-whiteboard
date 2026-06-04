@@ -391,6 +391,9 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                 <AdvancedSearchFilter
                     onSearch={(f) => { setActiveFilters(f); setCurrentPage(1); }}
                     onReset={() => { setActiveFilters(defaultFilters); setCurrentPage(1); }}
+                    hideQuoteHandler={true}
+                    hideStatus={true}
+                    hideAcceptHandler={true}
                 />
 
                 {loading ? (

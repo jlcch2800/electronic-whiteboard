@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createClient } from '@/lib/supabase/client';
 
 export interface SearchFilters {
     startDate: string;
@@ -52,11 +53,48 @@ export const defaultFilters: SearchFilters = {
 interface AdvancedSearchFilterProps {
     onSearch: (filters: SearchFilters) => void;
     onReset: () => void;
+    hideQuoteHandler?: boolean;
+    hideAcceptHandler?: boolean;
+    hideStatus?: boolean;
 }
 
-export function AdvancedSearchFilter({ onSearch, onReset }: AdvancedSearchFilterProps) {
+export function AdvancedSearchFilter({ 
+    onSearch, 
+    onReset, 
+    hideQuoteHandler = false,
+    hideAcceptHandler = false,
+    hideStatus = false
+}: AdvancedSearchFilterProps) {
     const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
     const [expanded, setExpanded] = useState(false);
+    const [workOfficeUsers, setWorkOfficeUsers] = useState<string[]>([]);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const supabase = createClient();
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('user_name')
+                    .eq('unit', '工務室')
+                    .order('user_name', { ascending: true });
+                
+                if (error) {
+                    console.error('Error fetching users in filter:', error);
+                    return;
+                }
+
+                if (data) {
+                    const names = Array.from(new Set(data.map(u => u.user_name).filter(Boolean)));
+                    names.sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'));
+                    setWorkOfficeUsers(names);
+                }
+            } catch (err) {
+                console.error('Failed to load users in filter:', err);
+            }
+        };
+        fetchUsers();
+    }, []);
 
     const handleChange = (key: keyof SearchFilters, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -138,22 +176,51 @@ export function AdvancedSearchFilter({ onSearch, onReset }: AdvancedSearchFilter
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">成本中心</label>
                                 <Input value={filters.costCenter} onChange={(e) => handleChange('costCenter', e.target.value)} placeholder="成本中心" />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">維修狀態</label>
-                                <Input value={filters.status} onChange={(e) => handleChange('status', e.target.value)} placeholder="狀態" />
-                            </div>
+                            {!hideStatus && (
+                                <div>
+                                    <label className="text-sm font-medium text-muted-foreground mb-1 block">維修狀態</label>
+                                    <Select key={filters.status || 'empty-status'} value={filters.status || undefined} onValueChange={(val) => handleChange('status', val)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="狀態" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="已轉維修單">已轉維修單</SelectItem>
+                                            <SelectItem value="開單主管簽核中">開單主管簽核中</SelectItem>
+                                            <SelectItem value="工務部門報價，主管簽核中">工務部門報價，主管簽核中</SelectItem>
+                                            <SelectItem value="發包部門主管簽核中">發包部門主管簽核中</SelectItem>
+                                            <SelectItem value="發包主任/院長簽核中">發包主任/院長簽核中</SelectItem>
+                                            <SelectItem value="副院長/院長簽核中">副院長/院長簽核中</SelectItem>
+                                            <SelectItem value="採購/資材/院長審查中">採購/資材/院長審查中</SelectItem>
+                                            <SelectItem value="廠商施工中">廠商施工中</SelectItem>
+                                            <SelectItem value="驗收單位主管簽核中">驗收單位主管簽核中</SelectItem>
+                                            <SelectItem value="維修部門驗收中">維修部門驗收中</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">承辦人</label>
-                                <Input value={filters.handler} onChange={(e) => handleChange('handler', e.target.value)} placeholder="承辦人" />
+                                <Select key={filters.handler || 'empty'} value={filters.handler || undefined} onValueChange={(val) => handleChange('handler', val)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="承辦人" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {workOfficeUsers.map(name => (
+                                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">維修內容</label>
                                 <Input value={filters.content} onChange={(e) => handleChange('content', e.target.value)} placeholder="維修內容" />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">報價承辦人</label>
-                                <Input value={filters.quoteHandler} onChange={(e) => handleChange('quoteHandler', e.target.value)} placeholder="報價承辦人" />
-                            </div>
+                            {!hideQuoteHandler && (
+                                <div>
+                                    <label className="text-sm font-medium text-muted-foreground mb-1 block">報價承辦人</label>
+                                    <Input value={filters.quoteHandler} onChange={(e) => handleChange('quoteHandler', e.target.value)} placeholder="報價承辦人" />
+                                </div>
+                            )}
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">廠商</label>
                                 <Input value={filters.vendor} onChange={(e) => handleChange('vendor', e.target.value)} placeholder="廠商" />
@@ -195,10 +262,12 @@ export function AdvancedSearchFilter({ onSearch, onReset }: AdvancedSearchFilter
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">採購組姓名</label>
                                 <Input value={filters.procurement} onChange={(e) => handleChange('procurement', e.target.value)} placeholder="採購組姓名" />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">驗收承辦人</label>
-                                <Input value={filters.acceptHandler} onChange={(e) => handleChange('acceptHandler', e.target.value)} placeholder="驗收承辦人" />
-                            </div>
+                            {!hideAcceptHandler && (
+                                <div>
+                                    <label className="text-sm font-medium text-muted-foreground mb-1 block">驗收承辦人</label>
+                                    <Input value={filters.acceptHandler} onChange={(e) => handleChange('acceptHandler', e.target.value)} placeholder="驗收承辦人" />
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}

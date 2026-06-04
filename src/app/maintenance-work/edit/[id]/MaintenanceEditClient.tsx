@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
 import {
     MAINTENANCE_STATUS, HANDLER_NAMES, MAINT_MGR_NAMES,
@@ -32,7 +33,7 @@ interface MaintenanceEditClientProps {
 }
 
 interface InstallmentItem {
-    percent: string
+    content: string
     amount: string
     date: string
     handler: string
@@ -40,7 +41,7 @@ interface InstallmentItem {
 
 const parseInstallmentNote = (note: string, count: number): InstallmentItem[] => {
     const list: InstallmentItem[] = Array.from({ length: count }, () => ({
-        percent: '',
+        content: '',
         amount: '',
         date: '',
         handler: ''
@@ -51,17 +52,22 @@ const parseInstallmentNote = (note: string, count: number): InstallmentItem[] =>
     // 以換行符拆分
     const lines = note.split('\n')
     
-    // 正則表達式匹配：第\s*\d+\s*期合約訂定請款\s*([^％]+)\s*％，請款金額\s*:\s*([^，\s]+)，日期\s*:\s*([^，\s]+)，經辦人\s*:\s*([^．\s]+)．?
-    const regex = /第\s*\d+\s*期合約訂定請款\s*([^％]+)\s*％，請款金額\s*:\s*([^，]+)，日期\s*:\s*([^，]+)，經辦人\s*:\s*([^．]+)．?/
+    // 正則表達式匹配：第1期合約訂定請款內容:訂金，請款金額:100000，請款日期:115年6月2日，經辦人:蔡先生．
+    const regex = /第\s*\d+\s*期合約訂定請款內容\s*:\s*(.*?)，請款金額\s*:\s*(.*?)，請款日期\s*:\s*(.*?)，經辦人\s*:\s*([^．]+)．?/
 
     for (let i = 0; i < Math.min(lines.length, count); i++) {
+        if (!lines[i]) continue
         const match = lines[i].match(regex)
         if (match) {
+            const rawDate = match[3] ? match[3].trim() : ''
+            // 將日期中的斜線 '/' 自動轉換為橫線 '-'，以確保相容 HTML5 date input 要求的 YYYY-MM-DD 格式
+            const formattedDate = rawDate.replace(/\//g, '-')
+
             list[i] = {
-                percent: match[1].trim(),
-                amount: match[2].trim(),
-                date: match[3].trim(),
-                handler: match[4].trim()
+                content: match[1] ? match[1].trim() : '',
+                amount: match[2] ? match[2].trim() : '',
+                date: formattedDate,
+                handler: match[4] ? match[4].trim() : ''
             }
         }
     }
@@ -69,13 +75,18 @@ const parseInstallmentNote = (note: string, count: number): InstallmentItem[] =>
 }
 
 const stringifyInstallments = (list: InstallmentItem[]): string => {
-    return list.map((item, index) => {
-        const percent = item.percent || ''
-        const amount = item.amount || ''
-        const date = item.date || ''
-        const handler = item.handler || ''
-        return `第${index + 1}期合約訂定請款${percent}％，請款金額:${amount}，日期:${date}，經辦人:${handler}．`
-    }).join('\n')
+    return list
+        .map((item, index) => {
+            const content = item.content || ''
+            const amount = item.amount || ''
+            const date = item.date || ''
+            const handler = item.handler || ''
+            // 跳過尚未填寫任何內容的期數，不寫入資料庫
+            if (!content && !amount && !date && !handler) return null
+            return `第${index + 1}期合約訂定請款內容:${content}，請款金額:${amount}，請款日期:${date}，經辦人:${handler}．`
+        })
+        .filter(Boolean)
+        .join('\n')
 }
 
 export default function MaintenanceEditClient({ id, initialData }: MaintenanceEditClientProps) {
@@ -107,6 +118,35 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
 
     const [installmentList, setInstallmentList] = useState<InstallmentItem[]>([])
+    const [workOfficeUsers, setWorkOfficeUsers] = useState<string[]>([])
+
+    // 載入工務室人員清單 (依姓名遞增排序)
+    useEffect(() => {
+        const fetchWorkOfficeUsers = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('user_name')
+                    .eq('unit', '工務室')
+                    .order('user_name', { ascending: true })
+                
+                if (error) {
+                    console.error('Error fetching work office users:', error)
+                    return
+                }
+                
+                if (data) {
+                    const names = Array.from(new Set(data.map(u => u.user_name).filter(Boolean)))
+                    // 使用台灣繁體中文 localeCompare 排序（依筆劃）
+                    names.sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
+                    setWorkOfficeUsers(names)
+                }
+            } catch (err) {
+                console.error('Failed to fetch work office users:', err)
+            }
+        }
+        fetchWorkOfficeUsers()
+    }, [])
 
     // 初始化載入分期資訊
     useEffect(() => {
@@ -138,7 +178,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (count >= 2) {
             setInstallmentList(prev => {
                 const newList = Array.from({ length: count }, (_, i) => {
-                    return prev[i] || { percent: '', amount: '', date: '', handler: '' }
+                    return prev[i] || { content: '', amount: '', date: '', handler: '' }
                 })
                 const noteStr = stringifyInstallments(newList)
                 setFormData(prevForm => ({ ...prevForm, installment_note: noteStr }))
@@ -166,7 +206,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         const savedList = parseInstallmentNote(lastSavedData.installment_note, count)
         for (let i = 0; i < count; i++) {
             const item = savedList[i]
-            if (!item.percent || !item.amount || !item.date || !item.handler) {
+            if (!item.content || !item.amount || !item.date || !item.handler) {
                 return i
             }
         }
@@ -344,9 +384,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 if (numCount >= 2) {
                     for (let i = 0; i < installmentList.length; i++) {
                         const item = installmentList[i]
-                        if (!item.percent) return `請輸入第 ${i + 1} 期的請款比例`
+                        if (!item.content) return `請輸入第 ${i + 1} 期的請款內容`
                         if (!item.amount) return `請輸入第 ${i + 1} 期的請款金額`
-                        if (!item.date) return `請輸入第 ${i + 1} 期的日期`
+                        if (!item.date) return `請輸入第 ${i + 1} 期的請款日期`
                         if (!item.handler) return `請輸入第 ${i + 1} 期的經辦人`
                     }
                 }
@@ -378,10 +418,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 const count = Number(formData.installment_count)
                 if (activeIndex < count) {
                     const item = installmentList[activeIndex]
-                    if (!item || !item.percent || !item.amount || !item.date || !item.handler) {
+                    if (!item || !item.content || !item.amount || !item.date || !item.handler) {
                         toast({ 
                             title: '驗證失敗', 
-                            description: `請完整填寫第 ${activeIndex + 1} 期的分期明細（比例、金額、日期、經辦人），方可進行儲存。`, 
+                            description: `請完整填寫第 ${activeIndex + 1} 期的分期明細（內容、金額、請款日期、經辦人），方可進行儲存。`, 
                             variant: 'destructive' 
                         })
                         return
@@ -572,13 +612,40 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     <div className="space-y-2">
                                         <Label>印單人 <span className="text-red-500">*</span></Label>
-                                        <Input name="printer_name" value={formData.printer_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(0)} placeholder="請輸入印單人姓名" />
+                                        <Select 
+                                            value={formData.printer_name || ''} 
+                                            onValueChange={(v) => handleSelectChange('printer_name', v)} 
+                                            disabled={!isSectionEditable(0)}
+                                        >
+                                            <SelectTrigger><SelectValue placeholder="請選擇印單人" /></SelectTrigger>
+                                            <SelectContent>
+                                                {(() => {
+                                                    const options = [...workOfficeUsers];
+                                                    if (formData.printer_name && !options.includes(formData.printer_name)) {
+                                                        options.unshift(formData.printer_name);
+                                                    }
+                                                    return options.map(name => (
+                                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                                    ));
+                                                })()}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>承辦人 <span className="text-red-500">*</span></Label>
-                                        <Select value={formData.handler_name} onValueChange={(v) => handleSelectChange('handler_name', v)} disabled={!isSectionEditable(0)}>
+                                        <Select value={formData.handler_name || ''} onValueChange={(v) => handleSelectChange('handler_name', v)} disabled={!isSectionEditable(0)}>
                                             <SelectTrigger><SelectValue placeholder="請選擇承辦人" /></SelectTrigger>
-                                            <SelectContent>{HANDLER_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                            <SelectContent>
+                                                {(() => {
+                                                    const options = [...workOfficeUsers];
+                                                    if (formData.handler_name && !options.includes(formData.handler_name)) {
+                                                        options.unshift(formData.handler_name);
+                                                    }
+                                                    return options.map(name => (
+                                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                                    ));
+                                                })()}
+                                            </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
@@ -656,7 +723,17 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         <Label>報價承辦人 <span className="text-red-500">*</span></Label>
                                         <Select value={formData.quote_user_name || ''} onValueChange={(v) => handleSelectChange('quote_user_name', v)} disabled={!isSectionEditable(2)}>
                                             <SelectTrigger><SelectValue placeholder="選擇承辦人" /></SelectTrigger>
-                                            <SelectContent>{HANDLER_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                            <SelectContent>
+                                                {(() => {
+                                                    const options = [...workOfficeUsers];
+                                                    if (formData.quote_user_name && !options.includes(formData.quote_user_name)) {
+                                                        options.unshift(formData.quote_user_name);
+                                                    }
+                                                    return options.map(name => (
+                                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                                    ));
+                                                })()}
+                                            </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
@@ -934,17 +1011,117 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>分期 <span className="text-red-500">*</span></Label>
-                                        <Input
-                                            name="installment_count"
-                                            type="number"
-                                            min={0}
-                                            value={formData.installment_count !== null && formData.installment_count !== undefined ? formData.installment_count : ''}
-                                            onChange={handleInstallmentCountChange}
-                                            disabled={!isSectionEditable(9)}
-                                            placeholder="請輸入分期期數"
-                                        />
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                name="installment_count"
+                                                type="number"
+                                                min={0}
+                                                value={formData.installment_count !== null && formData.installment_count !== undefined ? formData.installment_count : ''}
+                                                onChange={handleInstallmentCountChange}
+                                                disabled={!isSectionEditable(9)}
+                                                placeholder="請輸入分期期數"
+                                                className="flex-1"
+                                            />
+                                            {formData.installment_count !== null && Number(formData.installment_count) >= 2 && (
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="outline" type="button" className="shrink-0 h-10 border-slate-300 dark:border-slate-700">
+                                                            顯示全部分期
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto border-0 shadow-2xl bg-gradient-to-b from-white to-teal-50/30 dark:from-slate-950 dark:to-teal-950/20">
+                                                        <DialogHeader className="pb-4 border-b border-teal-100 dark:border-teal-900/30">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                                                                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                </div>
+                                                                <div>
+                                                                    <DialogTitle className="text-lg font-extrabold text-slate-800 dark:text-white">
+                                                                        全部分期紀錄
+                                                                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
+                                                                            共 {formData.installment_count} 期
+                                                                        </span>
+                                                                    </DialogTitle>
+                                                                    <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                                        以下為所有已填寫並儲存的分期明細紀錄（內容無法修改）
+                                                                    </DialogDescription>
+                                                                </div>
+                                                            </div>
+                                                        </DialogHeader>
+                                                        <div className="space-y-3 mt-4">
+                                                            {installmentList.map((item, index) => {
+                                                                if (index >= activeIndex) return null;
+                                                                return (
+                                                                    <div key={index} className="relative rounded-xl border border-teal-100 dark:border-teal-900/30 bg-white dark:bg-slate-900/60 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                                                                        {/* 左側色條 */}
+                                                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-teal-400 to-emerald-500" />
+                                                                        <div className="pl-5 pr-4 py-3">
+                                                                            <div className="flex items-center gap-2 mb-3">
+                                                                                <div className="w-6 h-6 rounded-full bg-teal-500/10 flex items-center justify-center text-[10px] font-extrabold text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800">
+                                                                                    {index + 1}
+                                                                                </div>
+                                                                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">第 {index + 1} 期</span>
+                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/30">
+                                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                                                                    已存檔鎖定
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                                                <div className="space-y-1">
+                                                                                    <div className="text-[10px] font-semibold text-teal-600/70 dark:text-teal-400/70 uppercase tracking-wider">請款內容</div>
+                                                                                    <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-teal-50/50 dark:bg-teal-950/20 rounded-lg px-2.5 py-1.5 border border-teal-100/80 dark:border-teal-900/30 truncate" title={item.content || ''}>
+                                                                                        {item.content || '—'}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="space-y-1">
+                                                                                    <div className="text-[10px] font-semibold text-teal-600/70 dark:text-teal-400/70 uppercase tracking-wider">請款金額</div>
+                                                                                    <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-teal-50/50 dark:bg-teal-950/20 rounded-lg px-2.5 py-1.5 border border-teal-100/80 dark:border-teal-900/30">
+                                                                                        {item.amount ? `${Number(item.amount).toLocaleString()} 元` : '—'}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="space-y-1">
+                                                                                    <div className="text-[10px] font-semibold text-teal-600/70 dark:text-teal-400/70 uppercase tracking-wider">請款日期</div>
+                                                                                    <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-teal-50/50 dark:bg-teal-950/20 rounded-lg px-2.5 py-1.5 border border-teal-100/80 dark:border-teal-900/30">
+                                                                                        {item.date || '—'}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="space-y-1">
+                                                                                    <div className="text-[10px] font-semibold text-teal-600/70 dark:text-teal-400/70 uppercase tracking-wider">經辦人</div>
+                                                                                    <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-teal-50/50 dark:bg-teal-950/20 rounded-lg px-2.5 py-1.5 border border-teal-100/80 dark:border-teal-900/30">
+                                                                                        {item.handler || '—'}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                            {activeIndex === 0 && (
+                                                                <div className="text-center py-10">
+                                                                    <div className="w-14 h-14 rounded-2xl bg-teal-50 dark:bg-teal-950/30 flex items-center justify-center mx-auto mb-3">
+                                                                        <svg className="w-7 h-7 text-teal-300 dark:text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12H9.75m3 0v3.375m0-3.375a1.125 1.125 0 01-1.125 1.125H9.75" />
+                                                                        </svg>
+                                                                    </div>
+                                                                    <p className="text-sm font-medium text-slate-400 dark:text-slate-500">目前尚無已填寫並儲存的分期紀錄</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            )}
+                                        </div>
                                     </div>
                                     
+                                    {/* 當期數為負數時的提示 */}
+                                    {formData.installment_count !== null && Number(formData.installment_count) < 0 && (
+                                        <div className="col-span-full text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 p-3 rounded-md border border-red-200 dark:border-red-800/30">
+                                            系統提示：請勿輸入負數
+                                        </div>
+                                    )}
+
                                     {/* 當期數為 0 時的提示 */}
                                     {formData.installment_count !== null && Number(formData.installment_count) === 0 && (
                                         <div className="col-span-full text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md border border-amber-200 dark:border-amber-800/30">
@@ -972,13 +1149,16 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                         return null
                                                     }
 
-                                                    // 2. 已經存檔且鎖定的前幾期，只用一行極簡短的文字摘要顯示，不渲染 4 個輸入框以節省手機版版面高度
+                                                    // 2. 已經存檔且鎖定的前幾期，只顯示前一期的紀錄以供參考
                                                     if (index < activeIndex) {
+                                                        if (index !== activeIndex - 1) {
+                                                            return null
+                                                        }
                                                         return (
                                                             <div key={index} className="flex justify-between items-center p-2 px-3 bg-slate-50/70 dark:bg-slate-900/10 border border-slate-100 dark:border-slate-800 rounded-md text-[11px] text-slate-500">
-                                                                <span className="font-bold">第 {index + 1} 期 (🔒 已存檔鎖定)</span>
+                                                                <span className="font-bold">第 {index + 1} 期 (前一期參考 🔒 已存檔鎖定)</span>
                                                                 <span className="font-medium text-slate-600 dark:text-slate-400">
-                                                                    請款: {item.percent || 0}% | 金額: {item.amount || 0}元 | 日期: {item.date || '無'} | 經辦: {item.handler || '無'}
+                                                                    內容: {item.content || '無'} | 金額: {item.amount || 0}元 | 請款日期: {item.date || '無'} | 經辦: {item.handler || '無'}
                                                                 </span>
                                                             </div>
                                                         )
@@ -991,12 +1171,12 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                                 <span>第 {index + 1} 期 {index > activeIndex ? ' (尚未開放)' : ' (編輯中)'}</span>
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <Label className="text-[11px] text-slate-500">請款比例 (%) <span className="text-red-500">*</span></Label>
+                                                                <Label className="text-[11px] text-slate-500">請款內容 <span className="text-red-500">*</span></Label>
                                                                 <Input
                                                                     type="text"
-                                                                    placeholder="例如: 40"
-                                                                    value={item.percent}
-                                                                    onChange={(e) => handleInstallmentItemChange(index, 'percent', e.target.value)}
+                                                                    placeholder="例如: 訂金"
+                                                                    value={item.content}
+                                                                    onChange={(e) => handleInstallmentItemChange(index, 'content', e.target.value)}
                                                                     disabled={!isSectionEditable(9) || index !== activeIndex}
                                                                     className="h-8 text-xs"
                                                                 />
@@ -1013,10 +1193,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <Label className="text-[11px] text-slate-500">日期 <span className="text-red-500">*</span></Label>
+                                                                <Label className="text-[11px] text-slate-500">請款日期 <span className="text-red-500">*</span></Label>
                                                                 <Input
-                                                                    type="text"
-                                                                    placeholder="例如: 115年6月2日"
+                                                                    type="date"
                                                                     value={item.date}
                                                                     onChange={(e) => handleInstallmentItemChange(index, 'date', e.target.value)}
                                                                     disabled={!isSectionEditable(9) || index !== activeIndex}
@@ -1025,14 +1204,28 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                             </div>
                                                             <div className="space-y-1">
                                                                 <Label className="text-[11px] text-slate-500">經辦人 <span className="text-red-500">*</span></Label>
-                                                                <Input
-                                                                    type="text"
-                                                                    placeholder="例如: 蔡先生"
-                                                                    value={item.handler}
-                                                                    onChange={(e) => handleInstallmentItemChange(index, 'handler', e.target.value)}
+                                                                <Select
+                                                                    value={item.handler || ''}
+                                                                    onValueChange={(val) => handleInstallmentItemChange(index, 'handler', val)}
                                                                     disabled={!isSectionEditable(9) || index !== activeIndex}
-                                                                    className="h-8 text-xs"
-                                                                />
+                                                                >
+                                                                    <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                                                        <SelectValue placeholder="選擇經辦人" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {(() => {
+                                                                            const options = [...workOfficeUsers];
+                                                                            if (item.handler && !options.includes(item.handler)) {
+                                                                                options.unshift(item.handler);
+                                                                            }
+                                                                            return options.map(name => (
+                                                                                <SelectItem key={name} value={name} className="text-xs">
+                                                                                    {name}
+                                                                                </SelectItem>
+                                                                            ));
+                                                                        })()}
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </div>
                                                         </div>
                                                     )
@@ -1044,7 +1237,17 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         <Label>驗收-承辦人 <span className="text-red-500">*</span></Label>
                                         <Select value={formData.accept_handler_name || ''} onValueChange={(v) => handleSelectChange('accept_handler_name', v)} disabled={!isSectionEditable(9)}>
                                             <SelectTrigger><SelectValue placeholder="選擇承辦人" /></SelectTrigger>
-                                            <SelectContent>{HANDLER_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                            <SelectContent>
+                                                {(() => {
+                                                    const options = [...workOfficeUsers];
+                                                    if (formData.accept_handler_name && !options.includes(formData.accept_handler_name)) {
+                                                        options.unshift(formData.accept_handler_name);
+                                                    }
+                                                    return options.map(name => (
+                                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                                    ));
+                                                })()}
+                                            </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">

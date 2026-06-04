@@ -1,7 +1,7 @@
 // 新增維修單表單 — 步驟 1：已轉維修單
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -44,6 +44,29 @@ export default function MaintenanceWorkNewPage() {
 
     // 追蹤各欄位 touched 狀態（失焦驗證用）
     const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
+    const [workOfficeUsers, setWorkOfficeUsers] = useState<string[]>([])
+
+    // 載入工務室人員清單 (依姓名遞增排序)
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('user_name')
+                    .eq('unit', '工務室')
+                    .order('user_name', { ascending: true })
+                
+                if (data) {
+                    const names = Array.from(new Set(data.map(u => u.user_name).filter(Boolean)))
+                    names.sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
+                    setWorkOfficeUsers(names)
+                }
+            } catch (err) {
+                console.error('Failed to load users:', err)
+            }
+        }
+        fetchUsers()
+    }, [])
 
     const { register, handleSubmit, trigger, getValues, formState: { errors, isSubmitting } } = useForm<MaintenanceWorkOrderFormValues>({
         resolver: zodResolver(maintenanceWorkOrderSchema) as any,
@@ -236,7 +259,16 @@ export default function MaintenanceWorkNewPage() {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="印單人" required error={errors.printer_name?.message} touched={touchedFields.printer_name}>
-                                        <Input {...register('printer_name')} placeholder="請輸入印單人姓名" onBlur={() => handleFieldBlur('printer_name')} />
+                                        <select
+                                            {...register('printer_name')}
+                                            onBlur={() => handleFieldBlur('printer_name')}
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        >
+                                            <option value="" disabled selected hidden>請選擇印單人</option>
+                                            {workOfficeUsers.map(name => (
+                                                <option key={name} value={name}>{name}</option>
+                                            ))}
+                                        </select>
                                     </FormField>
                                     <FormField label="承辦人" required error={errors.handler_name?.message} touched={touchedFields.handler_name}>
                                         <select
@@ -244,8 +276,8 @@ export default function MaintenanceWorkNewPage() {
                                             onBlur={() => handleFieldBlur('handler_name')}
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
-                                            <option value="">請選擇承辦人</option>
-                                            {HANDLER_OPTIONS.map(name => (
+                                            <option value="" disabled selected hidden>請選擇承辦人</option>
+                                            {workOfficeUsers.map(name => (
                                                 <option key={name} value={name}>{name}</option>
                                             ))}
                                         </select>
