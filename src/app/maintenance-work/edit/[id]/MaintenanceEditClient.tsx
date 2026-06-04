@@ -96,7 +96,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const supabase = createClient()
     const isAdmin = profile?.role === 'admin'
 
-    const [formData, setFormData] = useState(() => ({
+    const [formData, setFormData] = useState<any>(() => ({
         ...initialData,
         dispatch_director_name: initialData.dispatch_director_name || DEFAULT_DIRECTOR_NAME,
         accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME,
@@ -105,7 +105,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         printer_name: initialData.printer_name || '',
         submit_date: initialData.submit_date || '',
     }))
-    const [lastSavedData, setLastSavedData] = useState(() => ({
+    const [lastSavedData, setLastSavedData] = useState<any>(() => ({
         ...initialData,
         dispatch_director_name: initialData.dispatch_director_name || DEFAULT_DIRECTOR_NAME,
         accept_director_name: initialData.accept_director_name || DEFAULT_DIRECTOR_NAME,
@@ -136,7 +136,13 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 }
                 
                 if (data) {
-                    const names = Array.from(new Set(data.map(u => u.user_name).filter(Boolean)))
+                    const names = Array.from(
+                        new Set(
+                            (data as { user_name: string | null }[])
+                                .map(u => u.user_name)
+                                .filter((name): name is string => Boolean(name))
+                        )
+                    )
                     // 使用台灣繁體中文 localeCompare 排序（依筆劃）
                     names.sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
                     setWorkOfficeUsers(names)
@@ -162,7 +168,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const handleInstallmentCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value
         if (val === '') {
-            setFormData(prev => ({ ...prev, installment_count: null, installment_note: '' }))
+            setFormData((prev: any) => ({ ...prev, installment_count: null, installment_note: '' }))
             setInstallmentList([])
             return
         }
@@ -170,7 +176,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         const count = parseInt(val, 10)
         if (isNaN(count)) return
 
-        setFormData(prev => {
+        setFormData((prev: any) => {
             const nextNote = count >= 2 ? prev.installment_note : ''
             return { ...prev, installment_count: count, installment_note: nextNote }
         })
@@ -181,7 +187,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     return prev[i] || { content: '', amount: '', date: '', handler: '' }
                 })
                 const noteStr = stringifyInstallments(newList)
-                setFormData(prevForm => ({ ...prevForm, installment_note: noteStr }))
+                setFormData((prevForm: any) => ({ ...prevForm, installment_note: noteStr }))
                 return newList
             })
         } else {
@@ -195,7 +201,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             const newList = [...prev]
             newList[index] = { ...newList[index], [field]: value }
             const noteStr = stringifyInstallments(newList)
-            setFormData(prevForm => ({ ...prevForm, installment_note: noteStr }))
+            setFormData((prevForm: any) => ({ ...prevForm, installment_note: noteStr }))
             return newList
         })
     }

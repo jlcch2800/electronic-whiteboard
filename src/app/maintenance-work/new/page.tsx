@@ -57,7 +57,13 @@ export default function MaintenanceWorkNewPage() {
                     .order('user_name', { ascending: true })
                 
                 if (data) {
-                    const names = Array.from(new Set(data.map(u => u.user_name).filter(Boolean)))
+                    const names = Array.from(
+                        new Set(
+                            (data as { user_name: string | null }[])
+                                .map(u => u.user_name)
+                                .filter((name): name is string => Boolean(name))
+                        )
+                    )
                     names.sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
                     setWorkOfficeUsers(names)
                 }
