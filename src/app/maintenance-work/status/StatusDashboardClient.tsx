@@ -89,22 +89,21 @@ function StatusCard({
     const Icon = STATUS_ICONS[status] || AlertCircle
     const isEmpty = count === 0
 
-    // 顏色對應表 (擴充自 HomeClient)
+    // 顏色對應表 (中飽和度漸層設計)
     const colorMap: Record<string, any> = {
-        blue: { bg: 'from-blue-50 to-white', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', border: 'border-blue-100', topBar: 'bg-blue-600' },
-        sky: { bg: 'from-sky-50 to-white', iconBg: 'bg-sky-100', iconColor: 'text-sky-600', border: 'border-sky-100', topBar: 'bg-sky-600' },
-        indigo: { bg: 'from-indigo-50 to-white', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600', border: 'border-indigo-100', topBar: 'bg-indigo-600' },
-        amber: { bg: 'from-amber-50 to-white', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', border: 'border-amber-100', topBar: 'bg-amber-600' },
-        purple: { bg: 'from-purple-50 to-white', iconBg: 'bg-purple-100', iconColor: 'text-purple-600', border: 'border-purple-100', topBar: 'bg-purple-600' },
-        violet: { bg: 'from-violet-50 to-white', iconBg: 'bg-violet-100', iconColor: 'text-violet-600', border: 'border-violet-100', topBar: 'bg-violet-600' },
-        emerald: { bg: 'from-emerald-50 to-white', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', border: 'border-emerald-100', topBar: 'bg-emerald-600' },
-        rose: { bg: 'from-rose-50 to-white', iconBg: 'bg-rose-100', iconColor: 'text-rose-600', border: 'border-rose-100', topBar: 'bg-rose-600' },
-        orange: { bg: 'from-orange-50 to-white', iconBg: 'bg-orange-100', iconColor: 'text-orange-600', border: 'border-orange-100', topBar: 'bg-orange-600' },
-        cyan: { bg: 'from-cyan-50 to-white', iconBg: 'bg-cyan-100', iconColor: 'text-cyan-600', border: 'border-cyan-100', topBar: 'bg-cyan-600' },
-        green: { bg: 'from-green-50 to-white', iconBg: 'bg-green-100', iconColor: 'text-green-600', border: 'border-green-100', topBar: 'bg-green-600' },
+        'Pastel blue': { bg: 'from-sky-100 via-sky-50/30 to-white', iconBg: 'bg-sky-100', iconColor: 'text-sky-700', border: 'border-sky-200/60', topBar: 'bg-sky-400' },
+        'Dusty rose': { bg: 'from-rose-100/80 via-rose-50/20 to-white', iconBg: 'bg-rose-100', iconColor: 'text-rose-700', border: 'border-rose-200/60', topBar: 'bg-rose-400' },
+        'Dusty Lavender': { bg: 'from-violet-100 via-violet-50/30 to-white', iconBg: 'bg-violet-100', iconColor: 'text-violet-700', border: 'border-violet-200/60', topBar: 'bg-violet-400' },
+        'Pink': { bg: 'from-pink-100 via-pink-50/30 to-white', iconBg: 'bg-pink-100', iconColor: 'text-pink-700', border: 'border-pink-200/60', topBar: 'bg-pink-400' },
+        'blue': { bg: 'from-blue-100 via-blue-50/30 to-white', iconBg: 'bg-blue-100', iconColor: 'text-blue-700', border: 'border-blue-200/60', topBar: 'bg-blue-500' },
+        'cinnamon': { bg: 'from-amber-100 via-rose-50/20 to-white', iconBg: 'bg-amber-100', iconColor: 'text-amber-800', border: 'border-amber-200/50', topBar: 'bg-amber-700' },
+        'yellow': { bg: 'from-yellow-100 via-yellow-50/30 to-white', iconBg: 'bg-yellow-100', iconColor: 'text-yellow-700', border: 'border-yellow-200/60', topBar: 'bg-yellow-400' },
+        'olive': { bg: 'from-lime-100/70 via-stone-100/20 to-white', iconBg: 'bg-lime-100', iconColor: 'text-lime-800', border: 'border-lime-200/60', topBar: 'bg-lime-600' },
+        'Peach': { bg: 'from-orange-100 via-rose-50/20 to-white', iconBg: 'bg-orange-100/80', iconColor: 'text-orange-700', border: 'border-orange-200/60', topBar: 'bg-orange-400' },
+        'Sage Green': { bg: 'from-emerald-100 via-emerald-50/30 to-white', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-700', border: 'border-emerald-200/60', topBar: 'bg-emerald-400' },
     }
 
-    const c = colorMap[color] || colorMap.blue
+    const c = colorMap[color] || colorMap['Pastel blue']
 
     return (
         <motion.div

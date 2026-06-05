@@ -340,6 +340,13 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             return null
         }
 
+        // 特別處理：目標狀態為「工務部門報價，主管簽核中」時，驗證報價區塊必填欄位
+        if (targetStatus === '工務部門報價，主管簽核中') {
+            if (!formData.quote_user_name) return '請選擇報價承辦人'
+            if (!formData.quote_user_date) return '請輸入報價承辦人日期'
+            return null
+        }
+
         switch (formData.status) {
             case '已轉維修單':
                 if (!formData.handler_name) return '請選擇承辦人'
@@ -467,16 +474,21 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             } else {
                 setFormData(updateData)
                 setLastSavedData(updateData)
-                // 若是狀態1「已轉維修單」送審成功，更新 section1Completed 為 true
-                if (formData.status === '已轉維修單' && nextStatus === '開單主管簽核完成') {
+                // 更新狀態區塊的完成度 (以實際填寫的資料為準，避免 React 異步狀態更新延遲造成判斷錯誤)
+                if (
+                    updateData.handler_name &&
+                    updateData.work_order_date &&
+                    updateData.maint_mgr_name &&
+                    updateData.maint_mgr_date &&
+                    updateData.printer_name &&
+                    updateData.submit_date
+                ) {
                     setSection1Completed(true)
                 }
-                // 若是狀態2「開單主管簽核完成」儲存成功，更新 section2Completed 為 true
-                if (nextStatus === '開單主管簽核完成') {
+                if (updateData.req_dept_mgr_name && updateData.req_dept_mgr_date) {
                     setSection2Completed(true)
                 }
-                // 狀態3：工務部門報價主管簽核中，點擊「報價完成，送工務主管簽核」成功儲存後，更新 quoteCompleted 為 true
-                if (formData.status === '工務部門報價，主管簽核中' && nextStatus === '工務部門報價，主管簽核中') {
+                if (updateData.quote_user_name && updateData.quote_user_date) {
                     setQuoteCompleted(true)
                 }
             }
@@ -1024,7 +1036,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                 min={0}
                                                 value={formData.installment_count !== null && formData.installment_count !== undefined ? formData.installment_count : ''}
                                                 onChange={handleInstallmentCountChange}
-                                                disabled={!isSectionEditable(9)}
+                                                disabled={!isSectionEditable(9) || (lastSavedData.installment_count !== null && lastSavedData.installment_count !== undefined)}
                                                 placeholder="請輸入分期期數"
                                                 className="flex-1"
                                             />
@@ -1076,25 +1088,25 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                                             </div>
                                                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                                                                 <div className="space-y-1">
-                                                                                    <div className="text-[10px] font-semibold text-teal-600/70 dark:text-teal-400/70 uppercase tracking-wider">請款內容</div>
+                                                                                    <div className="text-[10px] font-semibold text-sky-600/80 dark:text-sky-400/80 uppercase tracking-wider">請款內容</div>
                                                                                     <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-teal-50/50 dark:bg-teal-950/20 rounded-lg px-2.5 py-1.5 border border-teal-100/80 dark:border-teal-900/30 truncate" title={item.content || ''}>
                                                                                         {item.content || '—'}
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="space-y-1">
-                                                                                    <div className="text-[10px] font-semibold text-teal-600/70 dark:text-teal-400/70 uppercase tracking-wider">請款金額</div>
+                                                                                    <div className="text-[10px] font-semibold text-sky-600/80 dark:text-sky-400/80 uppercase tracking-wider">請款金額</div>
                                                                                     <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-teal-50/50 dark:bg-teal-950/20 rounded-lg px-2.5 py-1.5 border border-teal-100/80 dark:border-teal-900/30">
                                                                                         {item.amount ? `${Number(item.amount).toLocaleString()} 元` : '—'}
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="space-y-1">
-                                                                                    <div className="text-[10px] font-semibold text-teal-600/70 dark:text-teal-400/70 uppercase tracking-wider">請款日期</div>
+                                                                                    <div className="text-[10px] font-semibold text-sky-600/80 dark:text-sky-400/80 uppercase tracking-wider">請款日期</div>
                                                                                     <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-teal-50/50 dark:bg-teal-950/20 rounded-lg px-2.5 py-1.5 border border-teal-100/80 dark:border-teal-900/30">
                                                                                         {item.date || '—'}
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="space-y-1">
-                                                                                    <div className="text-[10px] font-semibold text-teal-600/70 dark:text-teal-400/70 uppercase tracking-wider">經辦人</div>
+                                                                                    <div className="text-[10px] font-semibold text-sky-600/80 dark:text-sky-400/80 uppercase tracking-wider">經辦人</div>
                                                                                     <div className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-teal-50/50 dark:bg-teal-950/20 rounded-lg px-2.5 py-1.5 border border-teal-100/80 dark:border-teal-900/30">
                                                                                         {item.handler || '—'}
                                                                                     </div>
