@@ -14,8 +14,12 @@ import Navbar from '@/components/Navbar'
 
 interface RecentItem {
     id: string
-    date_label: string // 廠商用 work_date，工務/待處理用 start_date
-    work_content: string
+    vendor_name: string
+    work_content: string | null
+    location?: string | null
+    start_date?: string
+    end_date?: string
+    unit?: string
 }
 
 // Cloudinary 背景圖 URL
@@ -203,7 +207,7 @@ function StatCard({
                 </div>
             )}
 
-            {/* 最近7天條列清單（僅待處理卡片顯示） */}
+            {/* 最近7天條列清單 */}
             {recentItems && recentItems.length > 0 && (
                 <ul className="mt-3 mb-1 space-y-1.5">
                     {recentItems.map((item, index) => (
@@ -216,8 +220,29 @@ function StatCard({
                                 {index + 1}.
                             </span>
                             <span>
-                                <span className="font-mono text-gray-500 mr-1.5">{item.date_label}</span>
-                                <span className="break-all text-gray-700">{item.work_content}</span>
+                                {color === 'blue' && (
+                                    <>
+                                        <span className="font-bold text-gray-700 mr-1">{item.vendor_name}</span>
+                                        {item.location && <span className="text-gray-500 mr-1">({item.location})</span>}
+                                        <span className="break-all text-gray-700">{item.work_content}</span>
+                                    </>
+                                )}
+                                {color === 'amber' && (
+                                    <>
+                                        <span className="font-mono text-gray-500 mr-1.5">{item.end_date}</span>
+                                        <span className="font-bold text-gray-700 mr-1">{item.vendor_name}</span>
+                                        {item.unit && <span className="text-gray-500 mr-1">({item.unit})</span>}
+                                        <span className="break-all text-gray-700">{item.work_content}</span>
+                                    </>
+                                )}
+                                {color === 'purple' && (
+                                    <>
+                                        <span className="font-mono text-gray-500 mr-1.5">{item.start_date}</span>
+                                        <span className="font-bold text-gray-700 mr-1">{item.vendor_name}</span>
+                                        {item.unit && <span className="text-gray-500 mr-1">({item.unit})</span>}
+                                        <span className="break-all text-gray-700">{item.work_content}</span>
+                                    </>
+                                )}
                             </span>
                         </li>
                     ))}
@@ -270,18 +295,18 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
             // pending_work 只看 end_date >= today（尚未過期），不限 start_date
             supabase.from('pending_work').select('*', { count: 'exact', head: true }).gte('end_date', today),
             // 最近7天內開始的事項
-            supabase.from('pending_work').select('id, start_date, work_content').gte('start_date', sevenDaysAgoStr).order('start_date', { ascending: true }).limit(10),
-            supabase.from('vendor_today_work').select('id, work_date, work_content').eq('work_date', today).order('work_date', { ascending: true }).limit(10),
-            supabase.from('engineering_today_work').select('id, start_date, work_content').lte('start_date', today).gte('end_date', today).order('start_date', { ascending: true }).limit(10),
+            supabase.from('pending_work').select('id, start_date, vendor_name, unit, work_content').gte('start_date', sevenDaysAgoStr).order('start_date', { ascending: true }).limit(10),
+            supabase.from('vendor_today_work').select('id, vendor_name, location, work_content').eq('work_date', today).order('work_date', { ascending: true }).limit(10),
+            supabase.from('engineering_today_work').select('id, end_date, vendor_name, unit, work_content').lte('start_date', today).gte('end_date', today).order('start_date', { ascending: true }).limit(10),
         ])
         setCounts({
             vendor: v.count ?? 0,
             engineering: e.count ?? 0,
             pending: p.count ?? 0,
         })
-        setPendingRecent(pRecent.data?.map(i => ({ id: i.id, date_label: i.start_date, work_content: i.work_content })) ?? [])
-        setVendorRecent(vRecent.data?.map(i => ({ id: i.id, date_label: i.work_date, work_content: i.work_content })) ?? [])
-        setEngineeringRecent(eRecent.data?.map(i => ({ id: i.id, date_label: i.start_date, work_content: i.work_content })) ?? [])
+        setPendingRecent(pRecent.data?.map((i: any) => ({ id: i.id, start_date: i.start_date, vendor_name: i.vendor_name, unit: i.unit, work_content: i.work_content })) ?? [])
+        setVendorRecent(vRecent.data?.map((i: any) => ({ id: i.id, vendor_name: i.vendor_name, location: i.location, work_content: i.work_content })) ?? [])
+        setEngineeringRecent(eRecent.data?.map((i: any) => ({ id: i.id, end_date: i.end_date, vendor_name: i.vendor_name, unit: i.unit, work_content: i.work_content })) ?? [])
     }
 
     // 每次進入首頁時自動重新查詢最新數據，避免 Router Cache 導致舊數據
