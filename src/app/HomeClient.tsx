@@ -213,7 +213,7 @@ function StatCard({
                     {recentItems.map((item, index) => (
                         <li
                             key={item.id}
-                            className="flex items-start gap-2 text-xs text-gray-600 leading-snug"
+                            className="flex items-start gap-2 text-sm text-gray-600 leading-snug"
                         >
                             {/* 流水號編號 */}
                             <span className={`mt-0.5 font-bold shrink-0 ${c.accent} w-4`}>
@@ -249,7 +249,7 @@ function StatCard({
                 </ul>
             )}
             {recentItems && recentItems.length === 0 && (
-                <p className="mt-2 text-xs text-gray-400">近7天無新增事項</p>
+                <p className="mt-2 text-sm text-gray-400">近7天無新增事項</p>
             )}
 
             {/* 底部操作列：查看詳情 + 新增按鈕 */}
@@ -348,7 +348,7 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
             </section>
 
             {/* ===== 統計卡片區 ===== */}
-            <section className="max-w-5xl mx-auto px-6 -mt-6 relative z-20 w-full">
+            <section className="max-w-7xl mx-auto px-6 -mt-6 relative z-20 w-full">
                 {/* Statistics Cards - 改為垂直堆疊 (Vertical stacking on mobile) */}
                 <div className="flex flex-col md:grid md:grid-cols-3 gap-6 pb-2 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
                     <StatCard
