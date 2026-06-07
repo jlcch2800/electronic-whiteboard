@@ -522,10 +522,10 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     />
                 ) : (
                     <div className="space-y-4">
-                        <div className="hidden md:block rounded-xl border bg-white dark:bg-slate-950 shadow-sm overflow-hidden relative pt-1">
+                        <div className={`hidden md:block rounded-xl border bg-white dark:bg-slate-950 shadow-sm overflow-hidden relative pt-1 ${c.border}`}>
                             <div className={`absolute top-0 left-0 right-0 h-1 ${c.topBar}`} />
                             <Table>
-                                <TableHeader className="bg-slate-50/80 dark:bg-slate-900/80">
+                                <TableHeader className={`${c.bg} border-b ${c.border}`}>
                                     <TableRow>
                                         <TableHead className="w-[40px] px-4">
                                             <Checkbox
@@ -554,7 +554,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                 </TableHeader>
                                 <TableBody>
                                     {data.map((item) => (
-                                        <TableRow key={item.id} className="hover:bg-slate-50/50">
+                                        <TableRow key={item.id} className={`hover:bg-slate-50/50 transition-colors ${selected.has(item.id) ? c.bg : ''}`}>
                                             <TableCell className="px-4">
                                                 <Checkbox
                                                     checked={selected.has(item.id)}
