@@ -451,44 +451,80 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 updateData.status = nextStatus
             }
 
+            // 清理空字串，將 "" 轉換為 null 避免 PostgreSQL 日期/數值等欄位寫入時發生 invalid input syntax 錯誤
+            const cleanData = { ...updateData }
+            Object.keys(cleanData).forEach((key) => {
+                if (cleanData[key] === '') {
+                    cleanData[key] = null
+                }
+            })
+
             const { error } = await supabase
                 .from('maintenance_work_orders')
-                .update(updateData)
+                .update(cleanData)
                 .eq('id', id)
 
             if (error) throw error
 
             // 寫入系統異動紀錄（使用 await 確保發送成功，防止頁面跳轉時 fetch 被瀏覽器取消）
-            await logChangeRecord({
-                actionType: 'Update',
-                modifyTable: 'maintenance_work_orders',
-                modifyRecordId: id,
-                oldData: oldData,
-                newData: updateData,
+            const finalOldData: Record<string, any> = {}
+            const finalNewData: Record<string, any> = {}
+            let hasChanges = false
+
+            // 輔助函式：判斷是否皆為空值（排除 null, undefined, 空字串造成的型態雜訊）
+            const isEmptyEquivalent = (val: any) => {
+                return val === undefined || val === null || val === ''
+            }
+
+            Object.keys(cleanData).forEach((key) => {
+                if (['updated_at', 'created_at'].includes(key)) return
+                
+                const oldVal = oldData[key]
+                const newVal = cleanData[key]
+
+                // 若皆為等價空值，視為未修改
+                if (isEmptyEquivalent(oldVal) && isEmptyEquivalent(newVal)) return
+
+                if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+                    finalOldData[key] = oldVal
+                    finalNewData[key] = newVal
+                    hasChanges = true
+                }
             })
+
+            // 僅在有實質異動時才寫入紀錄
+            if (hasChanges) {
+                await logChangeRecord({
+                    actionType: 'Update',
+                    modifyTable: 'maintenance_work_orders',
+                    modifyRecordId: id,
+                    oldData: finalOldData,
+                    newData: finalNewData,
+                })
+            }
 
             toast({ title: '儲存成功', description: nextStatus ? `狀態已更新為：${nextStatus}` : '資料已儲存' })
 
             if (nextStatus === '已驗收') {
                 router.push('/maintenance-work/history')
             } else {
-                setFormData(updateData)
-                setLastSavedData(updateData)
+                setFormData(cleanData)
+                setLastSavedData(cleanData)
                 // 更新狀態區塊的完成度 (以實際填寫的資料為準，避免 React 異步狀態更新延遲造成判斷錯誤)
                 if (
-                    updateData.handler_name &&
-                    updateData.work_order_date &&
-                    updateData.maint_mgr_name &&
-                    updateData.maint_mgr_date &&
-                    updateData.printer_name &&
-                    updateData.submit_date
+                    cleanData.handler_name &&
+                    cleanData.work_order_date &&
+                    cleanData.maint_mgr_name &&
+                    cleanData.maint_mgr_date &&
+                    cleanData.printer_name &&
+                    cleanData.submit_date
                 ) {
                     setSection1Completed(true)
                 }
-                if (updateData.req_dept_mgr_name && updateData.req_dept_mgr_date) {
+                if (cleanData.req_dept_mgr_name && cleanData.req_dept_mgr_date) {
                     setSection2Completed(true)
                 }
-                if (updateData.quote_user_name && updateData.quote_user_date) {
+                if (cleanData.quote_user_name && cleanData.quote_user_date) {
                     setQuoteCompleted(true)
                 }
             }
