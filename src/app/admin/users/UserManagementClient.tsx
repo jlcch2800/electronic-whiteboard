@@ -279,12 +279,14 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                 帳號管理
                             </h1>
                         </div>
-                        <Button variant="outline" size="sm" className="md:hidden" onClick={() => setIsFiltersOpen(!isFiltersOpen)}>
-                            <Filter className="w-4 h-4 mr-1" />{isFiltersOpen ? '隱藏' : '篩選'}
-                        </Button>
+                        <div className="flex items-center gap-2 md:hidden">
+                            <Button size="sm" onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9">
+                                <Plus className="w-4 h-4 mr-1" /> 新增
+                            </Button>
+                        </div>
                     </div>
 
-                    <div className={`flex-col md:flex-row items-stretch md:items-center gap-3 ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
+                    <div className="hidden md:flex flex-row items-center gap-3">
                         <div className="flex items-center gap-2 bg-muted p-1 rounded-xl">
                             <Button variant="ghost" size="sm" onClick={handleEdit} disabled={selectedIds.length !== 1} className="text-blue-600">
                                 <Edit className="w-4 h-4 mr-1" /> 修改
@@ -338,6 +340,39 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-card rounded-2xl shadow-card border border-border overflow-hidden"
                 >
+                    {/* 手機版搜尋與匯出列 */}
+                    <div className="md:hidden p-4 bg-card border-b border-border/50 flex flex-col gap-3">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="搜尋姓名、單位、帳號、Email..."
+                                className="pl-9 w-full bg-muted/50 border-none h-9 text-xs"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" className="bg-green-600 hover:bg-green-700 flex-1 text-white text-xs h-9">
+                                        <Download className="w-4 h-4 mr-1" /> 匯出資料
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-[calc(100vw-3rem)] max-w-xs">
+                                    <DropdownMenuItem onClick={exportToExcel} className="py-2.5 text-xs">
+                                        匯出 Excel
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exportToPdf} className="py-2.5 text-xs">
+                                        匯出 PDF
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading} className="h-9 w-9 shrink-0">
+                                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </div>
+                    </div>
+
                     <div className="overflow-x-auto">
                         <Table className="hidden md:table">
                             <TableHeader>
@@ -482,14 +517,35 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                                         </Label>
                                     </div>
                                     {selectedIds.length > 0 && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setSelectedIds([])}
-                                            className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                                        >
-                                            取消選擇
-                                        </Button>
+                                        <div className="flex items-center gap-1 flex-wrap justify-end">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleEdit}
+                                                disabled={selectedIds.length !== 1}
+                                                className="h-8 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                                            >
+                                                <Edit className="w-3.5 h-3.5 mr-1" />
+                                                修改
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleDeleteClick}
+                                                className="h-8 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                                刪除
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setSelectedIds([])}
+                                                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-slate-100"
+                                            >
+                                                取消
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
                             )}
