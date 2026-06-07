@@ -121,7 +121,7 @@ function StatusCard({
                 <div className={`p-2 rounded-lg ${c.iconBg} ${c.iconColor} shrink-0`}>
                     <Icon className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-700 leading-snug">{status}</h3>
+                <h3 className="text-[14pt] font-bold text-gray-700 leading-snug">{status}</h3>
             </div>
 
             <div className="flex items-baseline gap-1 mb-4 flex-wrap">
@@ -131,10 +131,10 @@ function StatusCard({
 
             <div className="space-y-2 mb-4">
                 {isEmpty ? (
-                    <p className="text-xs text-gray-400 italic">目前無此狀態的維修單</p>
+                    <p className="text-[13pt] text-gray-400 italic">目前無此狀態的維修單</p>
                 ) : (
                     recent.map((item, idx) => (
-                        <div key={item.id} className="text-[11px] leading-tight text-gray-600 border-l-2 border-gray-100 pl-2">
+                        <div key={item.id} className="text-[13pt] leading-normal text-gray-600 border-l-2 border-gray-100 pl-2">
                             <div className="flex justify-between text-gray-600 font-medium mb-0.5">
                                 <span>
                                     {idx + 1}. {item.request_date} {item.cost_center ? `| ${item.cost_center}` : ''}
@@ -146,9 +146,9 @@ function StatusCard({
                 )}
             </div>
 
-            <div className="flex items-center text-[11px] font-bold text-gray-400 group-hover:text-primary transition-colors mt-auto">
+            <div className="flex items-center text-[13pt] font-bold text-gray-400 group-hover:text-primary transition-colors mt-auto">
                 點擊查看詳情
-                <ArrowRight className="w-3 h-3 ml-1 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 ml-1.5 transition-transform group-hover:translate-x-1" />
             </div>
         </motion.div>
     )
@@ -249,8 +249,8 @@ export default function StatusDashboardClient() {
                             <Activity className="w-7 h-7 text-primary" />
                             維修單狀態管理儀表板
                             {!loading && (
-                                <Badge 
-                                    variant="outline" 
+                                <Badge
+                                    variant="outline"
                                     className="ml-2 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800 text-sm py-1 px-3 font-bold cursor-pointer hover:bg-green-100 transition-colors"
                                     onClick={() => router.push('/maintenance-work/history')}
                                 >
