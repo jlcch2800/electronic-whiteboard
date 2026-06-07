@@ -14,6 +14,7 @@ import { logBatchDeleteRecords } from '@/lib/change-log'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { useAppStore } from '@/stores/useAppStore'
 import Navbar from '@/components/Navbar'
+import { STATUS_COLORS } from '@/lib/maintenance-constants'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -178,12 +179,29 @@ const getExtraColumns = (status: string): ExtraColumn[] => {
     }
 }
 
+// 顏色對應表 (中飽和度漸層設計)
+const COLOR_MAP: Record<string, { bg: string; text: string; border: string; topBar: string }> = {
+    'Pastel blue': { bg: 'bg-sky-50/80 dark:bg-sky-950/20', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-200/60 dark:border-sky-800/40', topBar: 'bg-sky-400' },
+    'Dusty rose': { bg: 'bg-rose-50/80 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-200/60 dark:border-rose-800/40', topBar: 'bg-rose-400' },
+    'Dusty Lavender': { bg: 'bg-violet-50/80 dark:bg-violet-950/20', text: 'text-violet-700 dark:text-violet-400', border: 'border-violet-200/60 dark:border-violet-800/40', topBar: 'bg-violet-400' },
+    'Pink': { bg: 'bg-pink-50/80 dark:bg-pink-950/20', text: 'text-pink-700 dark:text-pink-400', border: 'border-pink-200/60 dark:border-pink-800/40', topBar: 'bg-pink-400' },
+    'blue': { bg: 'bg-blue-50/80 dark:bg-blue-950/20', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200/60 dark:border-blue-800/40', topBar: 'bg-blue-500' },
+    'cinnamon': { bg: 'bg-amber-50/80 dark:bg-amber-950/20', text: 'text-amber-800 dark:text-amber-400', border: 'border-amber-200/50 dark:border-amber-800/40', topBar: 'bg-amber-700' },
+    'yellow': { bg: 'bg-yellow-50/80 dark:bg-yellow-950/20', text: 'text-yellow-700 dark:text-yellow-400', border: 'border-yellow-200/60 dark:border-yellow-800/40', topBar: 'bg-yellow-400' },
+    'olive': { bg: 'bg-lime-50/80 dark:bg-lime-950/20', text: 'text-lime-800 dark:text-lime-400', border: 'border-lime-200/60 dark:border-lime-800/40', topBar: 'bg-lime-600' },
+    'Peach': { bg: 'bg-orange-50/80 dark:bg-orange-950/20', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200/60 dark:border-orange-800/40', topBar: 'bg-orange-400' },
+    'Sage Green': { bg: 'bg-emerald-50/80 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200/60 dark:border-emerald-800/40', topBar: 'bg-emerald-400' },
+}
+
 export default function StatusDetailPageClient({ status }: { status: string }) {
     const router = useRouter()
     const { user } = useAuth()
     const { profile } = useAppStore()
     const supabase = createClient()
     const isAdmin = profile?.role === 'admin'
+
+    const colorName = STATUS_COLORS[status] || 'Pastel blue'
+    const c = COLOR_MAP[colorName] || COLOR_MAP['Pastel blue']
 
     const extraCols = getExtraColumns(status)
 
@@ -419,7 +437,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                         <h1 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
                             明細列表
                         </h1>
-                        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs py-1 px-2.5 font-bold tracking-wide whitespace-nowrap flex-shrink-0">
+                        <Badge className={`${c.bg} ${c.text} ${c.border} border text-xs py-1 px-2.5 font-bold tracking-wide whitespace-nowrap flex-shrink-0`}>
                             {status}
                         </Badge>
                     </div>
@@ -504,7 +522,8 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     />
                 ) : (
                     <div className="space-y-4">
-                        <div className="hidden md:block rounded-xl border bg-white dark:bg-slate-950 shadow-sm overflow-hidden">
+                        <div className="hidden md:block rounded-xl border bg-white dark:bg-slate-950 shadow-sm overflow-hidden relative pt-1">
+                            <div className={`absolute top-0 left-0 right-0 h-1 ${c.topBar}`} />
                             <Table>
                                 <TableHeader className="bg-slate-50/80 dark:bg-slate-900/80">
                                     <TableRow>
@@ -603,7 +622,10 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                     id={item.id}
                                     title={item.work_order_id}
                                     subtitle={item.cost_center}
-                                    status={{ label: item.status, variant: 'default' }}
+                                    status={{ 
+                                        label: item.status, 
+                                        className: `${c.bg} ${c.text} ${c.border} border font-bold text-[10px]` 
+                                    }}
                                     date={item.request_date}
                                     dateLabel="開單日"
                                     details={[
@@ -658,7 +680,8 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
             <AlertDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
                 <AlertDialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-2 border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl">
                     {/* 醫療卡片 Header */}
-                    <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-teal-800 text-white px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 shrink-0">
+                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 shrink-0 relative pt-5">
+                        <div className={`absolute top-0 left-0 right-0 h-1.5 ${c.topBar}`} />
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm shrink-0 border border-white/20">
                                 <Activity className="w-6 h-6 text-teal-300 animate-pulse" />

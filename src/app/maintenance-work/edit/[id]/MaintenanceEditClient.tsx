@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -91,6 +91,7 @@ const stringifyInstallments = (list: InstallmentItem[]): string => {
 
 export default function MaintenanceEditClient({ id, initialData }: MaintenanceEditClientProps) {
     const router = useRouter()
+    const isFirstLoad = useRef(true)
     const { user } = useAuth()
     const { profile } = useAppStore()
     const supabase = createClient()
@@ -277,37 +278,48 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         return sectionIndex === targetSection
     }
 
-    // 初始化展開區塊
+    // 初始化展開區塊與自動滾動
     useEffect(() => {
+        let activeSection = 'section1'
         // 特殊處理：「已轉維修單」或「開單主管簽核完成」依完成度決定展開
         if (formData.status === '已轉維修單' || formData.status === '開單主管簽核完成') {
             if (!section1Completed) {
-                setOpenSections({ section1: true })
+                activeSection = 'section1'
             } else if (!section2Completed) {
-                setOpenSections({ section2: true })
+                activeSection = 'section2'
             } else {
-                setOpenSections({ section3: true })
+                activeSection = 'section3'
             }
-            return
+        } else if (formData.status === '工務部門報價，主管簽核中') {
+            // 特殊處理：報價階段依完成度決定展開 section3 或 section4
+            activeSection = quoteCompleted ? 'section4' : 'section3'
+        } else {
+            const statusMap: Record<string, string> = {
+                '已轉維修單': 'section1',
+                '開單主管簽核完成': 'section2',
+                '院長室簽核中': 'section4_dean',
+                '採購發包簽核中': 'section5',
+                '工務已發包': 'section7',
+                '採購已發包': 'section7',
+                '廠商施工中': 'section7_construct',
+                '施工完成，開單單位驗收中': 'section8',
+                '維修部門驗收中': 'section9',
+            }
+            activeSection = statusMap[formData.status] || 'section1'
         }
-        // 特殊處理：報價階段依完成度決定展開 section3 或 section4
-        if (formData.status === '工務部門報價，主管簽核中') {
-            setOpenSections({ [quoteCompleted ? 'section4' : 'section3']: true })
-            return
-        }
-        const statusMap: Record<string, string> = {
-            '已轉維修單': 'section1',
-            '開單主管簽核完成': 'section2',
-            '院長室簽核中': 'section4_dean',
-            '採購發包簽核中': 'section5',
-            '工務已發包': 'section7',
-            '採購已發包': 'section7',
-            '廠商施工中': 'section7_construct',
-            '施工完成，開單單位驗收中': 'section8',
-            '維修部門驗收中': 'section9',
-        }
-        const activeSection = statusMap[formData.status] || 'section1'
+
         setOpenSections({ [activeSection]: true })
+
+        // 僅在首次載入頁面時自動滾動
+        if (isFirstLoad.current) {
+            isFirstLoad.current = false
+            setTimeout(() => {
+                const el = document.getElementById(`card-${activeSection}`)
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+            }, 300)
+        }
     }, [formData.status, section1Completed, section2Completed, quoteCompleted])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -638,7 +650,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             <main className="max-w-4xl mx-auto px-6 py-8 w-full space-y-6">
 
                 {/* 狀態 1: 已轉維修單 */}
-                <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <Card id="card-section1" className="overflow-hidden border-sky-400/40 dark:border-sky-500/30 shadow-sm border-l-4 border-l-sky-400">
                     <SectionHeader title="狀態 1：已轉維修單" sectionKey="section1" index={0} />
                     <AnimatePresence>
                         {openSections.section1 && (
@@ -738,7 +750,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 </Card>
 
                 {/* 狀態 2: 開單主管簽核完成 */}
-                <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <Card id="card-section2" className="overflow-hidden border-rose-400/40 dark:border-rose-500/30 shadow-sm border-l-4 border-l-rose-400">
                     <SectionHeader title="狀態 2：開單主管簽核完成" sectionKey="section2" index={1} />
                     <AnimatePresence>
                         {openSections.section2 && (
@@ -767,7 +779,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 </Card>
 
                 {/* 狀態 3: 工務部門報價、主管簽核中 */}
-                <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <Card id="card-section3" className="overflow-hidden border-violet-400/40 dark:border-violet-500/30 shadow-sm border-l-4 border-l-violet-400">
                     <SectionHeader title="狀態 3：工務部門報價、主管簽核中" sectionKey="section3" index={2} />
                     <AnimatePresence>
                         {openSections.section3 && (
@@ -809,7 +821,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 </Card>
 
                 {/* 狀態 4: 發包主管簽核 (含金額分歧邏輯) */}
-                <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <Card id="card-section4" className="overflow-hidden border-pink-400/40 dark:border-pink-500/30 shadow-sm border-l-4 border-l-pink-400">
                     <SectionHeader title="狀態 4：發包主管簽核 (金額門檻判定)" sectionKey="section4" index={3} />
                     <AnimatePresence>
                         {openSections.section4 && (
@@ -858,7 +870,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
                 {/* 狀態 5: 院長室簽核 (僅金額 > 2萬顯示) */}
                 {(Number(formData.amount) > 20000 || formData.status === '院長室簽核中') && (
-                    <Card className="overflow-hidden border-slate-200 shadow-sm border-l-4 border-l-purple-500">
+                    <Card id="card-section4_dean" className="overflow-hidden border-blue-500/40 dark:border-blue-600/30 shadow-sm border-l-4 border-l-blue-500">
                         <SectionHeader title="狀態 5：院長室簽核 (金額 > 2萬)" sectionKey="section4_dean" index={4} />
                         <AnimatePresence>
                             {openSections.section4_dean && (
@@ -903,7 +915,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
                 {/* 狀態 6: 採購發包簽核中 (僅金額 > 2萬顯示) */}
                 {(Number(formData.amount) > 20000 || formData.status === '採購發包簽核中') && (
-                    <Card className="overflow-hidden border-slate-200 shadow-sm border-l-4 border-l-violet-500">
+                    <Card id="card-section5" className="overflow-hidden border-amber-700/40 dark:border-amber-600/30 shadow-sm border-l-4 border-l-amber-700">
                         <SectionHeader title="狀態 6：採購發包簽核中" sectionKey="section5" index={5} />
                         <AnimatePresence>
                             {openSections.section5 && (
@@ -964,7 +976,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 )}
 
                 {/* 狀態 7: 工務已發包 / 採購已發包 */}
-                <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <Card id="card-section7" className={`overflow-hidden shadow-sm border-l-4 ${Number(formData.amount) > 20000 ? 'border-yellow-400/40 dark:border-yellow-500/30 border-l-yellow-400' : 'border-pink-400/40 dark:border-pink-500/30 border-l-pink-400'}`}>
                     <SectionHeader title={getSection7Title()} sectionKey="section7" index={6} />
                     <AnimatePresence>
                         {openSections.section7 && (
@@ -999,7 +1011,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 </Card>
 
                 {/* 狀態 8: 廠商施工中 */}
-                <Card className="overflow-hidden border-slate-200 shadow-sm border-l-4 border-l-rose-500">
+                <Card id="card-section7_construct" className="overflow-hidden border-lime-600/40 dark:border-lime-500/30 shadow-sm border-l-4 border-l-lime-600">
                     <SectionHeader title="狀態 8：廠商施工中" sectionKey="section7_construct" index={7} />
                     <AnimatePresence>
                         {openSections.section7_construct && (
@@ -1026,7 +1038,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 </Card>
 
                 {/* 狀態 9: 施工完成，開單單位驗收中 */}
-                <Card className="overflow-hidden border-slate-200 shadow-sm">
+                <Card id="card-section8" className="overflow-hidden border-orange-400/40 dark:border-orange-500/30 shadow-sm border-l-4 border-l-orange-400">
                     <SectionHeader title="狀態 9：施工完成，開單單位驗收中" sectionKey="section8" index={8} />
                     <AnimatePresence>
                         {openSections.section8 && (
@@ -1057,7 +1069,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 </Card>
 
                 {/* 狀態 10: 維修部門驗收中 */}
-                <Card className="overflow-hidden border-slate-200 shadow-sm border-b-4 border-b-green-500">
+                <Card id="card-section9" className="overflow-hidden border-green-500/40 dark:border-green-600/30 shadow-sm border-l-4 border-l-green-500">
                     <SectionHeader title="狀態 10：維修部門驗收中" sectionKey="section9" index={9} />
                     <AnimatePresence>
                         {openSections.section9 && (
