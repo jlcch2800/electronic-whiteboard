@@ -188,18 +188,22 @@ function StatCard({
                 <div className={`p-3 rounded-xl ${c.iconBg} ${c.iconColor} shadow-sm`}>
                     <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-semibold text-gray-700">{label}</h3>
+                {/* 卡片標題字型大小調整為 14pt */}
+                <h3 className="text-[14pt] font-semibold text-gray-700">{label}</h3>
             </div>
 
-            {/* 數字 / 空狀態 */}
+            {/* 數字 / 空狀態 (皆調整為置中顯示) */}
             {isEmpty ? (
-                <div className="mb-1">
-                    <span className="text-4xl font-black text-gray-300 tabular-nums tracking-tight">0</span>
-                    <span className="text-base font-medium text-gray-400 ml-2">筆</span>
-                    <p className="text-sm text-gray-500 mt-2">{EMPTY_STATE_MESSAGES[color]}</p>
+                <div className="mb-1 text-center">
+                    <div className="flex items-baseline justify-center gap-2">
+                        <span className="text-4xl font-black text-gray-300 tabular-nums tracking-tight">0</span>
+                        <span className="text-base font-medium text-gray-400">筆</span>
+                    </div>
+                    {/* 調整空狀態提示文字大小為 13pt */}
+                    <p className="text-[13pt] text-gray-500 mt-2">{EMPTY_STATE_MESSAGES[color]}</p>
                 </div>
             ) : (
-                <div className="flex items-baseline gap-2 mb-1">
+                <div className="flex items-baseline justify-center gap-2 mb-1">
                     <span className={`text-5xl font-black ${c.countColor} tabular-nums tracking-tight`}>
                         {animatedCount}
                     </span>
@@ -213,7 +217,7 @@ function StatCard({
                     {recentItems.map((item, index) => (
                         <li
                             key={item.id}
-                            className="flex items-start gap-2 text-sm text-gray-600 leading-snug"
+                            className="flex items-start gap-2 text-[13pt] text-gray-600 leading-snug"
                         >
                             {/* 流水號編號 */}
                             <span className={`mt-0.5 font-bold shrink-0 ${c.accent} w-4`}>
@@ -249,7 +253,10 @@ function StatCard({
                 </ul>
             )}
             {recentItems && recentItems.length === 0 && (
-                <p className="mt-2 text-sm text-gray-400">近7天無新增事項</p>
+                <p className="mt-2 text-[13pt] text-gray-400">
+                    {/* 調整空狀態提示文字大小為 13pt */}
+                    近7天無新增事項
+                </p>
             )}
 
             {/* 底部操作列：查看詳情 + 新增按鈕 */}

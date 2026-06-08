@@ -124,7 +124,8 @@ function StatusCard({
                 <h3 className="text-[14pt] font-bold text-gray-700 leading-snug">{status}</h3>
             </div>
 
-            <div className="flex items-baseline gap-1 mb-4 flex-wrap">
+            {/* 置中顯示狀態卡片內的維修單筆數 */}
+            <div className="flex items-baseline justify-center gap-1 mb-4 flex-wrap">
                 <span className={`text-4xl font-black ${c.iconColor}`}>{animatedCount}</span>
                 <span className="text-xs text-gray-400 font-medium mr-1">筆</span>
             </div>
@@ -135,9 +136,10 @@ function StatusCard({
                 ) : (
                     recent.map((item, idx) => (
                         <div key={item.id} className="text-[13pt] leading-normal text-gray-600 border-l-2 border-gray-100 pl-2">
+                            {/* 顯示流水號與科室名稱，已移除開單日期 */}
                             <div className="flex justify-between text-gray-600 font-medium mb-0.5">
                                 <span>
-                                    {idx + 1}. {item.request_date} {item.cost_center ? `| ${item.cost_center}` : ''}
+                                    {idx + 1}. {item.cost_center || ''}
                                 </span>
                             </div>
                             <p className="truncate font-medium">{item.maintain_content}</p>
@@ -146,7 +148,7 @@ function StatusCard({
                 )}
             </div>
 
-            <div className="flex items-center text-[13pt] font-bold text-gray-400 group-hover:text-primary transition-colors mt-auto">
+            <div className="flex items-center text-[12pt] font-bold text-gray-400 group-hover:text-primary transition-colors mt-auto">
                 點擊查看詳情
                 <ArrowRight className="w-4 h-4 ml-1.5 transition-transform group-hover:translate-x-1" />
             </div>
@@ -213,11 +215,12 @@ export default function StatusDashboardClient() {
                 if (statsMap[itemStatus]) {
                     statsMap[itemStatus].count++
 
-                    const limit = 3
+                    // limit: 限制每個狀態卡片中顯示的最新簡易紀錄筆數，改為顯示最新的 5 筆
+                    const limit = 5
                     if (statsMap[itemStatus].recent.length < limit) {
                         statsMap[itemStatus].recent.push({
                             id: item.id,
-                            request_date: item.request_date,
+                            request_date: item.request_date, // 保留資料結構，但不於畫面上渲染
                             maintain_content: item.maintain_content,
                             work_order_id: item.work_order_id,
                             cost_center: item.cost_center
