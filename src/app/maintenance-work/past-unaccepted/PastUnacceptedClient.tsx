@@ -1,46 +1,41 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
-import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
 import { motion } from 'framer-motion'
-import { History, Download, ArrowLeft, Search, CheckCircle2, ChevronDown, ChevronUp, RotateCcw, Activity, Plus, Trash2, Edit2, Eye } from 'lucide-react'
-import { AdvancedSearchFilter, SearchFilters, defaultFilters } from '@/components/AdvancedSearchFilter'
+import {
+    Activity, ArrowLeft, Download, Search, CheckCircle2, Eye
+} from 'lucide-react'
+import { Label } from '@/components/ui/label'
 
 import { createClient } from '@/lib/supabase/client'
-import { logBatchDeleteRecords } from '@/lib/change-log'
-import { useAppStore } from '@/stores/useAppStore'
+import Navbar from '@/components/Navbar'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
-import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
-} from '@/components/ui/alert-dialog'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent } from '@/components/ui/card'
-import { useToast } from '@/hooks/use-toast'
-import { MobileTableCard } from '@/components/MobileTableCard'
-import { DataTablePagination } from '@/components/DataTablePagination'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { toast } from '@/hooks/use-toast'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
+import { DataTablePagination } from '@/components/DataTablePagination'
+import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-    DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
+    AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
+import { format } from 'date-fns'
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 
-// EXPORT_LABELS: 完整的欄位中文對照表（供 Excel 匯出用）
+// EXPORT_LABELS: 完整的欄位中文對照表（供 Excel/PDF 匯出用）
 const EXPORT_LABELS: Record<string, string> = {
     'id': 'ID',
     'created_at': '建立時間',
     'status': '狀態',
-    // 步驟 1
     'request_date': '開單日',
     'cost_center': '成本中心',
     'maintain_content': '維修內容',
@@ -52,25 +47,20 @@ const EXPORT_LABELS: Record<string, string> = {
     'maint_mgr_date': '工務單位主管日期',
     'printer_name': '印單人',
     'submit_date': '送呈日期',
-    // 步驟 2
     'req_dept_mgr_name': '開單主管姓名',
     'req_dept_mgr_date': '開單主管日期',
-    // 步驟 3
     'quote_user_name': '報價承辦人',
     'quote_user_date': '報價承辦人日期',
-    // 步驟 4
     'vendor_name': '廠商',
     'amount': '金額',
     'dispatch_mgr_name': '發包單位主管',
     'dispatch_mgr_date': '發包單位主管日期',
     'dispatch_director_name': '發包部門主管',
     'dispatch_director_date': '發包部門主管日期',
-    // 步驟 6
     'vice_dean_name': '副院長姓名',
     'vice_dean_date': '副院長日期',
     'dean_name': '院長姓名',
     'dean_date': '院長日期',
-    // 步驟 7
     'project_order_id': '工程單編號',
     'plan_start_date': '施工預計開始日期',
     'plan_end_date': '施工預計結束日期',
@@ -82,12 +72,9 @@ const EXPORT_LABELS: Record<string, string> = {
     'rev_vice_dean_date': '審查-副院長日期',
     'rev_dean_name': '審查-院長姓名',
     'rev_dean_date': '審查-院長日期',
-    // 步驟 8 & 廠商施工中
     'construct_end_date': '施工完成日期',
-    // 步驟 9
     'accept_dept_mgr_name': '驗收-開單主管姓名',
     'accept_dept_mgr_date': '驗收-開單主管日期',
-    // 步驟 10
     'installment_count': '分期',
     'installment_note': '分期說明',
     'accept_handler_name': '驗收-承辦人',
@@ -98,51 +85,42 @@ const EXPORT_LABELS: Record<string, string> = {
     'accept_director_date': '驗收部門主管日期',
 }
 
-// STATUS_BADGE_CLASSES: 定義維修流程各狀態所對應的 Tailwind 顏色類別 (比照儀表板與流程配色風格)
-const STATUS_BADGE_CLASSES: Record<string, string> = {
-    '已轉維修單': 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-800/40',
-    '開單主管簽核完成': 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-800/40',
-    '工務部門報價，主管簽核中': 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-800/40',
-    '工務已發包': 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/20 dark:text-pink-400 dark:border-pink-800/40',
-    '院長室簽核中': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/40',
-    '採購發包簽核中': 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/40',
-    '採購已發包': 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/20 dark:text-yellow-400 dark:border-yellow-800/40',
-    '廠商施工中': 'bg-lime-50 text-lime-800 border-lime-200 dark:bg-lime-950/20 dark:text-lime-400 dark:border-lime-800/40',
-    '施工完成，開單單位驗收中': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-800/40',
-    '維修部門驗收中': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/40',
-    '已驗收': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/40',
+// ROSE_THEME: Rose 顏色主題樣式設定物件，用於表格邊框、背景、文字與頂端裝飾條
+const ROSE_THEME = {
+    bg: 'bg-rose-50/80 dark:bg-rose-950/20',
+    text: 'text-rose-700 dark:text-rose-400',
+    border: 'border-rose-200/60 dark:border-rose-800/40',
+    topBar: 'bg-rose-400'
 }
 
-interface MaintenanceWorkAllClientProps {
-    initialData: any[]
-}
-
-export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWorkAllClientProps) {
+export default function PastUnacceptedClient() {
     const router = useRouter()
     const supabase = createClient()
-    const { toast } = useToast()
-    const { profile } = useAppStore()
-    const isAdmin = profile?.role === 'admin'
 
-    const [data, setData] = useState(initialData)
-    const [loading, setLoading] = useState(false)
+    // data: 儲存今年之前未驗收維修單的資料集陣列
+    const [data, setData] = useState<any[]>([])
+    // loading: 載入狀態，當開始載入為 true，結束載入為 false
+    const [loading, setLoading] = useState(true)
+    // searchTerm: 搜尋框輸入的字串，用於過濾表格紀錄
+    const [searchTerm, setSearchTerm] = useState('')
+    // selected: 已勾選的維修單 ID 集合
     const [selected, setSelected] = useState<Set<string>>(new Set())
 
-    // 分頁
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
-    const [totalItems, setTotalItems] = useState(initialData.length)
-
-    // 排序
-    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'created_at', direction: 'desc' })
-
-    // 搜尋過濾器
-    const [activeFilters, setActiveFilters] = useState<SearchFilters>(defaultFilters)
-
-    // 檢視明細對話框狀態
+    // viewDialogOpen: 檢視詳細步驟與簽章對話框的開關狀態
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
+    // viewingItem: 當前選取並在對話框內顯示的維修單物件
     const [viewingItem, setViewingItem] = useState<any>(null)
 
+    // currentPage: 分頁元件中的當前頁碼
+    const [currentPage, setCurrentPage] = useState(1)
+    // itemsPerPage: 每頁要呈現的最多筆數，預設 10 筆
+    const [itemsPerPage, setItemsPerPage] = useState(10)
+    // totalItems: 符合篩選與搜尋條件的總工單數量
+    const [totalItems, setTotalItems] = useState(0)
+    // sort: 目前排序的欄位與遞增遞減方向，預設以開單日遞減排序
+    const [sort, setSort] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'request_date', direction: 'desc' })
+
+    // handleViewDetails: 點擊「檢視明細」按鈕時的處理函式，會將選取行資料綁定到 viewingItem 並開啟對話框
     const handleViewDetails = () => {
         if (selected.size !== 1) return
         const targetId = Array.from(selected)[0]
@@ -153,88 +131,55 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         }
     }
 
-    // 取得資料
+    // refreshData: 非同步向 Supabase 查詢今年之前（以 request_date 判斷）未驗收（status != 已驗收）的紀錄
     const refreshData = async () => {
         setLoading(true)
         try {
-            let query = supabase.from('maintenance_work_orders').select('*', { count: 'exact' })
+            const currentYear = new Date().getFullYear()
+            // startOfThisYear: 今年的一月一日日期字串，格式為 YYYY-MM-DD
+            const startOfThisYear = `${currentYear}-01-01`
 
-            if (activeFilters.customSearch) {
-                query = query.or(`work_order_id.ilike.%${activeFilters.customSearch}%,maintain_content.ilike.%${activeFilters.customSearch}%,printer_name.ilike.%${activeFilters.customSearch}%,handler_name.ilike.%${activeFilters.customSearch}%`)
-            }
-            if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
-            if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
-            if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
-            if (activeFilters.costCenter) query = query.ilike('cost_center', `%${activeFilters.costCenter}%`)
-            if (activeFilters.content) query = query.ilike('maintain_content', `%${activeFilters.content}%`)
-            if (activeFilters.requester) query = query.ilike('requester_name', `%${activeFilters.requester}%`)
-            if (activeFilters.workOrderId) query = query.ilike('work_order_id', `%${activeFilters.workOrderId}%`)
-            if (activeFilters.handler) query = query.ilike('handler_name', `%${activeFilters.handler}%`)
-            if (activeFilters.quoteHandler) query = query.ilike('quote_user_name', `%${activeFilters.quoteHandler}%`)
-            if (activeFilters.vendor) query = query.ilike('vendor_name', `%${activeFilters.vendor}%`)
-            if (activeFilters.projectOrderId) query = query.ilike('project_order_id', `%${activeFilters.projectOrderId}%`)
-            if (activeFilters.procurement) query = query.ilike('procurement_name', `%${activeFilters.procurement}%`)
-            if (activeFilters.acceptHandler) query = query.ilike('accept_handler_name', `%${activeFilters.acceptHandler}%`)
+            // 從維修單表查詢符合非「已驗收」且開單日小於今年元旦的所有項目
+            let query = supabase
+                .from('maintenance_work_orders')
+                .select('*', { count: 'exact' })
+                .neq('status', '已驗收')
+                .lt('request_date', startOfThisYear)
 
-            if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
-            if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
-            if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
-            if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
-
-            if (activeFilters.amount === 'lte20k') {
-                query = query.lte('amount', 20000)
-            } else if (activeFilters.amount === 'gt20k') {
-                query = query.gt('amount', 20000)
+            // 如果有輸入關鍵字，對工單編號、內容、承辦人、印單人及狀態進行模糊搜尋
+            if (searchTerm) {
+                query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%`)
             }
 
+            // 若有設定排序欄位，則套用對應的排序規則
             if (sort) {
                 query = query.order(sort.key, { ascending: sort.direction === 'asc' })
-            } else {
-                query = query.order('created_at', { ascending: false })
             }
 
             const { count, error: countError } = await query
             if (countError) throw countError
             setTotalItems(count || 0)
 
+            // 限制查詢範圍（分頁）
             const { data: result, error } = await query.range((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage - 1)
             if (error) throw error
 
             setData(result || [])
             setSelected(new Set())
         } catch (error: any) {
-            console.error('Error fetching maintenance data:', error)
+            console.error('Error fetching data:', error)
             toast({ title: '載入失敗', description: error.message, variant: 'destructive' })
         } finally {
             setLoading(false)
         }
     }
 
+    // 監聽分頁、排序及搜尋字串的變化，觸發資料重新查詢
     useEffect(() => {
         refreshData()
-    }, [currentPage, itemsPerPage, sort, activeFilters])
+    }, [currentPage, itemsPerPage, sort, searchTerm])
 
-    // 全選/取消全選
-    const toggleSelectAll = () => {
-        if (selected.size === data.length) {
-            setSelected(new Set())
-        } else {
-            setSelected(new Set(data.map(item => item.id)))
-        }
-    }
-
-    // 單選/取消單選
-    const toggleSelect = (id: string) => {
-        const newSelected = new Set(selected)
-        if (newSelected.has(id)) {
-            newSelected.delete(id)
-        } else {
-            newSelected.add(id)
-        }
-        setSelected(newSelected)
-    }
-
-    // 排序處理
+    // handleSort: 當使用者點選表頭欄位時切換排序方向或排序欄位
     const handleSort = (key: string) => {
         setSort(prev => {
             if (prev?.key === key) {
@@ -244,79 +189,45 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         })
     }
 
-    // 刪除相關
-    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, ids: string[] }>({
-        open: false, ids: []
-    })
-
-    const onPreDelete = (ids: string[]) => {
-        if (ids.length === 0) {
-            toast({
-                title: '請先選擇項目',
-                description: '請勾選要刪除的維修單',
-                variant: 'destructive'
-            })
-            return
-        }
-        setDeleteDialog({ open: true, ids })
+    // toggleSelect: 勾選或取消勾選某一列維修單
+    const toggleSelect = (id: string) => {
+        const next = new Set(selected)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        setSelected(next)
     }
 
-    const handleDelete = async () => {
-        if (deleteDialog.ids.length === 0) return
-        setLoading(true)
-        try {
-            const deletedItems = data.filter(item => deleteDialog.ids.includes(item.id))
-            const { error } = await supabase.from('maintenance_work_orders').delete().in('id', deleteDialog.ids)
-            if (error) throw error
-
-            // 寫入系統異動紀錄（使用 await 確保發送成功）
-            await logBatchDeleteRecords('maintenance_work_orders', deletedItems)
-
-            toast({ title: '刪除成功', description: `已刪除 ${deleteDialog.ids.length} 筆資料` })
-            setDeleteDialog({ open: false, ids: [] })
-            setSelected(new Set())
-            refreshData()
-        } catch (error: any) {
-            toast({ title: '刪除失敗', description: error.message, variant: 'destructive' })
-        } finally {
-            setLoading(false)
-        }
+    // toggleSelectAll: 勾選或取消勾選當前頁面呈現的所有工單行
+    const toggleSelectAll = () => {
+        if (selected.size === data.length) setSelected(new Set())
+        else setSelected(new Set(data.map(i => i.id)))
     }
 
-    // 取得匯出用資料集
+    // getExportData: 取得目前需要匯出的資料。若有選取特定行則僅匯出選取行，否則匯出符合搜尋條件的整份結果
     const getExportData = async (): Promise<any[] | null> => {
         let dataToExport = []
         if (selected.size > 0) {
             dataToExport = data.filter(item => selected.has(item.id))
         } else {
             try {
-                let query = supabase.from('maintenance_work_orders').select('*')
-                if (activeFilters.customSearch) {
-                    query = query.or(`work_order_id.ilike.%${activeFilters.customSearch}%,maintain_content.ilike.%${activeFilters.customSearch}%,printer_name.ilike.%${activeFilters.customSearch}%,handler_name.ilike.%${activeFilters.customSearch}%`)
-                }
-                if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
-                if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
-                if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
-                if (activeFilters.costCenter) query = query.ilike('cost_center', `%${activeFilters.costCenter}%`)
-                if (activeFilters.content) query = query.ilike('maintain_content', `%${activeFilters.content}%`)
-                if (activeFilters.requester) query = query.ilike('requester_name', `%${activeFilters.requester}%`)
-                if (activeFilters.workOrderId) query = query.ilike('work_order_id', `%${activeFilters.workOrderId}%`)
-                if (activeFilters.handler) query = query.ilike('handler_name', `%${activeFilters.handler}%`)
-                if (activeFilters.quoteHandler) query = query.ilike('quote_user_name', `%${activeFilters.quoteHandler}%`)
-                if (activeFilters.vendor) query = query.ilike('vendor_name', `%${activeFilters.vendor}%`)
-                if (activeFilters.projectOrderId) query = query.ilike('project_order_id', `%${activeFilters.projectOrderId}%`)
-                if (activeFilters.procurement) query = query.ilike('procurement_name', `%${activeFilters.procurement}%`)
-                if (activeFilters.acceptHandler) query = query.ilike('accept_handler_name', `%${activeFilters.acceptHandler}%`)
-                
-                if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
-                if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
-                if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
-                if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
+                const currentYear = new Date().getFullYear()
+                const startOfThisYear = `${currentYear}-01-01`
 
-                if (activeFilters.amount === 'lte20k') query = query.lte('amount', 20000)
-                else if (activeFilters.amount === 'gt20k') query = query.gt('amount', 20000)
-                if (sort) query = query.order(sort.key, { ascending: sort.direction === 'asc' })
-                else query = query.order('created_at', { ascending: false })
+                let query = supabase
+                    .from('maintenance_work_orders')
+                    .select('*')
+                    .neq('status', '已驗收')
+                    .lt('request_date', startOfThisYear)
+
+                if (searchTerm) {
+                    query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%`)
+                }
+
+                if (sort) {
+                    query = query.order(sort.key, { ascending: sort.direction === 'asc' })
+                } else {
+                    query = query.order('created_at', { ascending: false })
+                }
 
                 const { data: allResult, error } = await query
                 if (error) throw error
@@ -326,6 +237,7 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                 return null
             }
         }
+
         if (dataToExport.length === 0) {
             toast({ title: '無資料可匯出', variant: 'destructive' })
             return null
@@ -333,7 +245,7 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         return dataToExport
     }
 
-    // 匯出 Excel
+    // exportToExcel: 將撈取出的資料格式化並匯出為 Excel 檔案
     const exportToExcel = async () => {
         setLoading(true)
         const dataToExport = await getExportData()
@@ -358,12 +270,12 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
             return row
         })
 
-        exportToExcelFile(sheetData, '維修單總表')
+        exportToExcelFile(sheetData, '今年之前未驗收維修單明細')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
         setLoading(false)
     }
 
-    // 匯出 PDF
+    // exportToPdf: 將撈取出的資料格式化並匯出為 PDF 報表
     const exportToPdf = async () => {
         setLoading(true)
         const dataToExport = await getExportData()
@@ -394,11 +306,11 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
 
         try {
             await exportToPdfFile({
-                title: '工務維修單總表記錄清單',
+                title: '今年之前未驗收維修單明細清單',
                 sheetData,
-                filenamePrefix: '維修單總表',
+                filenamePrefix: '今年之前未驗收維修單明細',
                 orientation: 'landscape',
-                themeColor: [234, 88, 12], // 橘色 brand color
+                themeColor: [244, 63, 94], // 使用符合 Rose 主題的 RGB 顏色
                 excludeColumns: []
             })
             toast({ title: 'PDF 匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
@@ -410,29 +322,32 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50 flex flex-col">
-            {/* 響應式 Header：手機版下改為垂直堆疊並支援折行，避免撐爆畫面寬度 */}
+        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col">
+            <Navbar onRefresh={refreshData} />
+
+            {/* 表頭功能列：僅提供返回、檢視明細與匯出功能 (沒有修改、刪除、新增) */}
             <header className="bg-background/95 backdrop-blur-md border-b border-border/50 px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-3 sticky top-0 z-50">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full md:w-auto">
-                    <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="px-2 h-9 shrink-0">
-                        <ArrowLeft className="w-4 h-4 mr-1 shrink-0" />返回首頁
+                    <Button variant="ghost" size="sm" onClick={() => router.push('/maintenance-work/status')} className="px-2 h-9 shrink-0">
+                        <ArrowLeft className="w-4 h-4 mr-1 shrink-0" />返回儀表板
                     </Button>
                     <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden xs:block" />
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <h1 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 whitespace-nowrap flex items-center gap-2">
-                            <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500 shrink-0" />
-                            維修單總表
+                        <h1 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                            明細列表
                         </h1>
+                        <Badge className={`${ROSE_THEME.bg} ${ROSE_THEME.text} ${ROSE_THEME.border} border text-xs py-1 px-2.5 font-bold tracking-wide whitespace-nowrap flex-shrink-0`}>
+                            今年之前未驗收
+                        </Badge>
                     </div>
                 </div>
-                {/* 手機版按鈕群自動折行並均分空間 */}
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap md:flex-nowrap w-full md:w-auto">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={handleViewDetails}
                         disabled={selected.size !== 1 || loading}
-                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center"
+                        className="px-2 sm:px-4 border-rose-600 text-rose-600 hover:bg-rose-50/50 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center"
                     >
                         <Eye className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">檢視明細</span>
@@ -453,111 +368,89 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/maintenance-work/edit/${Array.from(selected)[0]}`)}
-                        disabled={selected.size !== 1 || loading}
-                        className="px-2 sm:px-4 border-primary text-primary hover:bg-primary/5 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center"
-                    >
-                        <Edit2 className="w-4 h-4 sm:mr-2 shrink-0" />
-                        <span className="hidden sm:inline">修改</span>
-                    </Button>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => onPreDelete(Array.from(selected))}
-                        disabled={selected.size === 0 || !isAdmin || loading}
-                        className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center"
-                    >
-                        <Trash2 className="w-4 h-4 sm:mr-2 shrink-0" />
-                        <span className="hidden sm:inline">刪除 {selected.size > 0 ? `(${selected.size})` : ''}</span>
-                        <span className="sm:hidden">{selected.size > 0 ? selected.size : ''}</span>
-                    </Button>
-                    <Button className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center shrink-0" size="sm" onClick={() => router.push('/maintenance-work/new')}>
-                        <Plus className="w-4 h-4 sm:mr-2 shrink-0" />
-                        <span className="hidden sm:inline">新增維修單</span>
-                        <span className="sm:hidden">新增</span>
-                    </Button>
                 </div>
             </header>
 
+            {/* 主要內容區 */}
             <main className="flex-1 p-6 max-w-[1600px] mx-auto w-full">
-                <AdvancedSearchFilter
-                    onSearch={(f) => { setActiveFilters(f); setCurrentPage(1); }}
-                    onReset={() => { setActiveFilters(defaultFilters); setCurrentPage(1); }}
-                    hideQuoteHandler={true}
-                    hideAcceptHandler={true}
-                />
+                <div className="mb-6 flex justify-between items-center">
+                    <div className="relative w-72">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                            placeholder="搜尋工單、維修內容、目前狀態..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-9 bg-white dark:bg-slate-900"
+                        />
+                    </div>
+                </div>
 
                 {loading ? (
                     <div className="flex justify-center items-center py-20">
-                        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : data.length === 0 ? (
                     <EmptyState
                         icon={CheckCircle2}
-                        title="查無維修單資料"
-                        description={activeFilters.customSearch ? `沒有找到符合 "${activeFilters.customSearch}" 的維修單` : "目前系統中沒有任何維修單"}
+                        title="目前無今年之前未驗收的維修單"
+                        description="所有今年之前的工單皆已結案驗收完畢。"
                     />
                 ) : (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                        <div className="hidden md:block rounded-xl border bg-card shadow-sm overflow-hidden">
+                    <div className="space-y-4">
+                        {/* 桌面版表格：標題與頂部邊框均套用 Rose 顏色主題 */}
+                        <div className={`hidden md:block rounded-xl border bg-white dark:bg-slate-950 shadow-sm overflow-hidden relative pt-1 ${ROSE_THEME.border}`}>
+                            <div className={`absolute top-0 left-0 right-0 h-1 ${ROSE_THEME.topBar}`} />
                             <Table>
-                                <TableHeader className="bg-muted/50">
+                                <TableHeader className={`${ROSE_THEME.bg} border-b ${ROSE_THEME.border}`}>
                                     <TableRow>
                                         <TableHead className="w-[40px] px-4">
                                             <Checkbox
                                                 checked={selected.size === data.length && data.length > 0}
                                                 onCheckedChange={toggleSelectAll}
-                                                aria-label="Select all"
                                             />
                                         </TableHead>
                                         <SortableTableHead sortKey="work_order_id" currentSort={sort} onSort={handleSort} label="工單編號" />
-                                        <SortableTableHead sortKey="status" currentSort={sort} onSort={handleSort} label="狀態" />
                                         <SortableTableHead sortKey="request_date" currentSort={sort} onSort={handleSort} label="開單日" />
                                         <SortableTableHead sortKey="cost_center" currentSort={sort} onSort={handleSort} label="成本中心" />
                                         <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
                                         <SortableTableHead sortKey="printer_name" currentSort={sort} onSort={handleSort} label="印單人" />
+                                        <SortableTableHead sortKey="submit_date" currentSort={sort} onSort={handleSort} label="送呈日期" />
                                         <TableHead>維修內容</TableHead>
                                         <SortableTableHead sortKey="handler_name" currentSort={sort} onSort={handleSort} label="承辦人" />
-                                        <SortableTableHead sortKey="amount" currentSort={sort} onSort={handleSort} label="金額" />
-                                        <SortableTableHead sortKey="vendor_name" currentSort={sort} onSort={handleSort} label="廠商" />
+                                        <SortableTableHead sortKey="status" currentSort={sort} onSort={handleSort} label="目前狀態" />
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {data.map((item) => (
-                                        <TableRow key={item.id} className="group hover:bg-muted/30">
-                                            <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
+                                        <TableRow key={item.id} className={`hover:bg-slate-50/50 transition-colors ${selected.has(item.id) ? ROSE_THEME.bg : ''}`}>
+                                            <TableCell className="px-4">
                                                 <Checkbox
                                                     checked={selected.has(item.id)}
                                                     onCheckedChange={() => toggleSelect(item.id)}
                                                 />
                                             </TableCell>
-                                            <TableCell className="font-mono font-medium">{item.work_order_id}</TableCell>
-                                            <TableCell>
-                                                {/* 根據工單狀態動態顯示對應顏色之 Badge */}
-                                                <Badge variant="outline" className={STATUS_BADGE_CLASSES[item.status] || 'bg-blue-100 text-blue-700 border-blue-200'}>
-                                                    {item.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground">{item.request_date}</TableCell>
+                                            <TableCell className="font-mono font-bold text-slate-700 dark:text-slate-200">{item.work_order_id}</TableCell>
+                                            <TableCell className="text-slate-500 dark:text-slate-400">{item.request_date}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
                                             <TableCell>{item.printer_name || '-'}</TableCell>
-                                            <TableCell className="max-w-[200px] truncate" title={item.maintain_content}>
+                                            <TableCell>{item.submit_date || '-'}</TableCell>
+                                            <TableCell className="max-w-xs truncate" title={item.maintain_content}>
                                                 {item.maintain_content}
                                             </TableCell>
                                             <TableCell>{item.handler_name}</TableCell>
-                                            <TableCell>{item.amount ? `$${Number(item.amount).toLocaleString()}` : '-'}</TableCell>
-                                            <TableCell>{item.vendor_name || '-'}</TableCell>
+                                            <TableCell>
+                                                <Badge className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900 border text-[11px] font-semibold py-0.5 px-2">
+                                                    {item.status}
+                                                </Badge>
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </div>
 
-                        {/* 行動版卡片 */}
+                        {/* 行動版面 */}
                         <div className="grid grid-cols-1 gap-4 md:hidden">
                             {data.length > 0 && (
                                 <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/80 shadow-sm">
@@ -584,47 +477,31 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                 </div>
                             )}
 
-                            {data.map((item) => {
-                                // 根據工單狀態動態對應 Tailwind 顏色樣式
-                                const statusClassName = STATUS_BADGE_CLASSES[item.status] || 'bg-blue-100 text-blue-700 border-blue-200'
-
-                                return (
-                                    <MobileTableCard
-                                        key={item.id}
-                                        id={item.id}
-                                        title={item.work_order_id}
-                                        subtitle={item.cost_center}
-                                        status={{
-                                            label: item.status,
-                                            variant: 'outline',
-                                            className: statusClassName
-                                        }}
-                                        date={item.request_date}
-                                        dateLabel="開單日"
-                                        details={[
-                                            { label: '印單人', value: item.printer_name || '-' },
-                                            { label: '承辦人', value: item.handler_name },
-                                            { label: '維修內容', value: item.maintain_content },
-                                        ]}
-                                        isSelected={selected.has(item.id)}
-                                        onSelect={() => toggleSelect(item.id)}
-                                        actionNode={
-                                            isAdmin ? (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => onPreDelete([item.id])}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            ) : null
-                                        }
-                                    />
-                                )
-                            })}
+                            {data.map((item) => (
+                                <MobileTableCard
+                                    key={item.id}
+                                    id={item.id}
+                                    title={item.work_order_id}
+                                    subtitle={item.cost_center}
+                                    status={{ 
+                                        label: item.status, 
+                                        className: `${ROSE_THEME.bg} ${ROSE_THEME.text} ${ROSE_THEME.border} border font-bold text-[10px]` 
+                                    }}
+                                    date={item.request_date}
+                                    dateLabel="開單日"
+                                    details={[
+                                        { label: '印單人', value: item.printer_name || '-' },
+                                        { label: '送呈日期', value: item.submit_date || '-' },
+                                        { label: '承辦人', value: item.handler_name },
+                                        { label: '內容', value: item.maintain_content },
+                                    ]}
+                                    isSelected={selected.has(item.id)}
+                                    onSelect={() => toggleSelect(item.id)}
+                                />
+                            ))}
                         </div>
 
+                        {/* 分頁元件 */}
                         <DataTablePagination
                             currentPage={currentPage}
                             totalPages={Math.ceil(totalItems / itemsPerPage)}
@@ -634,49 +511,31 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                             totalItems={totalItems}
                             selectedCount={selected.size}
                         />
-                    </motion.div>
+                    </div>
                 )}
             </main>
 
-            <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, ids: [] })}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>確認刪除</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            您確定要刪除這 {deleteDialog.ids.length} 筆維修單紀錄嗎？此動作無法復原。
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
-                            確認刪除
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* 醫療風格 - 檢視明細對話框 */}
+            {/* 檢視單筆明細對話框 (比照狀態 10 的流程顯示，包含完整步驟及簽章資訊) */}
             <AlertDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
                 <AlertDialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-2 border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl">
-                    {/* 醫療卡片 Header */}
-                    <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-teal-800 text-white px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 shrink-0">
+                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 shrink-0 relative pt-5">
+                        <div className={`absolute top-0 left-0 right-0 h-1.5 ${ROSE_THEME.topBar}`} />
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm shrink-0 border border-white/20">
-                                <Activity className="w-6 h-6 text-teal-300 animate-pulse" />
+                                <Activity className="w-6 h-6 text-rose-300 animate-pulse" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-bold tracking-wider">工務維修單單筆記錄明細</h2>
+                                <h2 className="text-lg font-bold tracking-wider">工務維修單單筆記錄明細 (今年之前未驗收)</h2>
                             </div>
                         </div>
                         {viewingItem && (
                             <div className="text-right hidden sm:block font-mono">
-                                <span className="text-[10px] text-teal-200 block">SYSTEM ID</span>
+                                <span className="text-[10px] text-rose-200 block">SYSTEM ID</span>
                                 <span className="text-xs text-slate-300 tracking-tighter opacity-90">{viewingItem.id}</span>
                             </div>
                         )}
                     </div>
 
-                    {/* 卡片主體 */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30 dark:bg-slate-900/10">
                         {viewingItem && (
                             <div className="space-y-6">
@@ -773,7 +632,7 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                                                 {formattedVal}
                                                             </span>
                                                         ) : (
-                                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 break-all leading-relaxed font-mono">
+                                                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 whitespace-pre-line break-words">
                                                                 {formattedVal}
                                                             </span>
                                                         )}
@@ -787,14 +646,10 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                         )}
                     </div>
 
-                    {/* 卡片 Footer */}
-                    <div className="bg-slate-50 dark:bg-slate-900 px-6 py-4 flex items-center justify-end border-t border-slate-200/60 dark:border-slate-800/80 shrink-0">
-                        <AlertDialogAction
-                            onClick={() => setViewDialogOpen(false)}
-                            className="bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-900 hover:to-blue-950 text-white text-xs font-bold tracking-wider px-6 py-2 rounded-xl transition-all shadow-md active:scale-95"
-                        >
-                            離開
-                        </AlertDialogAction>
+                    <div className="bg-slate-50 dark:bg-slate-900 px-6 py-4 flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 shrink-0">
+                        <Button className="bg-slate-700 hover:bg-slate-800 text-white font-bold" onClick={() => setViewDialogOpen(false)}>
+                            關閉明細
+                        </Button>
                     </div>
                 </AlertDialogContent>
             </AlertDialog>

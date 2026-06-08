@@ -102,7 +102,7 @@ export function MobileTableCard({
                 {details.map((detail, index) => (
                     <div key={index} className="flex items-start gap-2">
                         <span className="text-muted-foreground min-w-[60px]">{detail.label}：</span>
-                        <span className="flex-1">{detail.value || '-'}</span>
+                        <span className="flex-1 break-all">{detail.value || '-'}</span>
                     </div>
                 ))}
             </div>

@@ -160,6 +160,8 @@ export default function StatusDashboardClient() {
     const router = useRouter()
     const supabase = createClient()
     const [stats, setStats] = useState<StatusStat[]>([])
+    // pastUnacceptedCount: 今年之前未驗收的工單筆數
+    const [pastUnacceptedCount, setPastUnacceptedCount] = useState(0)
     const [loading, setLoading] = useState(true)
 
     const fetchStats = async () => {
@@ -197,6 +199,17 @@ export default function StatusDashboardClient() {
                 }
             })
 
+            // 4. 計算今年之前未驗收總筆數 (活動表中開單年份小於今年的紀錄，且狀態不為已驗收)
+            let calculatedPastUnacceptedCount = 0
+            activeData?.forEach((item: any) => {
+                if (item.request_date) {
+                    const itemYear = new Date(item.request_date).getFullYear()
+                    if (itemYear < currentYear && item.status !== '已驗收') {
+                        calculatedPastUnacceptedCount++
+                    }
+                }
+            })
+
             // 處理統計數據
             const statsMap: Record<string, StatusStat> = {}
             MAINTENANCE_STATUS.forEach(s => {
@@ -212,6 +225,15 @@ export default function StatusDashboardClient() {
                     // 已驗收卡片不顯示簡易維修單資料，亦不在此疊加（因已在上面計算好今年驗收數）
                     return
                 }
+
+                // 針對「維修部門驗收中」（狀態10）只統計與顯示今年（當年）的紀錄
+                if (itemStatus === '維修部門驗收中' && item.request_date) {
+                    const itemYear = new Date(item.request_date).getFullYear()
+                    if (itemYear !== currentYear) {
+                        return // 若非今年資料，則不計入統計且不顯示於卡片
+                    }
+                }
+
                 if (statsMap[itemStatus]) {
                     statsMap[itemStatus].count++
 
@@ -230,6 +252,7 @@ export default function StatusDashboardClient() {
             })
 
             setStats(Object.values(statsMap))
+            setPastUnacceptedCount(calculatedPastUnacceptedCount)
         } catch (err) {
             console.error('Failed to fetch status stats:', err)
         } finally {
@@ -252,13 +275,22 @@ export default function StatusDashboardClient() {
                             <Activity className="w-7 h-7 text-primary" />
                             維修單狀態管理儀表板
                             {!loading && (
-                                <Badge
-                                    variant="outline"
-                                    className="ml-2 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800 text-sm py-1 px-3 font-bold cursor-pointer hover:bg-green-100 transition-colors"
-                                    onClick={() => router.push('/maintenance-work/history')}
-                                >
-                                    今年已驗收：{stats.find(s => s.status === '已驗收')?.count ?? 0} 筆
-                                </Badge>
+                                <>
+                                    <Badge
+                                        variant="outline"
+                                        className="ml-2 bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800 text-sm py-1 px-3 font-bold cursor-pointer hover:bg-green-100 transition-colors"
+                                        onClick={() => router.push('/maintenance-work/history')}
+                                    >
+                                        今年已驗收：{stats.find(s => s.status === '已驗收')?.count ?? 0} 筆
+                                    </Badge>
+                                    <Badge
+                                        variant="outline"
+                                        className="ml-2 bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 text-sm py-1 px-3 font-bold cursor-pointer hover:bg-rose-100 transition-colors"
+                                        onClick={() => router.push('/maintenance-work/past-unaccepted')}
+                                    >
+                                        今年之前未驗收：{pastUnacceptedCount} 筆
+                                    </Badge>
+                                </>
                             )}
                         </h1>
                         <p className="text-slate-400 dark:text-slate-400 text-sm mt-1">追蹤各階段維修單進度與簽核狀態</p>

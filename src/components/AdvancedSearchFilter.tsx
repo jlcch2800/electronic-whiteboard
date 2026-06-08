@@ -124,8 +124,8 @@ export function AdvancedSearchFilter({
 
     return (
         <div className="bg-white dark:bg-slate-950 border rounded-lg shadow-sm mb-6 p-4">
-            <div className="flex flex-wrap gap-4 items-end">
-                <div className="flex-1 min-w-[200px]">
+            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
+                <div className="flex-1">
                     <label className="text-sm font-medium text-muted-foreground mb-1 block">自訂搜尋 (關鍵字)</label>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -134,23 +134,25 @@ export function AdvancedSearchFilter({
                             value={filters.customSearch}
                             onChange={(e) => handleChange('customSearch', e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="pl-9"
+                            className="pl-9 w-full"
                         />
                     </div>
                 </div>
 
-                <Button onClick={handleSearch} className="bg-green-600 hover:bg-green-700 text-white">
-                    <Search className="w-4 h-4 mr-2" />
-                    搜尋
-                </Button>
-                <Button variant="outline" onClick={handleReset}>
-                    <X className="w-4 h-4 mr-2" />
-                    清除
-                </Button>
-                <Button variant="ghost" onClick={() => setExpanded(!expanded)} className="text-muted-foreground">
-                    {expanded ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
-                    {expanded ? '收起進階條件' : '展開進階條件'}
-                </Button>
+                <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
+                    <Button onClick={handleSearch} className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-initial justify-center">
+                        <Search className="w-4 h-4 mr-2" />
+                        搜尋
+                    </Button>
+                    <Button variant="outline" onClick={handleReset} className="flex-1 sm:flex-initial justify-center">
+                        <X className="w-4 h-4 mr-2" />
+                        清除
+                    </Button>
+                    <Button variant="ghost" onClick={() => setExpanded(!expanded)} className="text-muted-foreground flex-1 sm:flex-initial justify-center whitespace-nowrap">
+                        {expanded ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
+                        {expanded ? '收起進階條件' : '展開進階條件'}
+                    </Button>
+                </div>
             </div>
 
             <AnimatePresence>
