@@ -41,7 +41,14 @@ const NAV_ITEMS: NavItem[] = [
         ]
     },
     {
-        label: '施工回報', icon: ClipboardCheck, children: [
+        label: '工務系統', icon: ClipboardCheck, children: [
+            {
+                label: '維修單管理', icon: ClipboardCheck, children: [
+                    { label: '新增維修單', icon: FileText, href: '/maintenance-work/new' },
+                    { label: '維修單狀態', icon: Activity, href: '/maintenance-work/status' },
+                    { label: '維修單總表', icon: LayoutDashboard, href: '/maintenance-work/all' },
+                ]
+            },
             { label: '施工回報', icon: ClipboardCheck, href: '/work-report' },
             { label: '施工文件', icon: FileText, href: '/work-file' },
         ]
@@ -60,13 +67,6 @@ const NAV_ITEMS: NavItem[] = [
 // 系統管理項目（僅 admin）
 const ADMIN_ITEMS: NavItem = {
     label: '系統管理', icon: UserCog, children: [
-        {
-            label: '維修單管理', icon: ClipboardCheck, children: [
-                { label: '新增維修單', icon: FileText, href: '/maintenance-work/new' },
-                { label: '維修單狀態', icon: Activity, href: '/maintenance-work/status' },
-                { label: '維修單總表', icon: LayoutDashboard, href: '/maintenance-work/all' },
-            ]
-        },
         { label: '帳號管理', icon: UserCog, href: '/admin/users' },
         { label: '系統異動記錄', icon: Activity, href: '/admin/change-log' },
         { label: '系統執行記錄', icon: Activity, href: '/admin/execution-log' },
@@ -134,10 +134,20 @@ export default function Navbar({ onRefresh, loading }: NavbarProps) {
         router.push('/login')
     }
 
-    // 所有有效的導覽項目（未登入隱藏歷史記錄，admin 顯示系統管理）
+    // 所有有效的導覽項目（未登入隱藏歷史記錄，且隱藏工務系統底下的維修單管理；已登入則顯示）
     const baseNavItems = profile
         ? NAV_ITEMS
-        : NAV_ITEMS.filter(item => item.label !== '歷史記錄')
+        : NAV_ITEMS
+            .filter(item => item.label !== '歷史記錄')
+            .map(item => {
+                if (item.label === '工務系統' && item.children) {
+                    return {
+                        ...item,
+                        children: item.children.filter(child => child.label !== '維修單管理')
+                    }
+                }
+                return item
+            })
 
     const allNavItems = profile?.role === 'admin'
         ? [...baseNavItems, ADMIN_ITEMS]
