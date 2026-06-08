@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createClient } from '@/lib/supabase/client';
+import { HANDLER_NAMES } from '@/lib/maintenance-constants';
 
 export interface SearchFilters {
     startDate: string;
@@ -67,40 +67,6 @@ export function AdvancedSearchFilter({
 }: AdvancedSearchFilterProps) {
     const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
     const [expanded, setExpanded] = useState(false);
-    const [workOfficeUsers, setWorkOfficeUsers] = useState<string[]>([]);
-
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const supabase = createClient();
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('user_name')
-                    .eq('unit', '工務室')
-                    .order('user_name', { ascending: true });
-                
-                if (error) {
-                    console.error('Error fetching users in filter:', error);
-                    return;
-                }
-
-                if (data) {
-                    const names = Array.from(
-                        new Set(
-                            (data as { user_name: string | null }[])
-                                .map(u => u.user_name)
-                                .filter((name): name is string => Boolean(name))
-                        )
-                    );
-                    names.sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'));
-                    setWorkOfficeUsers(names);
-                }
-            } catch (err) {
-                console.error('Failed to load users in filter:', err);
-            }
-        };
-        fetchUsers();
-    }, []);
 
     const handleChange = (key: keyof SearchFilters, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -213,7 +179,7 @@ export function AdvancedSearchFilter({
                                         <SelectValue placeholder="承辦人" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {workOfficeUsers.map(name => (
+                                        {HANDLER_NAMES.map(name => (
                                             <SelectItem key={name} value={name}>{name}</SelectItem>
                                         ))}
                                     </SelectContent>

@@ -119,41 +119,24 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
 
     const [installmentList, setInstallmentList] = useState<InstallmentItem[]>([])
-    const [workOfficeUsers, setWorkOfficeUsers] = useState<string[]>([])
 
-    // 載入工務室人員清單 (依姓名遞增排序)
+    // 當 profile 載入且角色是 staff 時，自動將印單人、承辦人、報價及驗收承辦人預設填入自己（若原本為空）
     useEffect(() => {
-        const fetchWorkOfficeUsers = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('user_name')
-                    .eq('unit', '工務室')
-                    .order('user_name', { ascending: true })
+        if (profile?.role === 'staff' && profile?.user_name) {
+            setFormData((prev: any) => {
+                const updates: any = {}
+                if (!prev.printer_name) updates.printer_name = profile.user_name
+                if (!prev.handler_name) updates.handler_name = profile.user_name
+                if (!prev.quote_user_name) updates.quote_user_name = profile.user_name
+                if (!prev.accept_handler_name) updates.accept_handler_name = profile.user_name
                 
-                if (error) {
-                    console.error('Error fetching work office users:', error)
-                    return
+                if (Object.keys(updates).length > 0) {
+                    return { ...prev, ...updates }
                 }
-                
-                if (data) {
-                    const names = Array.from(
-                        new Set(
-                            (data as { user_name: string | null }[])
-                                .map(u => u.user_name)
-                                .filter((name): name is string => Boolean(name))
-                        )
-                    )
-                    // 使用台灣繁體中文 localeCompare 排序（依筆劃）
-                    names.sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
-                    setWorkOfficeUsers(names)
-                }
-            } catch (err) {
-                console.error('Failed to fetch work office users:', err)
-            }
+                return prev
+            })
         }
-        fetchWorkOfficeUsers()
-    }, [])
+    }, [profile])
 
     // 初始化載入分期資訊
     useEffect(() => {
@@ -686,7 +669,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <SelectTrigger><SelectValue placeholder="請選擇印單人" /></SelectTrigger>
                                             <SelectContent>
                                                 {(() => {
-                                                    const options = [...workOfficeUsers];
+                                                    const options = [...HANDLER_NAMES];
                                                     if (formData.printer_name && !options.includes(formData.printer_name)) {
                                                         options.unshift(formData.printer_name);
                                                     }
@@ -703,7 +686,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <SelectTrigger><SelectValue placeholder="請選擇承辦人" /></SelectTrigger>
                                             <SelectContent>
                                                 {(() => {
-                                                    const options = [...workOfficeUsers];
+                                                    const options = [...HANDLER_NAMES];
                                                     if (formData.handler_name && !options.includes(formData.handler_name)) {
                                                         options.unshift(formData.handler_name);
                                                     }
@@ -791,7 +774,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <SelectTrigger><SelectValue placeholder="選擇承辦人" /></SelectTrigger>
                                             <SelectContent>
                                                 {(() => {
-                                                    const options = [...workOfficeUsers];
+                                                    const options = [...HANDLER_NAMES];
                                                     if (formData.quote_user_name && !options.includes(formData.quote_user_name)) {
                                                         options.unshift(formData.quote_user_name);
                                                     }
@@ -1280,7 +1263,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                                     </SelectTrigger>
                                                                     <SelectContent>
                                                                         {(() => {
-                                                                            const options = [...workOfficeUsers];
+                                                                            const options = [...HANDLER_NAMES];
                                                                             if (item.handler && !options.includes(item.handler)) {
                                                                                 options.unshift(item.handler);
                                                                             }
@@ -1305,7 +1288,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <SelectTrigger><SelectValue placeholder="選擇承辦人" /></SelectTrigger>
                                             <SelectContent>
                                                 {(() => {
-                                                    const options = [...workOfficeUsers];
+                                                    const options = [...HANDLER_NAMES];
                                                     if (formData.accept_handler_name && !options.includes(formData.accept_handler_name)) {
                                                         options.unshift(formData.accept_handler_name);
                                                     }

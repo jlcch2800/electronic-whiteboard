@@ -463,17 +463,19 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                         <Edit2 className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">修改</span>
                     </Button>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => onPreDelete(Array.from(selected))}
-                        disabled={selected.size === 0 || !isAdmin || loading}
-                        className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center"
-                    >
-                        <Trash2 className="w-4 h-4 sm:mr-2 shrink-0" />
-                        <span className="hidden sm:inline">刪除 {selected.size > 0 ? `(${selected.size})` : ''}</span>
-                        <span className="sm:hidden">{selected.size > 0 ? selected.size : ''}</span>
-                    </Button>
+                    {isAdmin && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => onPreDelete(Array.from(selected))}
+                            disabled={selected.size === 0 || loading}
+                            className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center"
+                        >
+                            <Trash2 className="w-4 h-4 sm:mr-2 shrink-0" />
+                            <span className="hidden sm:inline">刪除 {selected.size > 0 ? `(${selected.size})` : ''}</span>
+                            <span className="sm:hidden">{selected.size > 0 ? selected.size : ''}</span>
+                        </Button>
+                    )}
                     <Button className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center shrink-0" size="sm" onClick={() => router.push('/maintenance-work/new')}>
                         <Plus className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">新增維修單</span>
@@ -518,7 +520,8 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                         <SortableTableHead sortKey="request_date" currentSort={sort} onSort={handleSort} label="開單日" />
                                         <SortableTableHead sortKey="cost_center" currentSort={sort} onSort={handleSort} label="成本中心" />
                                         <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
-                                        <SortableTableHead sortKey="printer_name" currentSort={sort} onSort={handleSort} label="印單人" />
+                                        <SortableTableHead sortKey="project_order_id" currentSort={sort} onSort={handleSort} label="工程單編號" />
+                                        <SortableTableHead sortKey="installment_count" currentSort={sort} onSort={handleSort} label="期數" />
                                         <TableHead>維修內容</TableHead>
                                         <SortableTableHead sortKey="handler_name" currentSort={sort} onSort={handleSort} label="承辦人" />
                                         <SortableTableHead sortKey="amount" currentSort={sort} onSort={handleSort} label="金額" />
@@ -544,7 +547,8 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                             <TableCell className="text-muted-foreground">{item.request_date}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
-                                            <TableCell>{item.printer_name || '-'}</TableCell>
+                                            <TableCell>{item.project_order_id || '-'}</TableCell>
+                                            <TableCell>{item.installment_count !== null && item.installment_count !== undefined ? `${item.installment_count} 期` : '-'}</TableCell>
                                             <TableCell className="max-w-[200px] truncate" title={item.maintain_content}>
                                                 {item.maintain_content}
                                             </TableCell>
@@ -602,7 +606,8 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                         date={item.request_date}
                                         dateLabel="開單日"
                                         details={[
-                                            { label: '印單人', value: item.printer_name || '-' },
+                                            { label: '工程單編號', value: item.project_order_id || '-' },
+                                            { label: '期數', value: item.installment_count !== null && item.installment_count !== undefined ? `${item.installment_count} 期` : '-' },
                                             { label: '承辦人', value: item.handler_name },
                                             { label: '維修內容', value: item.maintain_content },
                                         ]}

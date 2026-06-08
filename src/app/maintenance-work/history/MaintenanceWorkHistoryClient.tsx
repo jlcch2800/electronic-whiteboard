@@ -423,7 +423,8 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                         <SortableTableHead sortKey="request_date" currentSort={sort} onSort={handleSort} label="開單日" />
                                         <SortableTableHead sortKey="cost_center" currentSort={sort} onSort={handleSort} label="成本中心" />
                                         <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
-                                        <SortableTableHead sortKey="printer_name" currentSort={sort} onSort={handleSort} label="印單人" />
+                                        <SortableTableHead sortKey="project_order_id" currentSort={sort} onSort={handleSort} label="工程單編號" />
+                                        <SortableTableHead sortKey="installment_count" currentSort={sort} onSort={handleSort} label="期數" />
                                         <TableHead>維修內容</TableHead>
                                         <SortableTableHead sortKey="handler_name" currentSort={sort} onSort={handleSort} label="承辦人" />
                                         <SortableTableHead sortKey="amount" currentSort={sort} onSort={handleSort} label="金額" />
@@ -448,7 +449,8 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                             <TableCell className="text-muted-foreground">{item.request_date}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
-                                            <TableCell>{item.printer_name || '-'}</TableCell>
+                                            <TableCell>{item.project_order_id || '-'}</TableCell>
+                                            <TableCell>{item.installment_count !== null && item.installment_count !== undefined ? `${item.installment_count} 期` : '-'}</TableCell>
                                             <TableCell className="max-w-[200px] truncate" title={item.maintain_content}>
                                                 {item.maintain_content}
                                             </TableCell>
@@ -502,7 +504,8 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                     date={item.request_date}
                                     dateLabel="開單日"
                                     details={[
-                                        { label: '印單人', value: item.printer_name || '-' },
+                                        { label: '工程單編號', value: item.project_order_id || '-' },
+                                        { label: '期數', value: item.installment_count !== null && item.installment_count !== undefined ? `${item.installment_count} 期` : '-' },
                                         { label: '承辦人', value: item.handler_name },
                                         { label: '維修內容', value: item.maintain_content },
                                     ]}

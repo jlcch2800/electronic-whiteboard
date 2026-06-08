@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
+import { useAppStore } from '@/stores/useAppStore'
 
 // 共用表單元件
 import FormField from '@/components/forms/FormField'
@@ -36,6 +37,7 @@ export default function MaintenanceWorkNewPage() {
     const router = useRouter()
     const supabase = createClient()
     const { toast } = useToast()
+    const { profile } = useAppStore()
 
     // 表單狀態
     const [isSuccess, setIsSuccess] = useState(false)
@@ -44,37 +46,8 @@ export default function MaintenanceWorkNewPage() {
 
     // 追蹤各欄位 touched 狀態（失焦驗證用）
     const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
-    const [workOfficeUsers, setWorkOfficeUsers] = useState<string[]>([])
 
-    // 載入工務室人員清單 (依姓名遞增排序)
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('user_name')
-                    .eq('unit', '工務室')
-                    .order('user_name', { ascending: true })
-                
-                if (data) {
-                    const names = Array.from(
-                        new Set(
-                            (data as { user_name: string | null }[])
-                                .map(u => u.user_name)
-                                .filter((name): name is string => Boolean(name))
-                        )
-                    )
-                    names.sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
-                    setWorkOfficeUsers(names)
-                }
-            } catch (err) {
-                console.error('Failed to load users:', err)
-            }
-        }
-        fetchUsers()
-    }, [])
-
-    const { register, handleSubmit, trigger, getValues, formState: { errors, isSubmitting } } = useForm<MaintenanceWorkOrderFormValues>({
+    const { register, handleSubmit, trigger, getValues, setValue, formState: { errors, isSubmitting } } = useForm<MaintenanceWorkOrderFormValues>({
         resolver: zodResolver(maintenanceWorkOrderSchema) as any,
         mode: 'onBlur',
         defaultValues: {
@@ -87,6 +60,14 @@ export default function MaintenanceWorkNewPage() {
             printer_name: '',
         }
     })
+
+    // 當 profile 載入且角色是 staff 時，自動將印單人與承辦人預設填入自己
+    useEffect(() => {
+        if (profile?.role === 'staff' && profile?.user_name) {
+            setValue('printer_name', profile.user_name)
+            setValue('handler_name', profile.user_name)
+        }
+    }, [profile, setValue])
 
     // 失氣觸發單欄驗證
     const handleFieldBlur = useCallback((fieldName: string) => {
@@ -194,9 +175,9 @@ export default function MaintenanceWorkNewPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
+        <div className="min-h-screen bg-gradient-to-br from-[#fff1ed] to-slate-100 dark:from-slate-900 dark:to-slate-950">
             {/* Header + 進度條（不用 sticky，避免行動版被狀態列遮住） */}
-            <header className="bg-orange-600 text-white shadow-lg">
+            <header className="bg-[#ffb09c] text-white shadow-lg">
                 <div className="max-w-3xl mx-auto px-6 py-4">
                     <div className="flex items-center gap-4">
                         <BackButton />
@@ -227,7 +208,7 @@ export default function MaintenanceWorkNewPage() {
                         {/* 區塊 1：基本資訊 */}
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-400">
+                                <CardTitle className="text-base flex items-center gap-2 text-[#d8725b] dark:text-[#ffbdae]">
                                     <Wrench className="w-4 h-4" />
                                     基本資訊
                                 </CardTitle>
@@ -271,7 +252,7 @@ export default function MaintenanceWorkNewPage() {
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
                                             <option value="" disabled selected hidden>請選擇印單人</option>
-                                            {workOfficeUsers.map(name => (
+                                            {HANDLER_OPTIONS.map(name => (
                                                 <option key={name} value={name}>{name}</option>
                                             ))}
                                         </select>
@@ -283,7 +264,7 @@ export default function MaintenanceWorkNewPage() {
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
                                             <option value="" disabled selected hidden>請選擇承辦人</option>
-                                            {workOfficeUsers.map(name => (
+                                            {HANDLER_OPTIONS.map(name => (
                                                 <option key={name} value={name}>{name}</option>
                                             ))}
                                         </select>
@@ -310,9 +291,9 @@ export default function MaintenanceWorkNewPage() {
                         </Card>
  
                         {/* 區塊 4：主管簽核 */}
-                        <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900/50 dark:bg-orange-950/20">
+                        <Card className="border-[#ffe3db] bg-[#fff7f5]/80 dark:border-[#5c3c33] dark:bg-[#2c1d1a]/20">
                             <CardHeader>
-                                <CardTitle className="text-base flex items-center gap-2 text-orange-700 dark:text-orange-400">
+                                <CardTitle className="text-base flex items-center gap-2 text-[#d8725b] dark:text-[#ffbdae]">
                                     工務單位主管簽核
                                 </CardTitle>
                             </CardHeader>
@@ -347,7 +328,7 @@ export default function MaintenanceWorkNewPage() {
                             isSubmitting={isSubmitting}
                             isSuccess={isSuccess}
                             label="提交維修單"
-                            className="bg-orange-600 hover:bg-orange-700"
+                            className="bg-[#ffb09c] hover:bg-[#ff9d84]"
                         />
                     </form>
                 </motion.div>

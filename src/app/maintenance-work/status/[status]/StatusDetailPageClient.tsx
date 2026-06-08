@@ -479,17 +479,19 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                         <Edit2 className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">修改</span>
                     </Button>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })}
-                        disabled={selected.size === 0 || !isAdmin || loading}
-                        className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center"
-                    >
-                        <Trash2 className="w-4 h-4 sm:mr-2 shrink-0" />
-                        <span className="hidden sm:inline">刪除 {selected.size > 0 ? `(${selected.size})` : ''}</span>
-                        <span className="sm:hidden">{selected.size > 0 ? selected.size : ''}</span>
-                    </Button>
+                    {isAdmin && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setDeleteDialog({ open: true, ids: Array.from(selected) })}
+                            disabled={selected.size === 0 || loading}
+                            className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center"
+                        >
+                            <Trash2 className="w-4 h-4 sm:mr-2 shrink-0" />
+                            <span className="hidden sm:inline">刪除 {selected.size > 0 ? `(${selected.size})` : ''}</span>
+                            <span className="sm:hidden">{selected.size > 0 ? selected.size : ''}</span>
+                        </Button>
+                    )}
                     <Button className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center shrink-0" size="sm" onClick={() => router.push('/maintenance-work/new')}>
                         <Plus className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">新增維修單</span>

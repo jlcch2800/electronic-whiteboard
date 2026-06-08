@@ -26,12 +26,12 @@ export const HANDLER_NAMES = [
     '李建賢', '周禹良', '林坤宏', '林鑫宏', '陳冠博',
     '黃永男', '楊盈慶', '楊竣欽', '廖文傑', '蔡明憬',
     '謝為紘', '蘇建勳', '蘇匯元'
-].sort() // 預設 sort 會依據 Unicode，對於中文筆畫大致正確，若需精確筆畫需特殊套件，此處採基本排序
+].sort((a, b) => a.localeCompare(b, 'zh-Hant-TW')) // 使用繁體中文筆畫遞增排序
 
 /**
  * 工務單位主管 選項值
  */
-export const MAINT_MGR_NAMES = ['李建賢', '黃永男'].sort()
+export const MAINT_MGR_NAMES = ['李建賢', '黃永男'].sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
 
 /**
  * 工務主任 預設值
@@ -41,7 +41,7 @@ export const DEFAULT_DIRECTOR_NAME = '楊竣欽'
 /**
  * 院長室 簽核人
  */
-export const VICE_DEAN_NAMES = ['邵詩媛', '王哲川'].sort()
+export const VICE_DEAN_NAMES = ['邵詩媛', '王哲川'].sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
 export const DEAN_NAMES = ['田宇峯']
 
 /**
