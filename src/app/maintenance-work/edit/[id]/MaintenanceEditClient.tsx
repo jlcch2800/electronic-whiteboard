@@ -96,6 +96,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const { profile } = useAppStore()
     const supabase = createClient()
     const isAdmin = profile?.role === 'admin'
+    const isLiChiaChing = profile?.role === 'admin' && profile?.user_name === '李佳靜'
 
     const [formData, setFormData] = useState<any>(() => ({
         ...initialData,
@@ -912,11 +913,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>廠商 <span className="text-red-500">*</span></Label>
-                                        <Input name="vendor_name" value={formData.vendor_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
+                                        <Input name="vendor_name" value={formData.vendor_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(3) && !isLiChiaChing} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-orange-600 font-bold">金額 (≤ 2萬 走簡易流程) <span className="text-red-500">*</span></Label>
-                                        <Input name="amount" type="number" value={formData.amount || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} className="border-orange-200 focus:border-orange-500" />
+                                        <Input name="amount" type="number" value={formData.amount || ''} onChange={handleInputChange} disabled={!isSectionEditable(3) && !isLiChiaChing} className="border-orange-200 focus:border-orange-500" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>發包單位主管 <span className="text-red-500">*</span></Label>
@@ -963,13 +964,21 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         <Label>發包部門主管日期 <span className="text-red-500">*</span></Label>
                                         <Input name="dispatch_director_date" type="date" value={formData.dispatch_director_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(3)} />
                                     </div>
-                                    {isSectionEditable(3) && (
+                                    {isSectionEditable(3) ? (
                                         <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
                                             <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={handleDispatchSignoff}>發包簽核完成 (系統將依金額判斷流程)</Button>
                                             <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
                                                 <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
                                             </Button>
                                         </div>
+                                    ) : (
+                                        isLiChiaChing && (
+                                            <div className="col-span-full pt-4">
+                                                <Button variant="outline" className="w-full border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                    <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                                </Button>
+                                            </div>
+                                        )
                                     )}
                                 </CardContent>
                             </motion.div>
