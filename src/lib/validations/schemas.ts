@@ -9,7 +9,7 @@ const passwordSchema = z.string()
         if (/[a-z]/.test(val)) count++
         if (/[A-Z]/.test(val)) count++
         if (/[0-9]/.test(val)) count++
-        if (/[!@#$%^&*(),.?":{}|<>]/.test(val)) count++
+        if (/[!@#$%^&*(),.?":{}|<>\+\-\/_~=\[\]\\]/.test(val)) count++
         return count >= 3
     }, '密碼需符合至少 3 項條件：大寫、小寫、數字、特殊符號')
 
@@ -197,7 +197,7 @@ export const userManagementSchema = z.object({
             if (/[a-z]/.test(data.password)) count++
             if (/[A-Z]/.test(data.password)) count++
             if (/[0-9]/.test(data.password)) count++
-            if (/[!@#$%^&*(),.?":{}|<>]/.test(data.password)) count++
+            if (/[!@#$%^&*(),.?":{}|<>\+\-\/_~=\[\]\\]/.test(data.password)) count++
             if (count < 3) {
                 ctx.addIssue({ code: 'custom', message: '密碼需符合至少 3 項條件：大寫、小寫、數字、特殊符號', path: ['password'] })
             }

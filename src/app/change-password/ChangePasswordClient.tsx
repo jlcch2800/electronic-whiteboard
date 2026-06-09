@@ -27,7 +27,7 @@ const passwordSchema = z.string()
         if (/[a-z]/.test(val)) count++
         if (/[A-Z]/.test(val)) count++
         if (/[0-9]/.test(val)) count++
-        if (/[!@#$%^&*(),.?":{}|<>]/.test(val)) count++
+        if (/[!@#$%^&*(),.?":{}|<>\+\-\/_~=\[\]\\]/.test(val)) count++
         return count >= 3
     }, '密碼需包含至少3種：大寫、小寫、數字、特殊符號')
 
@@ -49,7 +49,7 @@ function PasswordStrength({ password }: { password: string }) {
         { label: '包含小寫字母', test: /[a-z]/.test(password) },
         { label: '包含大寫字母', test: /[A-Z]/.test(password) },
         { label: '包含數字', test: /[0-9]/.test(password) },
-        { label: '包含特殊符號', test: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+        { label: '包含特殊符號', test: /[!@#$%^&*(),.?":{}|<>\+\-\/_~=\[\]\\]/.test(password) },
     ]
 
     const passedCount = checks.filter(c => c.test).length

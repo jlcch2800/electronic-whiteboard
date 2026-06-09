@@ -60,7 +60,7 @@ function PasswordStrength({ password }: { password: string }) {
         { label: '包含小寫字母', test: /[a-z]/.test(password) },
         { label: '包含大寫字母', test: /[A-Z]/.test(password) },
         { label: '包含數字', test: /[0-9]/.test(password) },
-        { label: '包含特殊符號', test: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+        { label: '包含特殊符號', test: /[!@#$%^&*(),.?":{}|<>\+\-\/_~=\[\]\\]/.test(password) },
     ]
     const passedCount = checks.filter(c => c.test).length
     const strengthLevel = passedCount <= 2 ? 'weak' : passedCount <= 3 ? 'medium' : 'strong'
