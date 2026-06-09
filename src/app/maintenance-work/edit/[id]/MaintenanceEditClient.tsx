@@ -115,6 +115,14 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         printer_name: initialData.printer_name || '',
         submit_date: initialData.submit_date || '',
     }))
+    const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({})
+
+    const isOtherSelected = (fieldKey: string, currentValue: string, defaultOptions: readonly string[]) => {
+        if (otherSelected[fieldKey]) return true
+        if (currentValue && !defaultOptions.includes(currentValue)) return true
+        return false
+    }
+
     const [loading, setLoading] = useState(false)
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
 
@@ -125,10 +133,29 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (profile?.role === 'staff' && profile?.user_name) {
             setFormData((prev: any) => {
                 const updates: any = {}
-                if (!prev.printer_name) updates.printer_name = profile.user_name
-                if (!prev.handler_name) updates.handler_name = profile.user_name
-                if (!prev.quote_user_name) updates.quote_user_name = profile.user_name
-                if (!prev.accept_handler_name) updates.accept_handler_name = profile.user_name
+                const otherUpdates: Record<string, boolean> = {}
+                const isCustomName = !HANDLER_NAMES.includes(profile.user_name)
+
+                if (!prev.printer_name) {
+                    updates.printer_name = profile.user_name
+                    if (isCustomName) otherUpdates.printer_name = true
+                }
+                if (!prev.handler_name) {
+                    updates.handler_name = profile.user_name
+                    if (isCustomName) otherUpdates.handler_name = true
+                }
+                if (!prev.quote_user_name) {
+                    updates.quote_user_name = profile.user_name
+                    if (isCustomName) otherUpdates.quote_user_name = true
+                }
+                if (!prev.accept_handler_name) {
+                    updates.accept_handler_name = profile.user_name
+                    if (isCustomName) otherUpdates.accept_handler_name = true
+                }
+
+                if (Object.keys(otherUpdates).length > 0) {
+                    setOtherSelected(prevOther => ({ ...prevOther, ...otherUpdates }))
+                }
                 
                 if (Object.keys(updates).length > 0) {
                     return { ...prev, ...updates }
@@ -665,40 +692,68 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     <div className="space-y-2">
                                         <Label>印單人 <span className="text-red-500">*</span></Label>
                                         <Select 
-                                            value={formData.printer_name || ''} 
-                                            onValueChange={(v) => handleSelectChange('printer_name', v)} 
+                                            value={isOtherSelected('printer_name', formData.printer_name, HANDLER_NAMES) ? '其他' : (formData.printer_name || '')} 
+                                            onValueChange={(v) => {
+                                                if (v === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, printer_name: true }))
+                                                    setFormData((prev: any) => ({ ...prev, printer_name: '' }))
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, printer_name: false }))
+                                                    setFormData((prev: any) => ({ ...prev, printer_name: v }))
+                                                }
+                                            }} 
                                             disabled={!isSectionEditable(0)}
                                         >
                                             <SelectTrigger><SelectValue placeholder="請選擇印單人" /></SelectTrigger>
                                             <SelectContent>
-                                                {(() => {
-                                                    const options = [...HANDLER_NAMES];
-                                                    if (formData.printer_name && !options.includes(formData.printer_name)) {
-                                                        options.unshift(formData.printer_name);
-                                                    }
-                                                    return options.map(name => (
-                                                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                                                    ));
-                                                })()}
+                                                {HANDLER_NAMES.map(name => (
+                                                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                                                ))}
+                                                <SelectItem value="其他">其他</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                        {isOtherSelected('printer_name', formData.printer_name, HANDLER_NAMES) && (
+                                            <Input
+                                                placeholder="請輸入印單人姓名"
+                                                value={formData.printer_name || ''}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, printer_name: e.target.value }))}
+                                                disabled={!isSectionEditable(0)}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>承辦人 <span className="text-red-500">*</span></Label>
-                                        <Select value={formData.handler_name || ''} onValueChange={(v) => handleSelectChange('handler_name', v)} disabled={!isSectionEditable(0)}>
+                                        <Select 
+                                            value={isOtherSelected('handler_name', formData.handler_name, HANDLER_NAMES) ? '其他' : (formData.handler_name || '')} 
+                                            onValueChange={(v) => {
+                                                if (v === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, handler_name: true }))
+                                                    setFormData((prev: any) => ({ ...prev, handler_name: '' }))
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, handler_name: false }))
+                                                    setFormData((prev: any) => ({ ...prev, handler_name: v }))
+                                                }
+                                            }} 
+                                            disabled={!isSectionEditable(0)}
+                                        >
                                             <SelectTrigger><SelectValue placeholder="請選擇承辦人" /></SelectTrigger>
                                             <SelectContent>
-                                                {(() => {
-                                                    const options = [...HANDLER_NAMES];
-                                                    if (formData.handler_name && !options.includes(formData.handler_name)) {
-                                                        options.unshift(formData.handler_name);
-                                                    }
-                                                    return options.map(name => (
-                                                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                                                    ));
-                                                })()}
+                                                {HANDLER_NAMES.map(name => (
+                                                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                                                ))}
+                                                <SelectItem value="其他">其他</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                        {isOtherSelected('handler_name', formData.handler_name, HANDLER_NAMES) && (
+                                            <Input
+                                                placeholder="請輸入承辦人姓名"
+                                                value={formData.handler_name || ''}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, handler_name: e.target.value }))}
+                                                disabled={!isSectionEditable(0)}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>接單日期 <span className="text-red-500">*</span></Label>
@@ -706,10 +761,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     <div className="space-y-2">
                                         <Label>工務單位主管 <span className="text-red-500">*</span></Label>
-                                        <Select value={formData.maint_mgr_name} onValueChange={(v) => handleSelectChange('maint_mgr_name', v)} disabled={!isSectionEditable(0)}>
+                                        <Select 
+                                            value={isOtherSelected('maint_mgr_name', formData.maint_mgr_name, MAINT_MGR_NAMES) ? '其他' : (formData.maint_mgr_name || '')} 
+                                            onValueChange={(v) => {
+                                                if (v === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, maint_mgr_name: true }))
+                                                    setFormData((prev: any) => ({ ...prev, maint_mgr_name: '' }))
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, maint_mgr_name: false }))
+                                                    setFormData((prev: any) => ({ ...prev, maint_mgr_name: v }))
+                                                }
+                                            }} 
+                                            disabled={!isSectionEditable(0)}
+                                        >
                                             <SelectTrigger><SelectValue placeholder="請選擇主管" /></SelectTrigger>
-                                            <SelectContent>{MAINT_MGR_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                            <SelectContent>
+                                                {MAINT_MGR_NAMES.map(n => (
+                                                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                ))}
+                                                <SelectItem value="其他">其他</SelectItem>
+                                            </SelectContent>
                                         </Select>
+                                        {isOtherSelected('maint_mgr_name', formData.maint_mgr_name, MAINT_MGR_NAMES) && (
+                                            <Input
+                                                placeholder="請輸入工務單位主管姓名"
+                                                value={formData.maint_mgr_name || ''}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, maint_mgr_name: e.target.value }))}
+                                                disabled={!isSectionEditable(0)}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>工務單位主管日期 <span className="text-red-500">*</span></Label>
@@ -773,20 +854,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>報價承辦人 <span className="text-red-500">*</span></Label>
-                                        <Select value={formData.quote_user_name || ''} onValueChange={(v) => handleSelectChange('quote_user_name', v)} disabled={!isSectionEditable(2)}>
+                                        <Select 
+                                            value={isOtherSelected('quote_user_name', formData.quote_user_name, HANDLER_NAMES) ? '其他' : (formData.quote_user_name || '')} 
+                                            onValueChange={(v) => {
+                                                if (v === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, quote_user_name: true }))
+                                                    setFormData((prev: any) => ({ ...prev, quote_user_name: '' }))
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, quote_user_name: false }))
+                                                    setFormData((prev: any) => ({ ...prev, quote_user_name: v }))
+                                                }
+                                            }} 
+                                            disabled={!isSectionEditable(2)}
+                                        >
                                             <SelectTrigger><SelectValue placeholder="選擇承辦人" /></SelectTrigger>
                                             <SelectContent>
-                                                {(() => {
-                                                    const options = [...HANDLER_NAMES];
-                                                    if (formData.quote_user_name && !options.includes(formData.quote_user_name)) {
-                                                        options.unshift(formData.quote_user_name);
-                                                    }
-                                                    return options.map(name => (
-                                                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                                                    ));
-                                                })()}
+                                                {HANDLER_NAMES.map(name => (
+                                                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                                                ))}
+                                                <SelectItem value="其他">其他</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                        {isOtherSelected('quote_user_name', formData.quote_user_name, HANDLER_NAMES) && (
+                                            <Input
+                                                placeholder="請輸入報價承辦人姓名"
+                                                value={formData.quote_user_name || ''}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, quote_user_name: e.target.value }))}
+                                                disabled={!isSectionEditable(2)}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>報價承辦人日期 <span className="text-red-500">*</span></Label>
@@ -823,10 +920,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     <div className="space-y-2">
                                         <Label>發包單位主管 <span className="text-red-500">*</span></Label>
-                                        <Select value={formData.dispatch_mgr_name || ''} onValueChange={(v) => handleSelectChange('dispatch_mgr_name', v)} disabled={!isSectionEditable(3)}>
+                                        <Select 
+                                            value={isOtherSelected('dispatch_mgr_name', formData.dispatch_mgr_name, MAINT_MGR_NAMES) ? '其他' : (formData.dispatch_mgr_name || '')} 
+                                            onValueChange={(v) => {
+                                                if (v === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, dispatch_mgr_name: true }))
+                                                    setFormData((prev: any) => ({ ...prev, dispatch_mgr_name: '' }))
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, dispatch_mgr_name: false }))
+                                                    setFormData((prev: any) => ({ ...prev, dispatch_mgr_name: v }))
+                                                }
+                                            }} 
+                                            disabled={!isSectionEditable(3)}
+                                        >
                                             <SelectTrigger><SelectValue placeholder="選擇主管" /></SelectTrigger>
-                                            <SelectContent>{MAINT_MGR_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                            <SelectContent>
+                                                {MAINT_MGR_NAMES.map(n => (
+                                                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                ))}
+                                                <SelectItem value="其他">其他</SelectItem>
+                                            </SelectContent>
                                         </Select>
+                                        {isOtherSelected('dispatch_mgr_name', formData.dispatch_mgr_name, MAINT_MGR_NAMES) && (
+                                            <Input
+                                                placeholder="請輸入發包單位主管姓名"
+                                                value={formData.dispatch_mgr_name || ''}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, dispatch_mgr_name: e.target.value }))}
+                                                disabled={!isSectionEditable(3)}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>發包單位主管日期 <span className="text-red-500">*</span></Label>
@@ -864,10 +987,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>副院長姓名 <span className="text-red-500">*</span></Label>
-                                            <Select value={formData.vice_dean_name || ''} onValueChange={(v) => handleSelectChange('vice_dean_name', v)} disabled={!isSectionEditable(4)}>
+                                            <Select 
+                                                value={isOtherSelected('vice_dean_name', formData.vice_dean_name, VICE_DEAN_NAMES) ? '其他' : (formData.vice_dean_name || '')} 
+                                                onValueChange={(v) => {
+                                                    if (v === '其他') {
+                                                        setOtherSelected(prev => ({ ...prev, vice_dean_name: true }))
+                                                        setFormData((prev: any) => ({ ...prev, vice_dean_name: '' }))
+                                                    } else {
+                                                        setOtherSelected(prev => ({ ...prev, vice_dean_name: false }))
+                                                        setFormData((prev: any) => ({ ...prev, vice_dean_name: v }))
+                                                    }
+                                                }} 
+                                                disabled={!isSectionEditable(4)}
+                                            >
                                                 <SelectTrigger><SelectValue placeholder="選擇副院長" /></SelectTrigger>
-                                                <SelectContent>{VICE_DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                                <SelectContent>
+                                                    {VICE_DEAN_NAMES.map(n => (
+                                                        <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                    ))}
+                                                    <SelectItem value="其他">其他</SelectItem>
+                                                </SelectContent>
                                             </Select>
+                                            {isOtherSelected('vice_dean_name', formData.vice_dean_name, VICE_DEAN_NAMES) && (
+                                                <Input
+                                                    placeholder="請輸入副院長姓名"
+                                                    value={formData.vice_dean_name || ''}
+                                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, vice_dean_name: e.target.value }))}
+                                                    disabled={!isSectionEditable(4)}
+                                                    className="mt-2"
+                                                />
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <Label>副院長日期</Label>
@@ -875,10 +1024,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         </div>
                                         <div className="space-y-2">
                                             <Label>院長姓名 <span className="text-red-500">*</span></Label>
-                                            <Select value={formData.dean_name || ''} onValueChange={(v) => handleSelectChange('dean_name', v)} disabled={!isSectionEditable(4)}>
+                                            <Select 
+                                                value={isOtherSelected('dean_name', formData.dean_name, DEAN_NAMES) ? '其他' : (formData.dean_name || '')} 
+                                                onValueChange={(v) => {
+                                                    if (v === '其他') {
+                                                        setOtherSelected(prev => ({ ...prev, dean_name: true }))
+                                                        setFormData((prev: any) => ({ ...prev, dean_name: '' }))
+                                                    } else {
+                                                        setOtherSelected(prev => ({ ...prev, dean_name: false }))
+                                                        setFormData((prev: any) => ({ ...prev, dean_name: v }))
+                                                    }
+                                                }} 
+                                                disabled={!isSectionEditable(4)}
+                                            >
                                                 <SelectTrigger><SelectValue placeholder="選擇院長" /></SelectTrigger>
-                                                <SelectContent>{DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                                <SelectContent>
+                                                    {DEAN_NAMES.map(n => (
+                                                        <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                    ))}
+                                                    <SelectItem value="其他">其他</SelectItem>
+                                                </SelectContent>
                                             </Select>
+                                            {isOtherSelected('dean_name', formData.dean_name, DEAN_NAMES) && (
+                                                <Input
+                                                    placeholder="請輸入院長姓名"
+                                                    value={formData.dean_name || ''}
+                                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, dean_name: e.target.value }))}
+                                                    disabled={!isSectionEditable(4)}
+                                                    className="mt-2"
+                                                />
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <Label>院長日期</Label>
@@ -926,10 +1101,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         <div className="col-span-full h-px bg-slate-100 my-2" />
                                         <div className="space-y-2">
                                             <Label>審查-副院長 <span className="text-red-500">*</span></Label>
-                                            <Select value={formData.rev_vice_dean_name || ''} onValueChange={(v) => handleSelectChange('rev_vice_dean_name', v)} disabled={!isSectionEditable(5)}>
+                                            <Select 
+                                                value={isOtherSelected('rev_vice_dean_name', formData.rev_vice_dean_name, VICE_DEAN_NAMES) ? '其他' : (formData.rev_vice_dean_name || '')} 
+                                                onValueChange={(v) => {
+                                                    if (v === '其他') {
+                                                        setOtherSelected(prev => ({ ...prev, rev_vice_dean_name: true }))
+                                                        setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: '' }))
+                                                    } else {
+                                                        setOtherSelected(prev => ({ ...prev, rev_vice_dean_name: false }))
+                                                        setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: v }))
+                                                    }
+                                                }} 
+                                                disabled={!isSectionEditable(5)}
+                                            >
                                                 <SelectTrigger><SelectValue placeholder="選擇副院長" /></SelectTrigger>
-                                                <SelectContent>{VICE_DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                                <SelectContent>
+                                                    {VICE_DEAN_NAMES.map(n => (
+                                                        <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                    ))}
+                                                    <SelectItem value="其他">其他</SelectItem>
+                                                </SelectContent>
                                             </Select>
+                                            {isOtherSelected('rev_vice_dean_name', formData.rev_vice_dean_name, VICE_DEAN_NAMES) && (
+                                                <Input
+                                                    placeholder="請輸入審查副院長姓名"
+                                                    value={formData.rev_vice_dean_name || ''}
+                                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: e.target.value }))}
+                                                    disabled={!isSectionEditable(5)}
+                                                    className="mt-2"
+                                                />
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <Label>審查-副院長日期</Label>
@@ -939,10 +1140,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <Label>
                                                 審查-院長 {Number(formData.amount) > 200000 && <span className="text-red-500">*</span>}
                                             </Label>
-                                            <Select value={formData.rev_dean_name || ''} onValueChange={(v) => handleSelectChange('rev_dean_name', v)} disabled={!isSectionEditable(5)}>
+                                            <Select 
+                                                value={isOtherSelected('rev_dean_name', formData.rev_dean_name, DEAN_NAMES) ? '其他' : (formData.rev_dean_name || '')} 
+                                                onValueChange={(v) => {
+                                                    if (v === '其他') {
+                                                        setOtherSelected(prev => ({ ...prev, rev_dean_name: true }))
+                                                        setFormData((prev: any) => ({ ...prev, rev_dean_name: '' }))
+                                                    } else {
+                                                        setOtherSelected(prev => ({ ...prev, rev_dean_name: false }))
+                                                        setFormData((prev: any) => ({ ...prev, rev_dean_name: v }))
+                                                    }
+                                                }} 
+                                                disabled={!isSectionEditable(5)}
+                                            >
                                                 <SelectTrigger><SelectValue placeholder="選擇院長" /></SelectTrigger>
-                                                <SelectContent>{DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                                <SelectContent>
+                                                    {DEAN_NAMES.map(n => (
+                                                        <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                    ))}
+                                                    <SelectItem value="其他">其他</SelectItem>
+                                                </SelectContent>
                                             </Select>
+                                            {isOtherSelected('rev_dean_name', formData.rev_dean_name, DEAN_NAMES) && (
+                                                <Input
+                                                    placeholder="請輸入審查院長姓名"
+                                                    value={formData.rev_dean_name || ''}
+                                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, rev_dean_name: e.target.value }))}
+                                                    disabled={!isSectionEditable(5)}
+                                                    className="mt-2"
+                                                />
+                                            )}
                                         </div>
                                         <div className="space-y-2">
                                             <Label>審查-院長日期</Label>
@@ -1259,27 +1486,39 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                             <div className="space-y-1">
                                                                 <Label className="text-[11px] text-slate-500">經辦人 <span className="text-red-500">*</span></Label>
                                                                 <Select
-                                                                    value={item.handler || ''}
-                                                                    onValueChange={(val) => handleInstallmentItemChange(index, 'handler', val)}
+                                                                    value={isOtherSelected(`installment_handler_${index}`, item.handler, HANDLER_NAMES) ? '其他' : (item.handler || '')}
+                                                                    onValueChange={(val) => {
+                                                                        if (val === '其他') {
+                                                                            setOtherSelected(prev => ({ ...prev, [`installment_handler_${index}`]: true }))
+                                                                            handleInstallmentItemChange(index, 'handler', '')
+                                                                        } else {
+                                                                            setOtherSelected(prev => ({ ...prev, [`installment_handler_${index}`]: false }))
+                                                                            handleInstallmentItemChange(index, 'handler', val)
+                                                                        }
+                                                                    }}
                                                                     disabled={!isSectionEditable(9) || index !== activeIndex}
                                                                 >
                                                                     <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                                                                         <SelectValue placeholder="選擇經辦人" />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
-                                                                        {(() => {
-                                                                            const options = [...HANDLER_NAMES];
-                                                                            if (item.handler && !options.includes(item.handler)) {
-                                                                                options.unshift(item.handler);
-                                                                            }
-                                                                            return options.map(name => (
-                                                                                <SelectItem key={name} value={name} className="text-xs">
-                                                                                    {name}
-                                                                                </SelectItem>
-                                                                            ));
-                                                                        })()}
+                                                                        {HANDLER_NAMES.map(name => (
+                                                                            <SelectItem key={name} value={name} className="text-xs">
+                                                                                {name}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                        <SelectItem value="其他" className="text-xs">其他</SelectItem>
                                                                     </SelectContent>
                                                                 </Select>
+                                                                {isOtherSelected(`installment_handler_${index}`, item.handler, HANDLER_NAMES) && (
+                                                                    <Input
+                                                                        placeholder="請輸入經辦人姓名"
+                                                                        value={item.handler || ''}
+                                                                        onChange={(e) => handleInstallmentItemChange(index, 'handler', e.target.value)}
+                                                                        disabled={!isSectionEditable(9) || index !== activeIndex}
+                                                                        className="h-8 text-xs mt-1.5"
+                                                                    />
+                                                                )}
                                                             </div>
                                                         </div>
                                                     )
@@ -1289,20 +1528,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     )}
                                     <div className="space-y-2">
                                         <Label>驗收-承辦人 <span className="text-red-500">*</span></Label>
-                                        <Select value={formData.accept_handler_name || ''} onValueChange={(v) => handleSelectChange('accept_handler_name', v)} disabled={!isSectionEditable(9)}>
+                                        <Select 
+                                            value={isOtherSelected('accept_handler_name', formData.accept_handler_name, HANDLER_NAMES) ? '其他' : (formData.accept_handler_name || '')} 
+                                            onValueChange={(v) => {
+                                                if (v === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, accept_handler_name: true }))
+                                                    setFormData((prev: any) => ({ ...prev, accept_handler_name: '' }))
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, accept_handler_name: false }))
+                                                    setFormData((prev: any) => ({ ...prev, accept_handler_name: v }))
+                                                }
+                                            }} 
+                                            disabled={!isSectionEditable(9)}
+                                        >
                                             <SelectTrigger><SelectValue placeholder="選擇承辦人" /></SelectTrigger>
                                             <SelectContent>
-                                                {(() => {
-                                                    const options = [...HANDLER_NAMES];
-                                                    if (formData.accept_handler_name && !options.includes(formData.accept_handler_name)) {
-                                                        options.unshift(formData.accept_handler_name);
-                                                    }
-                                                    return options.map(name => (
-                                                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                                                    ));
-                                                })()}
+                                                {HANDLER_NAMES.map(name => (
+                                                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                                                ))}
+                                                <SelectItem value="其他">其他</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                        {isOtherSelected('accept_handler_name', formData.accept_handler_name, HANDLER_NAMES) && (
+                                            <Input
+                                                placeholder="請輸入驗收承辦人姓名"
+                                                value={formData.accept_handler_name || ''}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, accept_handler_name: e.target.value }))}
+                                                disabled={!isSectionEditable(9)}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>驗收-承辦人日期 <span className="text-red-500">*</span></Label>
@@ -1310,10 +1565,36 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     <div className="space-y-2">
                                         <Label>驗收單位主管 <span className="text-red-500">*</span></Label>
-                                        <Select value={formData.accept_mgr_name || ''} onValueChange={(v) => handleSelectChange('accept_mgr_name', v)} disabled={!isSectionEditable(9)}>
+                                        <Select 
+                                            value={isOtherSelected('accept_mgr_name', formData.accept_mgr_name, MAINT_MGR_NAMES) ? '其他' : (formData.accept_mgr_name || '')} 
+                                            onValueChange={(v) => {
+                                                if (v === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, accept_mgr_name: true }))
+                                                    setFormData((prev: any) => ({ ...prev, accept_mgr_name: '' }))
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, accept_mgr_name: false }))
+                                                    setFormData((prev: any) => ({ ...prev, accept_mgr_name: v }))
+                                                }
+                                            }} 
+                                            disabled={!isSectionEditable(9)}
+                                        >
                                             <SelectTrigger><SelectValue placeholder="選擇主管" /></SelectTrigger>
-                                            <SelectContent>{MAINT_MGR_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                            <SelectContent>
+                                                {MAINT_MGR_NAMES.map(n => (
+                                                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                ))}
+                                                <SelectItem value="其他">其他</SelectItem>
+                                            </SelectContent>
                                         </Select>
+                                        {isOtherSelected('accept_mgr_name', formData.accept_mgr_name, MAINT_MGR_NAMES) && (
+                                            <Input
+                                                placeholder="請輸入驗收單位主管姓名"
+                                                value={formData.accept_mgr_name || ''}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, accept_mgr_name: e.target.value }))}
+                                                disabled={!isSectionEditable(9)}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>驗收單位主管日期 <span className="text-red-500">*</span></Label>

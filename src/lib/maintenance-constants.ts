@@ -42,7 +42,7 @@ export const DEFAULT_DIRECTOR_NAME = '楊竣欽'
  * 院長室 簽核人
  */
 export const VICE_DEAN_NAMES = ['邵詩媛', '王哲川'].sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
-export const DEAN_NAMES = ['田宇峯']
+export const DEAN_NAMES = ['田宇峯', '周偉倪', '林宏榮'].sort((a, b) => a.localeCompare(b, 'zh-Hant-TW'))
 
 /**
  * 狀態卡片顏色對應

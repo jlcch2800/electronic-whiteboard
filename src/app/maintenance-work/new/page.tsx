@@ -47,7 +47,15 @@ export default function MaintenanceWorkNewPage() {
     // 追蹤各欄位 touched 狀態（失焦驗證用）
     const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
 
-    const { register, handleSubmit, trigger, getValues, setValue, formState: { errors, isSubmitting } } = useForm<MaintenanceWorkOrderFormValues>({
+    const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({})
+
+    const isOtherSelected = (fieldKey: string, currentValue: string, defaultOptions: readonly string[]) => {
+        if (otherSelected[fieldKey]) return true
+        if (currentValue && !defaultOptions.includes(currentValue)) return true
+        return false
+    }
+
+    const { register, handleSubmit, trigger, getValues, setValue, watch, formState: { errors, isSubmitting } } = useForm<MaintenanceWorkOrderFormValues>({
         resolver: zodResolver(maintenanceWorkOrderSchema) as any,
         mode: 'onBlur',
         defaultValues: {
@@ -66,6 +74,15 @@ export default function MaintenanceWorkNewPage() {
         if (profile?.role === 'staff' && profile?.user_name) {
             setValue('printer_name', profile.user_name)
             setValue('handler_name', profile.user_name)
+
+            const updates: Record<string, boolean> = {}
+            if (!HANDLER_OPTIONS.includes(profile.user_name)) {
+                updates.printer_name = true
+                updates.handler_name = true
+            }
+            if (Object.keys(updates).length > 0) {
+                setOtherSelected(prev => ({ ...prev, ...updates }))
+            }
         }
     }, [profile, setValue])
 
@@ -247,27 +264,75 @@ export default function MaintenanceWorkNewPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="印單人" required error={errors.printer_name?.message} touched={touchedFields.printer_name}>
                                         <select
-                                            {...register('printer_name')}
+                                            value={isOtherSelected('printer_name', watch('printer_name'), HANDLER_OPTIONS) ? '其他' : watch('printer_name')}
+                                            onChange={(e) => {
+                                                const val = e.target.value
+                                                if (val === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, printer_name: true }))
+                                                    setValue('printer_name', '')
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, printer_name: false }))
+                                                    setValue('printer_name', val)
+                                                }
+                                                trigger('printer_name')
+                                            }}
                                             onBlur={() => handleFieldBlur('printer_name')}
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
-                                            <option value="" disabled selected hidden>請選擇印單人</option>
+                                            <option value="" disabled hidden>請選擇印單人</option>
                                             {HANDLER_OPTIONS.map(name => (
                                                 <option key={name} value={name}>{name}</option>
                                             ))}
+                                            <option value="其他">其他</option>
                                         </select>
+                                        {isOtherSelected('printer_name', watch('printer_name'), HANDLER_OPTIONS) && (
+                                            <Input
+                                                placeholder="請輸入印單人姓名"
+                                                value={watch('printer_name')}
+                                                onChange={(e) => {
+                                                    setValue('printer_name', e.target.value)
+                                                    trigger('printer_name')
+                                                }}
+                                                onBlur={() => handleFieldBlur('printer_name')}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </FormField>
                                     <FormField label="承辦人" required error={errors.handler_name?.message} touched={touchedFields.handler_name}>
                                         <select
-                                            {...register('handler_name')}
+                                            value={isOtherSelected('handler_name', watch('handler_name'), HANDLER_OPTIONS) ? '其他' : watch('handler_name')}
+                                            onChange={(e) => {
+                                                const val = e.target.value
+                                                if (val === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, handler_name: true }))
+                                                    setValue('handler_name', '')
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, handler_name: false }))
+                                                    setValue('handler_name', val)
+                                                }
+                                                trigger('handler_name')
+                                            }}
                                             onBlur={() => handleFieldBlur('handler_name')}
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
-                                            <option value="" disabled selected hidden>請選擇承辦人</option>
+                                            <option value="" disabled hidden>請選擇承辦人</option>
                                             {HANDLER_OPTIONS.map(name => (
                                                 <option key={name} value={name}>{name}</option>
                                             ))}
+                                            <option value="其他">其他</option>
                                         </select>
+                                        {isOtherSelected('handler_name', watch('handler_name'), HANDLER_OPTIONS) && (
+                                            <Input
+                                                placeholder="請輸入承辦人姓名"
+                                                value={watch('handler_name')}
+                                                onChange={(e) => {
+                                                    setValue('handler_name', e.target.value)
+                                                    trigger('handler_name')
+                                                }}
+                                                onBlur={() => handleFieldBlur('handler_name')}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </FormField>
                                 </div>
                             </CardContent>
@@ -301,7 +366,18 @@ export default function MaintenanceWorkNewPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="工務單位主管" required error={errors.maint_mgr_name?.message} touched={touchedFields.maint_mgr_name}>
                                         <select
-                                            {...register('maint_mgr_name')}
+                                            value={isOtherSelected('maint_mgr_name', watch('maint_mgr_name'), MAINT_MGR_OPTIONS) ? '其他' : watch('maint_mgr_name')}
+                                            onChange={(e) => {
+                                                const val = e.target.value
+                                                if (val === '其他') {
+                                                    setOtherSelected(prev => ({ ...prev, maint_mgr_name: true }))
+                                                    setValue('maint_mgr_name', '')
+                                                } else {
+                                                    setOtherSelected(prev => ({ ...prev, maint_mgr_name: false }))
+                                                    setValue('maint_mgr_name', val)
+                                                }
+                                                trigger('maint_mgr_name')
+                                            }}
                                             onBlur={() => handleFieldBlur('maint_mgr_name')}
                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         >
@@ -309,7 +385,20 @@ export default function MaintenanceWorkNewPage() {
                                             {MAINT_MGR_OPTIONS.map(name => (
                                                 <option key={name} value={name}>{name}</option>
                                             ))}
+                                            <option value="其他">其他</option>
                                         </select>
+                                        {isOtherSelected('maint_mgr_name', watch('maint_mgr_name'), MAINT_MGR_OPTIONS) && (
+                                            <Input
+                                                placeholder="請輸入工務單位主管姓名"
+                                                value={watch('maint_mgr_name')}
+                                                onChange={(e) => {
+                                                    setValue('maint_mgr_name', e.target.value)
+                                                    trigger('maint_mgr_name')
+                                                }}
+                                                onBlur={() => handleFieldBlur('maint_mgr_name')}
+                                                className="mt-2"
+                                            />
+                                        )}
                                     </FormField>
                                     <FormField label="工務單位主管日期" required error={errors.maint_mgr_date?.message} touched={touchedFields.maint_mgr_date}>
                                         <Input type="date" {...register('maint_mgr_date')} onBlur={() => handleFieldBlur('maint_mgr_date')} />

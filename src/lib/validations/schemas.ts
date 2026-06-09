@@ -249,7 +249,7 @@ export const DIRECTOR_DEFAULT = '楊竣欽'
 export const VICE_DEAN_OPTIONS = ['邵詩媛', '王哲川'] as const
 
 /** 院長選項 */
-export const DEAN_OPTIONS = ['田宇峯'] as const
+export const DEAN_OPTIONS = ['田宇峯', '周偉倪', '林宏榮'] as const
 
 /** 維修狀態選項 */
 export const MAINTENANCE_STATUS_OPTIONS = [
