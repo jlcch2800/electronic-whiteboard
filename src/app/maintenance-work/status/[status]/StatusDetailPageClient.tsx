@@ -136,7 +136,8 @@ const getExtraColumns = (status: string): ExtraColumn[] => {
                 { key: 'project_order_id', label: '工程單編號' },
                 { key: 'plan_start_date', label: '施工預計開始日期' },
                 { key: 'plan_end_date', label: '施工預計結束日期' },
-                { key: 'construct_end_date', label: '施工完成日期' }
+                { key: 'vendor_name', label: '廠商' },
+                { key: 'amount', label: '金額' }
             ];
         case '院長室簽核中':
             return [
@@ -151,14 +152,17 @@ const getExtraColumns = (status: string): ExtraColumn[] => {
         case '施工完成，開單單位驗收中':
             return [
                 { key: 'project_order_id', label: '工程單編號' },
-                { key: 'construct_end_date', label: '施工完成日期' }
+                { key: 'construct_end_date', label: '施工完成日期' },
+                { key: 'vendor_name', label: '廠商' },
+                { key: 'amount', label: '金額' }
             ];
         case '維修部門驗收中':
             return [
                 { key: 'project_order_id', label: '工程單編號' },
                 { key: 'construct_end_date', label: '施工完成日期' },
                 { key: 'installment_count', label: '分期' },
-                { key: 'installment_note', label: '分期說明' },
+                { key: 'vendor_name', label: '廠商' },
+                { key: 'amount', label: '金額' },
                 { key: 'accept_dept_mgr_name', label: '驗收-開單主管' },
                 { key: 'accept_dept_mgr_date', label: '驗收-開單主管日期' }
             ];
@@ -204,6 +208,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
     const c = COLOR_MAP[colorName] || COLOR_MAP['Pastel blue']
 
     const extraCols = getExtraColumns(status)
+    const hidePrinter = status !== '已轉維修單'
 
     // 資料狀態
     const [data, setData] = useState<any[]>([])
@@ -243,7 +248,11 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                 .eq('status', status)
 
             if (searchTerm) {
-                query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                if (hidePrinter) {
+                    query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                } else {
+                    query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                }
             }
 
             if (sort) {
@@ -324,7 +333,11 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     .eq('status', status)
 
                 if (searchTerm) {
-                    query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                    if (hidePrinter) {
+                        query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                    } else {
+                        query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                    }
                 }
 
                 if (sort) {
@@ -504,7 +517,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     <div className="relative w-72">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
-                            placeholder="搜尋工單、印單人、承辦人..."
+                            placeholder={hidePrinter ? "搜尋工單、廠商、承辦人..." : "搜尋工單、印單人、承辦人..."}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9 bg-white dark:bg-slate-900"
@@ -539,7 +552,9 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                         <SortableTableHead sortKey="request_date" currentSort={sort} onSort={handleSort} label="開單日" />
                                         <SortableTableHead sortKey="cost_center" currentSort={sort} onSort={handleSort} label="成本中心" />
                                         <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
-                                        <SortableTableHead sortKey="printer_name" currentSort={sort} onSort={handleSort} label="印單人" />
+                                        {!hidePrinter && (
+                                            <SortableTableHead sortKey="printer_name" currentSort={sort} onSort={handleSort} label="印單人" />
+                                        )}
                                         <SortableTableHead sortKey="submit_date" currentSort={sort} onSort={handleSort} label="送呈日期" />
                                         <TableHead>維修內容</TableHead>
                                         <SortableTableHead sortKey="handler_name" currentSort={sort} onSort={handleSort} label="承辦人" />
@@ -567,7 +582,9 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                             <TableCell className="text-slate-500 dark:text-slate-400">{item.request_date}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
-                                            <TableCell>{item.printer_name || '-'}</TableCell>
+                                            {!hidePrinter && (
+                                                <TableCell>{item.printer_name || '-'}</TableCell>
+                                            )}
                                             <TableCell>{item.submit_date || '-'}</TableCell>
                                             <TableCell className="max-w-xs truncate" title={item.maintain_content}>
                                                 {item.maintain_content}
@@ -578,6 +595,8 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                                 let displayValue = rawValue || '-';
                                                 if (col.key === 'installment_count' && rawValue !== null && rawValue !== undefined) {
                                                     displayValue = `${rawValue} 期`;
+                                                } else if (col.key === 'amount' && rawValue !== null && rawValue !== undefined) {
+                                                    displayValue = `$${Number(rawValue).toLocaleString()}`;
                                                 }
                                                 return (
                                                     <TableCell key={col.key} className="text-slate-600 dark:text-slate-300">
@@ -631,7 +650,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                     date={item.request_date}
                                     dateLabel="開單日"
                                     details={[
-                                        { label: '印單人', value: item.printer_name || '-' },
+                                        ...(!hidePrinter ? [{ label: '印單人', value: item.printer_name || '-' }] : []),
                                         { label: '送呈日期', value: item.submit_date || '-' },
                                         { label: '承辦人', value: item.handler_name },
                                         { label: '內容', value: item.maintain_content },
@@ -639,6 +658,8 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                             let val = item[col.key] || '-';
                                             if (col.key === 'installment_count' && item[col.key] !== null && item[col.key] !== undefined) {
                                                 val = `${item[col.key]} 期`;
+                                            } else if (col.key === 'amount' && item[col.key] !== null && item[col.key] !== undefined) {
+                                                val = `$${Number(item[col.key]).toLocaleString()}`;
                                             }
                                             return {
                                                 label: col.label,
