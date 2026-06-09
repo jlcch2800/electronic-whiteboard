@@ -366,7 +366,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 if (!formData.procurement_name) return '請輸入採購組姓名'
                 if (!formData.material_name) return '請輸入資材室姓名'
                 if (!formData.rev_vice_dean_name) return '請選擇審查-副院長'
-                if (!formData.rev_dean_name) return '請選擇審查-院長'
+                // 金額大於 20 萬時，審查-院長為必填
+                if (Number(formData.amount) > 200000) {
+                    if (!formData.rev_dean_name) return '請選擇審查-院長'
+                }
                 break
             case '工務已發包':
             case '採購已發包':
@@ -933,7 +936,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             <Input name="rev_vice_dean_date" type="date" value={formData.rev_vice_dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>審查-院長 <span className="text-red-500">*</span></Label>
+                                            <Label>
+                                                審查-院長 {Number(formData.amount) > 200000 && <span className="text-red-500">*</span>}
+                                            </Label>
                                             <Select value={formData.rev_dean_name || ''} onValueChange={(v) => handleSelectChange('rev_dean_name', v)} disabled={!isSectionEditable(5)}>
                                                 <SelectTrigger><SelectValue placeholder="選擇院長" /></SelectTrigger>
                                                 <SelectContent>{DEAN_NAMES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
