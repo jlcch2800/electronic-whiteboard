@@ -227,7 +227,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         // 排除 System (依據需求：系統執行記錄只存放 cron job，異動記錄存放使用者操作)
         if (log.user_name === 'System' || log.user_account === 'System') return false;
 
-        const searchTermLower = searchTerm.toLowerCase()
+        if (!searchTerm.trim()) return true;
+
+        // 以空白分割多個關鍵字，並過濾掉空值
+        const keywords = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
 
         // 取得動作類型的中文顯示名稱以便搜尋
         let displayActionType = log.action_type
@@ -248,15 +251,16 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             }
         }
 
-        return (
-            log.user_name?.toLowerCase().includes(searchTermLower) ||
-            log.user_account?.toLowerCase().includes(searchTermLower) ||
-            log.user_unit?.toLowerCase().includes(searchTermLower) ||
-            getTranslatedTableName(log.modify_table)?.toLowerCase().includes(searchTermLower) ||
-            log.modify_table?.toLowerCase().includes(searchTermLower) ||
-            log.action_type?.toLowerCase().includes(searchTermLower) ||
-            displayActionType?.toLowerCase().includes(searchTermLower)
-        )
+        // 必須符合所有的關鍵字 (AND 邏輯)
+        return keywords.every(kw =>
+            log.user_name?.toLowerCase().includes(kw) ||
+            log.user_account?.toLowerCase().includes(kw) ||
+            log.user_unit?.toLowerCase().includes(kw) ||
+            getTranslatedTableName(log.modify_table)?.toLowerCase().includes(kw) ||
+            log.modify_table?.toLowerCase().includes(kw) ||
+            log.action_type?.toLowerCase().includes(kw) ||
+            displayActionType?.toLowerCase().includes(kw)
+        );
     })
 
     // 分頁
@@ -539,7 +543,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="搜尋..." className="pl-10 w-full md:w-48" />
+                                <Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="多關鍵字空白分割(AND)搜尋" className="pl-10 w-full md:w-80" />
                             </div>
 
                             <div className="flex items-center gap-2">
