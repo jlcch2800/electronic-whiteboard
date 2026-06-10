@@ -70,15 +70,18 @@ export default function WorkReportClient() {
     }
     // 即時過濾資料
     const filteredData = useMemo(() => {
-        const kw = keyword.toLowerCase().trim()
-        if (!kw) return data
-        return data.filter(row =>
-            row.vendor_name?.toLowerCase().includes(kw) ||
-            row.work_content?.toLowerCase().includes(kw) ||
-            row.work_location?.toLowerCase().includes(kw) ||
-            row.engineering_contact?.toLowerCase().includes(kw) ||
-            row.note?.toLowerCase().includes(kw) ||
-            statusLabels[row.work_status]?.text.toLowerCase().includes(kw)
+        if (!keyword.trim()) return data
+        const keywords = keyword.toLowerCase().split(/\s+/).filter(Boolean)
+
+        return data.filter(row => 
+            keywords.every(kw =>
+                row.vendor_name?.toLowerCase().includes(kw) ||
+                row.work_content?.toLowerCase().includes(kw) ||
+                row.work_location?.toLowerCase().includes(kw) ||
+                row.engineering_contact?.toLowerCase().includes(kw) ||
+                row.note?.toLowerCase().includes(kw) ||
+                statusLabels[row.work_status]?.text.toLowerCase().includes(kw)
+            )
         )
     }, [data, keyword])
 
@@ -221,7 +224,7 @@ export default function WorkReportClient() {
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">狀態</Label><Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}><SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部</SelectItem><SelectItem value="completed">完成</SelectItem><SelectItem value="incomplete">未完成</SelectItem><SelectItem value="abnormal">異常</SelectItem></SelectContent></Select></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商、地點、內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-52" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="支援多關鍵字空白分割(AND)搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-80" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <DropdownMenu>

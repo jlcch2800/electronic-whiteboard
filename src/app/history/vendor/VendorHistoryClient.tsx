@@ -97,17 +97,31 @@ export default function VendorHistoryClient() {
     }
     // 即時過濾資料
     const filteredData = useMemo(() => {
-        const kw = keyword.toLowerCase().trim()
-        if (!kw) return data
-        return data.filter(row =>
-            row.vendor_name?.toLowerCase().includes(kw) ||
-            row.work_content?.toLowerCase().includes(kw) ||
-            row.note?.toLowerCase().includes(kw) ||
-            row.vendor_contact?.toLowerCase().includes(kw) ||
-            row.vendor_contact_phone?.toLowerCase().includes(kw) ||
-            row.location?.toLowerCase().includes(kw) ||
-            (row.entry_status === 'arrival' ? '到院' : '離院').includes(kw)
-        )
+        if (!keyword.trim()) return data
+        const keywords = keyword.toLowerCase().split(/\s+/).filter(Boolean)
+
+        return data.filter(row => {
+            let displayBorrowAction = '未借物'
+            if (row.borrow_action === 'borrow') displayBorrowAction = '借物中'
+            else if (row.borrow_action === 'return') displayBorrowAction = '已歸還'
+            else if (row.borrow_action === 'partial_return') displayBorrowAction = '部份未歸還'
+
+            const borrowedStr = formatItems(row.borrowed_items)
+            const returnedStr = formatItems(row.returned_items)
+
+            return keywords.every(kw => 
+                row.vendor_name?.toLowerCase().includes(kw) ||
+                row.work_content?.toLowerCase().includes(kw) ||
+                row.note?.toLowerCase().includes(kw) ||
+                row.vendor_contact?.toLowerCase().includes(kw) ||
+                row.vendor_contact_phone?.toLowerCase().includes(kw) ||
+                row.location?.toLowerCase().includes(kw) ||
+                (row.entry_status === 'arrival' ? '到院' : '離院').includes(kw) ||
+                displayBorrowAction.includes(kw) ||
+                borrowedStr.toLowerCase().includes(kw) ||
+                returnedStr.toLowerCase().includes(kw)
+            )
+        })
     }, [data, keyword])
 
     const sortedData = useMemo(() => {
@@ -336,7 +350,7 @@ export default function VendorHistoryClient() {
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="廠商名稱、施工內容..." value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-60" /></div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="支援多關鍵字空白分割(AND)搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-80" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <DropdownMenu>
