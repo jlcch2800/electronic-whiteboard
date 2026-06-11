@@ -250,17 +250,19 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                     onChange={(e) => setSearch(s => ({ ...s, end: e.target.value }))}
                                     className="w-full md:w-36"
                                 />
-                                <Input
-                                    placeholder="搜尋廠商、內容、單位..."
-                                    value={search.keyword}
-                                    onChange={(e) => {
-                                        setSearch(s => ({ ...s, keyword: e.target.value }))
-                                        tableData.setPage(1)
-                                    }}
-                                    className="w-full md:w-64 pl-9"
-                                />
-                                <div className="absolute left-3 top-1/2 -translate-y-1/2 hidden md:block">
-                                    <Search className="w-4 h-4 text-muted-foreground" />
+                                <div className="relative w-full md:w-64">
+                                    <Input
+                                        placeholder="搜尋廠商、內容、單位..."
+                                        value={search.keyword}
+                                        onChange={(e) => {
+                                            setSearch(s => ({ ...s, keyword: e.target.value }))
+                                            tableData.setPage(1)
+                                        }}
+                                        className="w-full pl-9"
+                                    />
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 hidden md:block">
+                                        <Search className="w-4 h-4 text-muted-foreground" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
