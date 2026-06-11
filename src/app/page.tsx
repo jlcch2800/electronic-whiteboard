@@ -71,6 +71,7 @@ export default async function HomePage() {
       initialPendingRecent={pendingRecent.data ?? []}
       initialVendorRecent={vendorRecent.data ?? []}
       initialEngineeringRecent={engineeringRecent.data ?? []}
+      today={today}
     />
   )
 }

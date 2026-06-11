@@ -36,6 +36,7 @@ interface HomeClientProps {
     initialPendingRecent: RecentItem[]
     initialVendorRecent: RecentItem[]
     initialEngineeringRecent: RecentItem[]
+    today: string
 }
 
 // 計數動畫 Hook
@@ -81,7 +82,8 @@ function StatCard({
     newHref,
     delay,
     className,
-    recentItems
+    recentItems,
+    todayStr
 }: {
     icon: any
     label: string
@@ -93,6 +95,8 @@ function StatCard({
     className?: string
     /** 最近資料條列 */
     recentItems?: RecentItem[]
+    /** 今日日期字串 YYYY-MM-DD */
+    todayStr?: string
 }) {
     const router = useRouter()
     const animatedCount = useCountUp(count, 1500)
@@ -233,7 +237,9 @@ function StatCard({
                                 )}
                                 {color === 'amber' && (
                                     <>
-                                        <span className="font-mono text-gray-500 mr-1.5">{item.end_date}</span>
+                                        {item.end_date !== todayStr && (
+                                            <span className="font-mono text-gray-500 mr-1.5">{item.end_date}</span>
+                                        )}
                                         <span className="font-bold text-gray-700 mr-1">{item.vendor_name}</span>
                                         {item.unit && <span className="text-gray-500 mr-1">({item.unit})</span>}
                                         <span className="break-all text-gray-700">{item.work_content}</span>
@@ -280,12 +286,13 @@ function StatCard({
     )
 }
 
-export default function HomeClient({ initialCounts, initialPendingRecent, initialVendorRecent, initialEngineeringRecent }: HomeClientProps) {
+export default function HomeClient({ initialCounts, initialPendingRecent, initialVendorRecent, initialEngineeringRecent, today }: HomeClientProps) {
     const supabase = createClient()
     const [counts, setCounts] = useState(initialCounts)
     const [pendingRecent, setPendingRecent] = useState<RecentItem[]>(initialPendingRecent)
     const [vendorRecent, setVendorRecent] = useState<RecentItem[]>(initialVendorRecent)
     const [engineeringRecent, setEngineeringRecent] = useState<RecentItem[]>(initialEngineeringRecent)
+    const [todayStr, setTodayStr] = useState<string>(today)
 
     // 重新整理統計數據
     const refreshCounts = async () => {
@@ -318,6 +325,7 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
 
     // 每次進入首頁時自動重新查詢最新數據，避免 Router Cache 導致舊數據
     useEffect(() => {
+        setTodayStr(new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }))
         refreshCounts()
 
         // 設定每 3 分鐘自動更新一次筆數
@@ -379,6 +387,7 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
                         delay={0.45}
                         className="w-[85vw] shrink-0 snap-center md:w-auto"
                         recentItems={engineeringRecent}
+                        todayStr={todayStr}
                     />
                     <StatCard
                         icon={FileClock}

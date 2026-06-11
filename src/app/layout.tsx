@@ -5,7 +5,10 @@ import { AuthProvider } from "@/components/providers/AuthProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import IdleTimerListener from "@/components/providers/IdleTimerListener";
 import { Toaster } from "@/components/ui/toaster";
-import { Agentation } from "agentation";
+
+// 註解掉每個網頁右下角都會出現的Agentation，有需要再開啟。僅需註解此 import 與下方 JSX 中的 <Agentation /> 元件即可
+//import { Agentation } from "agentation";
+
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorHandler } from "@/components/GlobalErrorHandler";
 
@@ -39,7 +42,7 @@ export default function RootLayout({
               {children}
               <IdleTimerListener />
               <Toaster />
-              <Agentation />
+              {/* <Agentation /> */}
               <GlobalErrorHandler />
             </AuthProvider>
           </ThemeProvider>
@@ -48,4 +51,3 @@ export default function RootLayout({
     </html>
   );
 }
-
