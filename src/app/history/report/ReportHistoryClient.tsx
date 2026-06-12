@@ -64,22 +64,10 @@ export default function ReportHistoryClient() {
             return { key, direction: 'asc' }
         })
     }
-    // 即時過濾資料
+    // 即時過濾資料 - 已由後端過濾，直接返回 data
     const filteredData = useMemo(() => {
-        if (!keyword.trim()) return data
-        const keywords = keyword.toLowerCase().split(/\s+/).filter(Boolean)
-
-        return data.filter(row => 
-            keywords.every(kw =>
-                row.vendor_name?.toLowerCase().includes(kw) ||
-                row.work_content?.toLowerCase().includes(kw) ||
-                row.work_location?.toLowerCase().includes(kw) ||
-                row.engineering_contact?.toLowerCase().includes(kw) ||
-                row.note?.toLowerCase().includes(kw) ||
-                statusLabels[row.work_status]?.text.toLowerCase().includes(kw)
-            )
-        )
-    }, [data, keyword])
+        return data
+    }, [data])
 
     const sortedData = useMemo(() => {
         const source = filteredData
@@ -100,23 +88,47 @@ export default function ReportHistoryClient() {
         setLoading(true)
         let q = supabase.from('work_report_history').select('*', { count: 'exact' })
             .gte('report_date', startDate).lte('report_date', endDate)
-            .order('report_date', { ascending: false }).order('created_at', { ascending: false })
+
+        // 關鍵字搜尋：支援多關鍵字空白分割(AND)搜尋，在後端進行鏈式 OR 查詢
+        if (keyword.trim()) {
+            const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+            for (const kw of keywords) {
+                let statusCond = ''
+                if ('完成'.includes(kw)) statusCond = ',work_status.eq.completed'
+                else if ('未完成'.includes(kw)) statusCond = ',work_status.eq.incomplete'
+                else if ('異常'.includes(kw)) statusCond = ',work_status.eq.abnormal'
+
+                q = q.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,work_location.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%${statusCond}`)
+            }
+        }
+
+        if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
+
+        q = q.order('report_date', { ascending: false }).order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
 
-        // 關鍵字搜尋改在前端處理，這裡不帶 or 條件
-        if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
         const { data: records, count } = await q
         setData(records || []); setTotalCount(count || 0); setSelected(new Set()); setLoading(false)
     }
 
-    useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate, statusFilter])
+    useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate, statusFilter, keyword])
 
     const exportToExcel = async () => {
         let dataToExport: ReportHistoryRecord[] = []
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
             let q = supabase.from('work_report_history').select('*').gte('report_date', startDate).lte('report_date', endDate).order('report_date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            if (keyword.trim()) {
+                const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+                for (const kw of keywords) {
+                    let statusCond = ''
+                    if ('完成'.includes(kw)) statusCond = ',work_status.eq.completed'
+                    else if ('未完成'.includes(kw)) statusCond = ',work_status.eq.incomplete'
+                    else if ('異常'.includes(kw)) statusCond = ',work_status.eq.abnormal'
+
+                    q = q.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,work_location.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%${statusCond}`)
+                }
+            }
             if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
             const { data: allData } = await q; dataToExport = allData || []
         }
@@ -132,7 +144,17 @@ export default function ReportHistoryClient() {
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
             let q = supabase.from('work_report_history').select('*').gte('report_date', startDate).lte('report_date', endDate).order('report_date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            if (keyword.trim()) {
+                const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+                for (const kw of keywords) {
+                    let statusCond = ''
+                    if ('完成'.includes(kw)) statusCond = ',work_status.eq.completed'
+                    else if ('未完成'.includes(kw)) statusCond = ',work_status.eq.incomplete'
+                    else if ('異常'.includes(kw)) statusCond = ',work_status.eq.abnormal'
+
+                    q = q.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,work_location.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%${statusCond}`)
+                }
+            }
             if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
             const { data: allData } = await q; dataToExport = allData || []
         }

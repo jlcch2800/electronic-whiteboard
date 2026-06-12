@@ -95,34 +95,10 @@ export default function VendorHistoryClient() {
             return { key, direction: 'asc' }
         })
     }
-    // 即時過濾資料
+    // 即時過濾資料 - 已由後端過濾，直接返回 data
     const filteredData = useMemo(() => {
-        if (!keyword.trim()) return data
-        const keywords = keyword.toLowerCase().split(/\s+/).filter(Boolean)
-
-        return data.filter(row => {
-            let displayBorrowAction = '未借物'
-            if (row.borrow_action === 'borrow') displayBorrowAction = '借物中'
-            else if (row.borrow_action === 'return') displayBorrowAction = '已歸還'
-            else if (row.borrow_action === 'partial_return') displayBorrowAction = '部份未歸還'
-
-            const borrowedStr = formatItems(row.borrowed_items)
-            const returnedStr = formatItems(row.returned_items)
-
-            return keywords.every(kw => 
-                row.vendor_name?.toLowerCase().includes(kw) ||
-                row.work_content?.toLowerCase().includes(kw) ||
-                row.note?.toLowerCase().includes(kw) ||
-                row.vendor_contact?.toLowerCase().includes(kw) ||
-                row.vendor_contact_phone?.toLowerCase().includes(kw) ||
-                row.location?.toLowerCase().includes(kw) ||
-                (row.entry_status === 'arrival' ? '到院' : '離院').includes(kw) ||
-                displayBorrowAction.includes(kw) ||
-                borrowedStr.toLowerCase().includes(kw) ||
-                returnedStr.toLowerCase().includes(kw)
-            )
-        })
-    }, [data, keyword])
+        return data
+    }, [data])
 
     const sortedData = useMemo(() => {
         const source = filteredData
@@ -161,14 +137,40 @@ export default function VendorHistoryClient() {
             .select('*', { count: 'exact' })
             .gte('work_date', startDate)
             .lte('work_date', endDate)
+
+        // 關鍵字搜尋：支援多關鍵字空白分割(AND)搜尋，在後端進行鏈式 OR 查詢
+        if (keyword.trim()) {
+            const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+            for (const kw of keywords) {
+                let statusConds = []
+                
+                // entry_status mapping
+                if ('到院'.includes(kw)) statusConds.push('entry_status.eq.arrival')
+                if ('離院'.includes(kw)) statusConds.push('entry_status.eq.departure')
+                
+                // borrow_action mapping
+                if ('借物中'.includes(kw)) statusConds.push('borrow_action.eq.borrow')
+                if ('已歸還'.includes(kw)) statusConds.push('borrow_action.eq.return')
+                if ('部份未歸還'.includes(kw)) statusConds.push('borrow_action.eq.partial_return')
+                if ('未借物'.includes(kw)) {
+                    statusConds.push('borrow_action.eq.none')
+                    statusConds.push('borrow_action.is.null')
+                }
+
+                // If kw is a number, match vendor_badge_id
+                const isNum = /^\d+$/.test(kw)
+                const badgeCond = isNum ? `,vendor_badge_id.eq.${kw}` : ''
+
+                const statusStr = statusConds.length > 0 ? `,${statusConds.join(',')}` : ''
+
+                query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,note.ilike.%${kw}%,location.ilike.%${kw}%,vendor_contact.ilike.%${kw}%,vendor_contact_phone.ilike.%${kw}%${badgeCond}${statusStr}`)
+            }
+        }
+
+        query = query
             .order('work_date', { ascending: false })
             .order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
-
-        // 關鍵字搜尋改在前端處理，這裡不帶 or 條件以便維持分頁的一致性
-        // (或者若要完全即時，可不設 range 抓取全部，但歷史紀錄考量效能暫維持分頁+前端過濾當前頁)
-        // 註：若使用者需要過濾全部，則必須加大 pageSize 或移除 range。
-        // 為對齊「異動紀錄(大資料量前端過濾)」模式，我們移除 range 或是抓取較大的 chunk
 
         const { data: records, count, error } = await query
 
@@ -186,7 +188,7 @@ export default function VendorHistoryClient() {
     // Initial fetch
     useEffect(() => {
         fetchData()
-    }, [page, pageSize, startDate, endDate])
+    }, [page, pageSize, startDate, endDate, keyword])
 
     // handleSearch 已經不需要，改為偵測關鍵字變動
 
@@ -206,7 +208,31 @@ export default function VendorHistoryClient() {
                 .order('work_date', { ascending: false })
 
             if (keyword.trim()) {
-                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,location.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
+                const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+                for (const kw of keywords) {
+                    let statusConds = []
+                    
+                    // entry_status mapping
+                    if ('到院'.includes(kw)) statusConds.push('entry_status.eq.arrival')
+                    if ('離院'.includes(kw)) statusConds.push('entry_status.eq.departure')
+                    
+                    // borrow_action mapping
+                    if ('借物中'.includes(kw)) statusConds.push('borrow_action.eq.borrow')
+                    if ('已歸還'.includes(kw)) statusConds.push('borrow_action.eq.return')
+                    if ('部份未歸還'.includes(kw)) statusConds.push('borrow_action.eq.partial_return')
+                    if ('未借物'.includes(kw)) {
+                        statusConds.push('borrow_action.eq.none')
+                        statusConds.push('borrow_action.is.null')
+                    }
+
+                    // If kw is a number, match vendor_badge_id
+                    const isNum = /^\d+$/.test(kw)
+                    const badgeCond = isNum ? `,vendor_badge_id.eq.${kw}` : ''
+
+                    const statusStr = statusConds.length > 0 ? `,${statusConds.join(',')}` : ''
+
+                    query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,note.ilike.%${kw}%,location.ilike.%${kw}%,vendor_contact.ilike.%${kw}%,vendor_contact_phone.ilike.%${kw}%${badgeCond}${statusStr}`)
+                }
             }
 
             const { data: allData } = await query
@@ -262,7 +288,31 @@ export default function VendorHistoryClient() {
                 .order('work_date', { ascending: false })
 
             if (keyword.trim()) {
-                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,note.ilike.%${keyword}%,entry_status.ilike.%${keyword}%,location.ilike.%${keyword}%,vendor_badge_id.ilike.%${keyword}%,vendor_phone.ilike.%${keyword}%`)
+                const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+                for (const kw of keywords) {
+                    let statusConds = []
+                    
+                    // entry_status mapping
+                    if ('到院'.includes(kw)) statusConds.push('entry_status.eq.arrival')
+                    if ('離院'.includes(kw)) statusConds.push('entry_status.eq.departure')
+                    
+                    // borrow_action mapping
+                    if ('借物中'.includes(kw)) statusConds.push('borrow_action.eq.borrow')
+                    if ('已歸還'.includes(kw)) statusConds.push('borrow_action.eq.return')
+                    if ('部份未歸還'.includes(kw)) statusConds.push('borrow_action.eq.partial_return')
+                    if ('未借物'.includes(kw)) {
+                        statusConds.push('borrow_action.eq.none')
+                        statusConds.push('borrow_action.is.null')
+                    }
+
+                    // If kw is a number, match vendor_badge_id
+                    const isNum = /^\d+$/.test(kw)
+                    const badgeCond = isNum ? `,vendor_badge_id.eq.${kw}` : ''
+
+                    const statusStr = statusConds.length > 0 ? `,${statusConds.join(',')}` : ''
+
+                    query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,note.ilike.%${kw}%,location.ilike.%${kw}%,vendor_contact.ilike.%${kw}%,vendor_contact_phone.ilike.%${kw}%${badgeCond}${statusStr}`)
+                }
             }
 
             const { data: allData } = await query

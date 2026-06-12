@@ -159,22 +159,15 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         try {
             let query = supabase.from('maintenance_work_orders').select('*', { count: 'exact' })
 
-            if (activeFilters.customSearch) {
-                query = query.or(`work_order_id.ilike.%${activeFilters.customSearch}%,maintain_content.ilike.%${activeFilters.customSearch}%,printer_name.ilike.%${activeFilters.customSearch}%,handler_name.ilike.%${activeFilters.customSearch}%`)
+            if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
+                const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                for (const kw of keywords) {
+                    query = query.or(`work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,handler_name.ilike.%${kw}%,cost_center.ilike.%${kw}%,requester_name.ilike.%${kw}%,vendor_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,procurement_name.ilike.%${kw}%,status.ilike.%${kw}%`);
+                }
             }
             if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
             if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
             if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
-            if (activeFilters.costCenter) query = query.ilike('cost_center', `%${activeFilters.costCenter}%`)
-            if (activeFilters.content) query = query.ilike('maintain_content', `%${activeFilters.content}%`)
-            if (activeFilters.requester) query = query.ilike('requester_name', `%${activeFilters.requester}%`)
-            if (activeFilters.workOrderId) query = query.ilike('work_order_id', `%${activeFilters.workOrderId}%`)
-            if (activeFilters.handler) query = query.ilike('handler_name', `%${activeFilters.handler}%`)
-            if (activeFilters.quoteHandler) query = query.ilike('quote_user_name', `%${activeFilters.quoteHandler}%`)
-            if (activeFilters.vendor) query = query.ilike('vendor_name', `%${activeFilters.vendor}%`)
-            if (activeFilters.projectOrderId) query = query.ilike('project_order_id', `%${activeFilters.projectOrderId}%`)
-            if (activeFilters.procurement) query = query.ilike('procurement_name', `%${activeFilters.procurement}%`)
-            if (activeFilters.acceptHandler) query = query.ilike('accept_handler_name', `%${activeFilters.acceptHandler}%`)
 
             if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
             if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
@@ -291,22 +284,15 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         } else {
             try {
                 let query = supabase.from('maintenance_work_orders').select('*')
-                if (activeFilters.customSearch) {
-                    query = query.or(`work_order_id.ilike.%${activeFilters.customSearch}%,maintain_content.ilike.%${activeFilters.customSearch}%,printer_name.ilike.%${activeFilters.customSearch}%,handler_name.ilike.%${activeFilters.customSearch}%`)
+                if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
+                    const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                    for (const kw of keywords) {
+                        query = query.or(`work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,handler_name.ilike.%${kw}%,cost_center.ilike.%${kw}%,requester_name.ilike.%${kw}%,vendor_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,procurement_name.ilike.%${kw}%,status.ilike.%${kw}%`);
+                    }
                 }
                 if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
                 if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
                 if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
-                if (activeFilters.costCenter) query = query.ilike('cost_center', `%${activeFilters.costCenter}%`)
-                if (activeFilters.content) query = query.ilike('maintain_content', `%${activeFilters.content}%`)
-                if (activeFilters.requester) query = query.ilike('requester_name', `%${activeFilters.requester}%`)
-                if (activeFilters.workOrderId) query = query.ilike('work_order_id', `%${activeFilters.workOrderId}%`)
-                if (activeFilters.handler) query = query.ilike('handler_name', `%${activeFilters.handler}%`)
-                if (activeFilters.quoteHandler) query = query.ilike('quote_user_name', `%${activeFilters.quoteHandler}%`)
-                if (activeFilters.vendor) query = query.ilike('vendor_name', `%${activeFilters.vendor}%`)
-                if (activeFilters.projectOrderId) query = query.ilike('project_order_id', `%${activeFilters.projectOrderId}%`)
-                if (activeFilters.procurement) query = query.ilike('procurement_name', `%${activeFilters.procurement}%`)
-                if (activeFilters.acceptHandler) query = query.ilike('accept_handler_name', `%${activeFilters.acceptHandler}%`)
                 
                 if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
                 if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
@@ -488,8 +474,6 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                 <AdvancedSearchFilter
                     onSearch={(f) => { setActiveFilters(f); setCurrentPage(1); }}
                     onReset={() => { setActiveFilters(defaultFilters); setCurrentPage(1); }}
-                    hideQuoteHandler={true}
-                    hideAcceptHandler={true}
                 />
 
                 {loading ? (

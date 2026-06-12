@@ -1,26 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HANDLER_NAMES } from '@/lib/maintenance-constants';
 
 export interface SearchFilters {
     startDate: string;
     endDate: string;
     status: string;
-    costCenter: string;
-    content: string;
-    requester: string;
-    workOrderId: string;
-    handler: string;
-    quoteHandler: string;
-    vendor: string;
     amount: string; // 'lte20k' | 'gt20k' | ''
-    projectOrderId: string;
-    procurement: string;
-    acceptHandler: string;
     customSearch: string;
     planStartDate: string;
     planEndDate: string;
@@ -32,17 +21,7 @@ export const defaultFilters: SearchFilters = {
     startDate: '',
     endDate: '',
     status: '',
-    costCenter: '',
-    content: '',
-    requester: '',
-    workOrderId: '',
-    handler: '',
-    quoteHandler: '',
-    vendor: '',
     amount: '',
-    projectOrderId: '',
-    procurement: '',
-    acceptHandler: '',
     customSearch: '',
     planStartDate: '',
     planEndDate: '',
@@ -53,16 +32,12 @@ export const defaultFilters: SearchFilters = {
 interface AdvancedSearchFilterProps {
     onSearch: (filters: SearchFilters) => void;
     onReset: () => void;
-    hideQuoteHandler?: boolean;
-    hideAcceptHandler?: boolean;
     hideStatus?: boolean;
 }
 
 export function AdvancedSearchFilter({ 
     onSearch, 
     onReset, 
-    hideQuoteHandler = false,
-    hideAcceptHandler = false,
     hideStatus = false
 }: AdvancedSearchFilterProps) {
     const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
@@ -96,7 +71,7 @@ export function AdvancedSearchFilter({
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
-                            placeholder="搜尋編號、印單人、承辦人或內容..."
+                            placeholder="多關鍵字空白分割(AND)搜尋，支援搜尋單號、開單人、承辦人、廠商或內容等..."
                             value={filters.customSearch}
                             onChange={(e) => handleChange('customSearch', e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -129,7 +104,7 @@ export function AdvancedSearchFilter({
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                     >
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-4 pt-4 border-t" onKeyDown={handleKeyDown}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 pt-4 border-t" onKeyDown={handleKeyDown}>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">開始日期</label>
                                 <Input type="date" value={filters.startDate} onChange={(e) => handleChange('startDate', e.target.value)} />
@@ -139,16 +114,12 @@ export function AdvancedSearchFilter({
                                 <Input type="date" value={filters.endDate} onChange={(e) => handleChange('endDate', e.target.value)} />
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">工單編號</label>
-                                <Input value={filters.workOrderId} onChange={(e) => handleChange('workOrderId', e.target.value)} placeholder="工單編號" />
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計開始</label>
+                                <Input type="date" value={filters.planStartDate} onChange={(e) => handleChange('planStartDate', e.target.value)} />
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">開單人</label>
-                                <Input value={filters.requester} onChange={(e) => handleChange('requester', e.target.value)} placeholder="開單人" />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">成本中心</label>
-                                <Input value={filters.costCenter} onChange={(e) => handleChange('costCenter', e.target.value)} placeholder="成本中心" />
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計結束</label>
+                                <Input type="date" value={filters.planEndDate} onChange={(e) => handleChange('planEndDate', e.target.value)} />
                             </div>
                             {!hideStatus && (
                                 <div>
@@ -173,33 +144,6 @@ export function AdvancedSearchFilter({
                                 </div>
                             )}
                             <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">承辦人</label>
-                                <Select key={filters.handler || 'empty'} value={filters.handler || undefined} onValueChange={(val) => handleChange('handler', val)}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="承辦人" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {HANDLER_NAMES.map(name => (
-                                            <SelectItem key={name} value={name}>{name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">維修內容</label>
-                                <Input value={filters.content} onChange={(e) => handleChange('content', e.target.value)} placeholder="維修內容" />
-                            </div>
-                            {!hideQuoteHandler && (
-                                <div>
-                                    <label className="text-sm font-medium text-muted-foreground mb-1 block">報價承辦人</label>
-                                    <Input value={filters.quoteHandler} onChange={(e) => handleChange('quoteHandler', e.target.value)} placeholder="報價承辦人" />
-                                </div>
-                            )}
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">廠商</label>
-                                <Input value={filters.vendor} onChange={(e) => handleChange('vendor', e.target.value)} placeholder="廠商" />
-                            </div>
-                            <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">金額</label>
                                 <Select value={filters.amount || 'all'} onValueChange={(val) => handleChange('amount', val === 'all' ? '' : val)}>
                                     <SelectTrigger>
@@ -213,18 +157,6 @@ export function AdvancedSearchFilter({
                                 </Select>
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">工程單編號</label>
-                                <Input value={filters.projectOrderId} onChange={(e) => handleChange('projectOrderId', e.target.value)} placeholder="工程單編號" />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計開始</label>
-                                <Input type="date" value={filters.planStartDate} onChange={(e) => handleChange('planStartDate', e.target.value)} />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計結束</label>
-                                <Input type="date" value={filters.planEndDate} onChange={(e) => handleChange('planEndDate', e.target.value)} />
-                            </div>
-                            <div>
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">分期期數大於</label>
                                 <Input type="number" min="0" value={filters.installmentCountGte} onChange={(e) => handleChange('installmentCountGte', e.target.value)} placeholder="期數" />
                             </div>
@@ -232,16 +164,6 @@ export function AdvancedSearchFilter({
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">分期期數小於</label>
                                 <Input type="number" min="0" value={filters.installmentCountLte} onChange={(e) => handleChange('installmentCountLte', e.target.value)} placeholder="期數" />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">採購組姓名</label>
-                                <Input value={filters.procurement} onChange={(e) => handleChange('procurement', e.target.value)} placeholder="採購組姓名" />
-                            </div>
-                            {!hideAcceptHandler && (
-                                <div>
-                                    <label className="text-sm font-medium text-muted-foreground mb-1 block">驗收承辦人</label>
-                                    <Input value={filters.acceptHandler} onChange={(e) => handleChange('acceptHandler', e.target.value)} placeholder="驗收承辦人" />
-                                </div>
-                            )}
                         </div>
                     </motion.div>
                 )}

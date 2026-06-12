@@ -75,21 +75,10 @@ export default function EngineeringHistoryClient() {
             return { key, direction: 'asc' }
         })
     }
-    // 即時過濾資料
+    // 即時過濾資料 - 已由後端過濾，直接返回 data
     const filteredData = useMemo(() => {
-        if (!keyword.trim()) return data
-        const keywords = keyword.toLowerCase().split(/\s+/).filter(Boolean)
-
-        return data.filter(row => 
-            keywords.every(kw =>
-                row.vendor_name?.toLowerCase().includes(kw) ||
-                row.work_content?.toLowerCase().includes(kw) ||
-                row.unit?.toLowerCase().includes(kw) ||
-                row.engineering_contact?.toLowerCase().includes(kw) ||
-                row.note?.toLowerCase().includes(kw)
-            )
-        )
-    }, [data, keyword])
+        return data
+    }, [data])
 
     const sortedData = useMemo(() => {
         const source = filteredData
@@ -127,11 +116,20 @@ export default function EngineeringHistoryClient() {
             .select('*', { count: 'exact' })
             .gte('start_date', startDate)
             .lte('start_date', endDate)
+
+        // 關鍵字搜尋：支援多關鍵字空白分割(AND)搜尋，在後端進行鏈式 OR 查詢
+        if (keyword.trim()) {
+            const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+            for (const kw of keywords) {
+                query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,unit.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%`)
+            }
+        }
+
+        query = query
             .order('start_date', { ascending: false })
             .order('created_at', { ascending: false })
             .range((page - 1) * pageSize, page * pageSize - 1)
 
-        // 關鍵字搜尋改在前端處理，這裡不帶 or 條件
         const { data: records, count, error } = await query
 
         if (error) {
@@ -147,7 +145,7 @@ export default function EngineeringHistoryClient() {
 
     useEffect(() => {
         fetchData()
-    }, [page, pageSize, startDate, endDate])
+    }, [page, pageSize, startDate, endDate, keyword])
 
     // handleSearch 已經不需要，改為偵測關鍵字變動
 
@@ -165,7 +163,10 @@ export default function EngineeringHistoryClient() {
                 .order('start_date', { ascending: false })
 
             if (keyword.trim()) {
-                query = query.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,unit.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+                const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+                for (const kw of keywords) {
+                    query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,unit.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%`)
+                }
             }
 
             const { data: allData } = await query
