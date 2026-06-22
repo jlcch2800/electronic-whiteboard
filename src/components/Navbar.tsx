@@ -33,10 +33,10 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
     { label: '首頁', icon: Home, href: '/' },
     {
-        label: '今日-待處理', icon: Calendar, children: [
-            { label: '廠商今日施工', icon: Users, href: '/vendor-work' },
-            { label: '工務今日施工', icon: HardHat, href: '/engineering-work' },
-            { label: '待處理工作', icon: Clock, href: '/pending-work' },
+        label: '今日-預定', icon: Calendar, children: [
+            { label: '廠商今日工作', icon: Users, href: '/vendor-work' },
+            { label: '工務室今日排程', icon: HardHat, href: '/engineering-work' },
+            { label: '預定工作', icon: Clock, href: '/pending-work' },
             { label: 'All', icon: LayoutDashboard, href: '/dashboard' },
         ]
     },
@@ -55,9 +55,9 @@ const NAV_ITEMS: NavItem[] = [
     },
     {
         label: '歷史記錄', icon: History, children: [
-            { label: '廠商施工歷史', icon: Users, href: '/history/vendor' },
-            { label: '工務施工歷史', icon: HardHat, href: '/history/engineering' },
-            { label: '待處理工作歷史', icon: FileClock, href: '/history/pending' },
+            { label: '廠商工作歷史', icon: Users, href: '/history/vendor' },
+            { label: '工務室排程歷史', icon: HardHat, href: '/history/engineering' },
+            { label: '預定工作歷史', icon: FileClock, href: '/history/pending' },
             { label: '施工回報歷史', icon: ClipboardCheck, href: '/history/report' },
             { label: '維修單歷史紀錄', icon: Activity, href: '/maintenance-work/history' },
         ]

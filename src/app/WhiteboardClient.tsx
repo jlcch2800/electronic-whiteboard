@@ -106,7 +106,7 @@ export default function WhiteboardClient({
     // Search states
     const [vendorSearch, setVendorSearch] = useState({ start: format(new Date(), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd'), keyword: '' })
     const [engSearch, setEngSearch] = useState({ start: format(new Date(), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd'), keyword: '' })
-    // 待處理工作項目預設顯示當日起六個月內
+    // 預定工作項目預設顯示當日起六個月內
     const [pendingSearch, setPendingSearch] = useState({ start: format(new Date(), 'yyyy-MM-dd'), end: format(addDays(new Date(), 180), 'yyyy-MM-dd'), keyword: '' })
 
     const [isVendorFiltersOpen, setIsVendorFiltersOpen] = useState(false)
@@ -349,7 +349,7 @@ export default function WhiteboardClient({
             }))
         } else {
             // Engineering and Pending share similar structure
-            prefix = type === 'engineering' ? '工務今日施工' : '待處理工作'
+            prefix = type === 'engineering' ? '工務室今日排程' : '預定工作'
             sheetData = dataToExport.map((item, index) => ({
                 '#': index + 1,
                 'ID': item.id,
@@ -386,8 +386,8 @@ export default function WhiteboardClient({
         let themeColor: [number, number, number] = [124, 58, 237]
 
         if (type === 'vendor') {
-            title = '廠商今日施工項目清單'
-            prefix = '廠商今日施工'
+            title = '廠商今日工作項目清單'
+            prefix = '廠商今日工作'
             themeColor = [37, 99, 235] // Blue
             sheetData = dataToExport.map((v, index) => ({
                 '#': index + 1,
@@ -412,8 +412,8 @@ export default function WhiteboardClient({
                 '歸還人員': v.receiver_name || ''
             }))
         } else {
-            title = type === 'engineering' ? '工務今日施工項目清單' : '待處理工作項目清單'
-            prefix = type === 'engineering' ? '工務今日施工' : '待處理工作'
+            title = type === 'engineering' ? '工務室今日排程項目清單' : '預定工作項目清單'
+            prefix = type === 'engineering' ? '工務室今日排程' : '預定工作'
             themeColor = type === 'engineering' ? [217, 119, 6] : [124, 58, 237] // Amber or Purple
             sheetData = dataToExport.map((item, index) => ({
                 '#': index + 1,
@@ -464,7 +464,7 @@ export default function WhiteboardClient({
                         <div className="flex justify-between items-center w-full xl:w-auto">
                             <h2 className="font-black text-foreground/80 flex items-center gap-2">
                                 <Users className="w-5 h-5 text-blue-500" />
-                                廠商今日施工項目
+                                廠商今日工作項目
                             </h2>
                             <Button size="sm" variant="outline" className="xl:hidden" onClick={() => setIsVendorFiltersOpen(!isVendorFiltersOpen)}>
                                 <Filter className="w-4 h-4 mr-2" />篩選與操作
@@ -508,7 +508,7 @@ export default function WhiteboardClient({
                     {loading ? (
                         <SkeletonTable />
                     ) : vendors.length === 0 ? (
-                        <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
+                        <EmptyState icon={Users} title="今日暫無廠商工作" description="目前沒有安排任何廠商工作項目，您可以點擊右上方新增。" />
                     ) : (
                         <>
                             <div className="overflow-x-auto">
@@ -614,7 +614,7 @@ export default function WhiteboardClient({
 
                                     {vendorTable.paginatedData.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground border rounded-lg bg-white/50 border-border border-dashed">
-                                            目前無廠商施工項目
+                                            目前無廠商工作項目
                                         </div>
                                     ) : (
                                         vendorTable.paginatedData.map((v: any, index: number) => (
@@ -693,7 +693,7 @@ export default function WhiteboardClient({
                         <div className="flex justify-between items-center w-full xl:w-auto">
                             <h2 className="font-black text-foreground/80 flex items-center gap-2">
                                 <HardHat className="w-5 h-5 text-amber-500" />
-                                工務今日工作項目
+                                工務室今日排程項目
                             </h2>
                             <Button size="sm" variant="outline" className="xl:hidden" onClick={() => setIsEngFiltersOpen(!isEngFiltersOpen)}>
                                 <Filter className="w-4 h-4 mr-2" />篩選與操作
@@ -737,7 +737,7 @@ export default function WhiteboardClient({
                     {loading ? (
                         <SkeletonTable />
                     ) : engineering.length === 0 ? (
-                        <EmptyState icon={HardHat} title="今日暫無工務施工" description="目前沒有安排任何工務施工項目，您可以點擊右上方新增。" />
+                        <EmptyState icon={HardHat} title="今日暫無工務室排程" description="目前沒有安排任何工務室排程項目，您可以點擊右上方新增。" />
                     ) : (
                         <>
                             <div className="overflow-x-auto">
@@ -812,7 +812,7 @@ export default function WhiteboardClient({
 
                                     {engTable.paginatedData.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground border rounded-lg bg-white/50 border-border border-dashed">
-                                            目前無工務施工項目
+                                            目前無工務室排程項目
                                         </div>
                                     ) : (
                                         engTable.paginatedData.map((e: any, index: number) => (
@@ -867,7 +867,7 @@ export default function WhiteboardClient({
                         <div className="flex justify-between items-center w-full xl:w-auto">
                             <h2 className="font-black text-foreground/80 flex items-center gap-2">
                                 <FileClock className="w-5 h-5 text-purple-500" />
-                                待處理工作項目
+                                預定工作項目
                             </h2>
                             <Button size="sm" variant="outline" className="xl:hidden" onClick={() => setIsPendingFiltersOpen(!isPendingFiltersOpen)}>
                                 <Filter className="w-4 h-4 mr-2" />篩選與操作
@@ -917,7 +917,7 @@ export default function WhiteboardClient({
                     {loading ? (
                         <SkeletonTable />
                     ) : pendingWork.length === 0 ? (
-                        <EmptyState icon={FileClock} title="目前無待處理項目" description="沒有需要追蹤的待處理任務，點擊右上方即可新增。" />
+                        <EmptyState icon={FileClock} title="目前無預定項目" description="沒有需要追蹤的預定任務，點擊右上方即可新增。" />
                     ) : (
                         <>
                             <div className="overflow-x-auto">

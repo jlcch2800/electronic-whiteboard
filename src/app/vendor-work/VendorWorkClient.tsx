@@ -189,7 +189,7 @@ export default function VendorWorkClient({ initialData, hideHomeButton: propHide
             if (error) throw error
 
             // 發送 Telegram 刪除通知
-            sendTelegramNotify(formatDeleteMessage('廠商今日施工項目', deletedItems, VENDOR_WORK_LABELS))
+            sendTelegramNotify(formatDeleteMessage('廠商今日工作項目', deletedItems, VENDOR_WORK_LABELS))
 
             // 寫入系統異動紀錄
             logBatchDeleteRecords('vendor_today_work', deletedItems)
@@ -235,7 +235,7 @@ export default function VendorWorkClient({ initialData, hideHomeButton: propHide
             '歸還人員': v.receiver_name || ''
         }))
 
-        exportToExcelFile(sheetData, '廠商今日施工')
+        exportToExcelFile(sheetData, '廠商今日工作')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
 
@@ -274,9 +274,9 @@ export default function VendorWorkClient({ initialData, hideHomeButton: propHide
 
         try {
             await exportToPdfFile({
-                title: '廠商今日施工項目清單',
+                title: '廠商今日工作項目清單',
                 sheetData,
-                filenamePrefix: '廠商今日施工',
+                filenamePrefix: '廠商今日工作',
                 orientation: 'landscape',
                 themeColor: [37, 99, 235], // 藍色品牌色
                 excludeColumns: [] // 顯示所有欄位資料
@@ -303,7 +303,7 @@ export default function VendorWorkClient({ initialData, hideHomeButton: propHide
                     )}
                     <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                         <Users className="w-6 h-6 text-blue-500" />
-                        廠商今日施工項目
+                        廠商今日工作項目
                     </h1>
                 </div>
             </header>
@@ -393,7 +393,7 @@ export default function VendorWorkClient({ initialData, hideHomeButton: propHide
                                         {sortedData.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={19} className="p-0">
-                                                    <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
+                                                    <EmptyState icon={Users} title="今日暫無廠商工作" description="目前沒有安排任何廠商工作項目，您可以點擊右上方新增。" />
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -472,7 +472,7 @@ export default function VendorWorkClient({ initialData, hideHomeButton: propHide
                                         </div>
                                     )}
                                     {sortedData.length === 0 ? (
-                                        <EmptyState icon={Users} title="今日暫無廠商施工" description="目前沒有安排任何廠商施工項目，您可以點擊右上方新增。" />
+                                        <EmptyState icon={Users} title="今日暫無廠商工作" description="目前沒有安排任何廠商工作項目，您可以點擊右上方新增。" />
                                     ) : (
                                         sortedData.map((v: any, index: number) => (
                                             <MobileTableCard

@@ -4,7 +4,7 @@ import VendorWorkClient from '../vendor-work/VendorWorkClient'
 export const dynamic = 'force-dynamic'
 
 /**
- * 特定人員專用的廠商今日施工頁面
+ * 特定人員專用的廠商今日工作頁面
  * 與 /vendor-work 完全一樣，但移除「返回首頁」按鈕
  */
 export default async function VendorWorkGuestPage() {

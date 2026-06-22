@@ -59,13 +59,13 @@ export default function PendingEditClient({ initialData }: { initialData: any })
             if (error) throw error
 
             // 發送 Telegram 通知（修改前後對照）
-            sendTelegramNotify(formatUpdateMessage('待處理工作項目', initialData, pendingData, PENDING_WORK_LABELS))
+            sendTelegramNotify(formatUpdateMessage('預定工作項目', initialData, pendingData, PENDING_WORK_LABELS))
 
             // 寫入系統異動紀錄
             logChangeRecord({ actionType: 'Update', modifyTable: 'pending_work', modifyRecordId: initialData.id, oldData: initialData, newData: pendingData })
 
             setIsSuccess(true)
-            toast({ title: '修改成功', description: '待處理工作項目已更新' })
+            toast({ title: '修改成功', description: '預定工作項目已更新' })
             setTimeout(() => router.push('/'), 1500)
         } catch (error: any) {
             toast({ title: '修改失敗', description: error.message, variant: 'destructive' })
@@ -76,7 +76,7 @@ export default function PendingEditClient({ initialData }: { initialData: any })
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-            <FormHeader title="待處理工作項目 - 修改" currentStep={3} totalSteps={3} themeColor="bg-purple-600">
+            <FormHeader title="預定工作項目 - 修改" currentStep={3} totalSteps={3} themeColor="bg-purple-600">
                 <BackButton />
             </FormHeader>
 

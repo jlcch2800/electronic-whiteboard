@@ -99,7 +99,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
             if (error) throw error
 
             // 發送 Telegram 刪除通知
-            sendTelegramNotify(formatDeleteMessage('工務今日施工項目', deletedItems, ENGINEERING_WORK_LABELS))
+            sendTelegramNotify(formatDeleteMessage('工務室今日排程項目', deletedItems, ENGINEERING_WORK_LABELS))
 
             // 寫入系統異動紀錄
             logBatchDeleteRecords('engineering_today_work', deletedItems)
@@ -136,7 +136,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
             '備註': item.note || ''
         }))
 
-        exportToExcelFile(sheetData, '工務今日施工')
+        exportToExcelFile(sheetData, '工務室今日排程')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
 
@@ -166,9 +166,9 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
 
         try {
             await exportToPdfFile({
-                title: '工務今日施工項目清單',
+                title: '工務室今日排程項目清單',
                 sheetData,
-                filenamePrefix: '工務今日施工',
+                filenamePrefix: '工務室今日排程',
                 orientation: 'landscape',
                 themeColor: [217, 119, 6] // 琥珀色品牌色
             })
@@ -192,7 +192,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                     <div className="h-6 w-px bg-border" />
                     <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                         <HardHat className="w-6 h-6 text-amber-500" />
-                        工務今日施工項目
+                        工務室今日排程項目
                     </h1>
                 </div>
             </header>
@@ -274,8 +274,8 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                                 <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                                                     <EmptyState
                                                         icon={Search}
-                                                        title="查無工務施工項目"
-                                                        description="目前沒有符合條件的工務施工資料。"
+                                                        title="查無工務室排程項目"
+                                                        description="目前沒有符合條件的工務室排程資料。"
                                                     />
                                                 </TableCell>
                                             </TableRow>
@@ -334,7 +334,7 @@ export default function EngineeringWorkClient({ initialData }: EngineeringWorkCl
                                     )}
                                     {tableData.paginatedData.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground">
-                                            查無工務施工項目
+                                            查無工務室排程項目
                                         </div>
                                     ) : (
                                         tableData.paginatedData.map((e: any, index: number) => (

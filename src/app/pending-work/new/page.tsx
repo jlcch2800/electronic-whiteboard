@@ -81,13 +81,13 @@ export default function PendingWorkNewPage() {
             if (error) throw error
 
             // 發送 Telegram 通知
-            sendTelegramNotify(formatCreateMessage('待處理工作項目', pendingData, PENDING_WORK_LABELS))
+            sendTelegramNotify(formatCreateMessage('預定工作項目', pendingData, PENDING_WORK_LABELS))
 
             // 寫入系統異動紀錄
             logChangeRecord({ actionType: 'Insert', modifyTable: 'pending_work', modifyRecordId: inserted?.id || '', newData: pendingData })
 
             setIsSuccess(true)
-            toast({ title: '新增成功', description: '待處理工作項目已新增' })
+            toast({ title: '新增成功', description: '預定工作項目已新增' })
             setTimeout(() => router.push('/'), 1500)
         } catch (error: any) {
             toast({ title: '新增失敗', description: error.message, variant: 'destructive' })
@@ -96,7 +96,7 @@ export default function PendingWorkNewPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 to-slate-100">
-            <FormHeader title="待處理工作項目 - 新增" currentStep={getFilledSteps()} totalSteps={totalSteps} themeColor="bg-purple-600">
+            <FormHeader title="預定工作項目 - 新增" currentStep={getFilledSteps()} totalSteps={totalSteps} themeColor="bg-purple-600">
                 <BackButton />
             </FormHeader>
 
@@ -157,7 +157,7 @@ export default function PendingWorkNewPage() {
                 open={showConfirm}
                 onConfirm={onConfirmSubmit}
                 onCancel={() => setShowConfirm(false)}
-                title="確認提交待處理工作項目"
+                title="確認提交預定工作項目"
                 data={pendingData || {}}
                 fieldLabels={FIELD_LABELS}
             />

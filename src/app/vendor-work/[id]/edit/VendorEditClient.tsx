@@ -255,11 +255,11 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
             const { error } = await supabase.from('vendor_today_work').update(payload).eq('id', initialData.id)
             if (error) throw error
 
-            sendTelegramNotify(formatUpdateMessage('廠商今日施工項目', initialData, payload, VENDOR_WORK_LABELS))
+            sendTelegramNotify(formatUpdateMessage('廠商今日工作項目', initialData, payload, VENDOR_WORK_LABELS))
             logChangeRecord({ actionType: 'Update', modifyTable: 'vendor_today_work', modifyRecordId: initialData.id, oldData: initialData, newData: payload })
 
             setIsSuccess(true)
-            toast({ title: '修改成功', description: '廠商施工項目已更新' })
+            toast({ title: '修改成功', description: '廠商工作項目已更新' })
             setTimeout(() => router.push(isGuest ? '/vendor-work-guest' : '/'), 1500)
         } catch (error: any) {
             toast({ title: '修改失敗', description: error.message, variant: 'destructive' })
@@ -270,7 +270,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100">
-            <FormHeader title="廠商今日施工項目 - 修改" currentStep={3} totalSteps={3} themeColor="bg-blue-600">
+            <FormHeader title="廠商今日工作項目 - 修改" currentStep={3} totalSteps={3} themeColor="bg-blue-600">
                 <BackButton />
             </FormHeader>
 

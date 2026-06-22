@@ -58,13 +58,13 @@ export default function EngineeringEditClient({ initialData }: { initialData: an
             if (error) throw error
 
             // 發送 Telegram 通知（修改前後對照）
-            sendTelegramNotify(formatUpdateMessage('工務今日施工項目', initialData, pendingData, ENGINEERING_WORK_LABELS))
+            sendTelegramNotify(formatUpdateMessage('工務室今日排程項目', initialData, pendingData, ENGINEERING_WORK_LABELS))
 
             // 寫入系統異動紀錄
             logChangeRecord({ actionType: 'Update', modifyTable: 'engineering_today_work', modifyRecordId: initialData.id, oldData: initialData, newData: pendingData })
 
             setIsSuccess(true)
-            toast({ title: '修改成功', description: '工務施工項目已更新' })
+            toast({ title: '修改成功', description: '工務室今日排程項目已更新' })
             setTimeout(() => router.push('/'), 1500)
         } catch (error: any) {
             toast({ title: '修改失敗', description: error.message, variant: 'destructive' })
@@ -75,7 +75,7 @@ export default function EngineeringEditClient({ initialData }: { initialData: an
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
-            <FormHeader title="工務今日施工項目 - 修改" currentStep={3} totalSteps={3} themeColor="bg-amber-500">
+            <FormHeader title="工務室今日排程項目 - 修改" currentStep={3} totalSteps={3} themeColor="bg-amber-500">
                 <BackButton />
             </FormHeader>
 

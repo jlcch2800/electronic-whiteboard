@@ -317,14 +317,14 @@ export default function VendorWorkNewPage() {
 
 
             // 發送 Telegram 通知
-            sendTelegramNotify(formatCreateMessage('廠商今日施工項目', payload, VENDOR_WORK_LABELS))
+            sendTelegramNotify(formatCreateMessage('廠商今日工作項目', payload, VENDOR_WORK_LABELS))
 
             // 寫入系統異動紀錄
             logChangeRecord({ actionType: 'Insert', modifyTable: 'vendor_today_work', modifyRecordId: inserted?.id || '', newData: payload })
 
             // 成功動畫
             setIsSuccess(true)
-            toast({ title: '新增成功', description: '廠商今日施工項目已新增' })
+            toast({ title: '新增成功', description: '廠商今日工作項目已新增' })
 
             // 1.5 秒後跳轉
             setTimeout(() => router.push(isGuest ? '/vendor-work-guest' : '/'), 1500)
@@ -337,7 +337,7 @@ export default function VendorWorkNewPage() {
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
             {/* Header + 進度條 */}
             <FormHeader
-                title="廠商今日施工項目 - 新增"
+                title="廠商今日工作項目 - 新增"
                 currentStep={currentStep}
                 totalSteps={totalSteps}
                 themeColor="bg-blue-600"
@@ -591,7 +591,7 @@ export default function VendorWorkNewPage() {
                 open={showConfirm}
                 onConfirm={() => onConfirmSubmit(false)}
                 onCancel={() => setShowConfirm(false)}
-                title="確認提交廠商施工項目"
+                title="確認提交廠商工作項目"
                 data={pendingData ? {
                     ...pendingData,
                     entry_status: pendingData.entry_status === 'arrival' ? '到院' : pendingData.entry_status === 'departure' ? '離院' : pendingData.entry_status,

@@ -11,7 +11,7 @@ export default async function DashboardPage() {
 
     // Fetch initial data for the whiteboard (today's data)
     const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
-    // 待處理工作項目預設顯示當日起六個月內
+    // 預定工作項目預設顯示當日起六個月內
     const sixMonthsLater = format(addMonths(new Date(), 6), 'yyyy-MM-dd')
 
     const [vendorData, engineeringData, pendingData] = await Promise.all([
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
             .select('*')
             .lte('start_date', today)
             .gte('end_date', today),
-        // 待處理工作項目：查詢當日起六個月內的項目
+        // 預定工作項目：查詢當日起六個月內的項目
         supabase
             .from('pending_work')
             .select('*')

@@ -268,7 +268,7 @@ export default function VendorHistoryClient() {
             '歸還人員': row.receiver_name || ''
         }))
 
-        exportToExcelFile(sheetData, '廠商施工歷史')
+        exportToExcelFile(sheetData, '廠商工作歷史')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
 
@@ -351,9 +351,9 @@ export default function VendorHistoryClient() {
 
         try {
             await exportToPdfFile({
-                title: '廠商施工歷史記錄列表',
+                title: '廠商工作歷史記錄列表',
                 sheetData,
-                filenamePrefix: '廠商施工歷史',
+                filenamePrefix: '廠商工作歷史',
                 orientation: 'landscape',
                 themeColor: [37, 99, 235], // 藍色品牌色
                 excludeColumns: []
@@ -376,7 +376,7 @@ export default function VendorHistoryClient() {
                     <div className="h-6 w-px bg-border" />
                     <h1 className="text-lg font-black text-foreground flex items-center gap-2">
                         <Users className="w-5 h-5 text-blue-500" />
-                        廠商施工歷史記錄
+                        廠商工作歷史記錄
                     </h1>
                 </div>
             </header>

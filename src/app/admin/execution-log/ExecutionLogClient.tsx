@@ -42,12 +42,12 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
 
     const TABLE_NAME_MAP: Record<string, string> = {
-        'vendor_today_work': '廠商今日施工項目',
-        'vendor_today_work_history': '廠商今日施工歷史記錄',
-        'engineering_today_work': '工務今日施工項目',
-        'engineering_work_history': '工務施工歷史記錄',
-        'pending_work': '待處理工作項目',
-        'pending_work_history': '待處理工作歷史記錄',
+        'vendor_today_work': '廠商今日工作項目',
+        'vendor_today_work_history': '廠商今日工作歷史記錄',
+        'engineering_today_work': '工務室今日排程項目',
+        'engineering_work_history': '工務室排程歷史記錄',
+        'pending_work': '預定工作項目',
+        'pending_work_history': '預定工作歷史記錄',
         'work_report': '施工回報記錄',
         'work_report_history': '施工回報歷史記錄',
         'users': '帳號管理',

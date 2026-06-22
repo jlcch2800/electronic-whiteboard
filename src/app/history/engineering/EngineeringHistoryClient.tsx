@@ -196,7 +196,7 @@ export default function EngineeringHistoryClient() {
             '備註': row.note || ''
         }))
 
-        exportToExcelFile(sheetData, '工務施工歷史')
+        exportToExcelFile(sheetData, '工務室排程歷史')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
 
@@ -225,9 +225,9 @@ export default function EngineeringHistoryClient() {
 
         try {
             await exportToPdfFile({
-                title: '工務施工歷史記錄清單',
+                title: '工務室排程歷史記錄清單',
                 sheetData,
-                filenamePrefix: '工務施工歷史',
+                filenamePrefix: '工務室排程歷史',
                 orientation: 'landscape',
                 themeColor: [217, 119, 6] // 琥珀色品牌色
             })
@@ -248,7 +248,7 @@ export default function EngineeringHistoryClient() {
                     <div className="h-6 w-px bg-border" />
                     <h1 className="text-lg font-black text-foreground flex items-center gap-2">
                         <HardHat className="w-5 h-5 text-amber-500" />
-                        工務施工歷史記錄
+                        工務室排程歷史記錄
                     </h1>
                 </div>
             </header>

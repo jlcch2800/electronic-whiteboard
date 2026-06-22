@@ -123,7 +123,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
             if (error) throw error
 
             // 發送 Telegram 刪除通知
-            sendTelegramNotify(formatDeleteMessage('待處理工作項目', deletedItems, PENDING_WORK_LABELS))
+            sendTelegramNotify(formatDeleteMessage('預定工作項目', deletedItems, PENDING_WORK_LABELS))
 
             // 寫入系統異動紀錄
             logBatchDeleteRecords('pending_work', deletedItems)
@@ -160,7 +160,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
             '備註': item.note || ''
         }))
 
-        exportToExcelFile(sheetData, '待處理工作')
+        exportToExcelFile(sheetData, '預定工作')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
 
@@ -190,9 +190,9 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
 
         try {
             await exportToPdfFile({
-                title: '待處理工作項目列表',
+                title: '預定工作項目列表',
                 sheetData,
-                filenamePrefix: '待處理工作',
+                filenamePrefix: '預定工作',
                 orientation: 'landscape',
                 themeColor: [124, 58, 237] // 紫色品牌色
             })
@@ -215,7 +215,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                     <div className="h-6 w-px bg-border" />
                     <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                         <FileClock className="w-6 h-6 text-purple-500" />
-                        待處理工作項目
+                        預定工作項目
                     </h1>
                 </div>
             </header>
@@ -336,8 +336,8 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
                                                 <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                                                     <EmptyState
                                                         icon={Search}
-                                                        title="查無待處理工作"
-                                                        description="目前沒有符合條件的待處理工作資料。"
+                                                        title="查無預定工作"
+                                                        description="目前沒有符合條件的預定工作資料。"
                                                     />
                                                 </TableCell>
                                             </TableRow>
@@ -394,7 +394,7 @@ export default function PendingWorkClient({ initialData }: PendingWorkClientProp
 
                                     {tableData.paginatedData.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground">
-                                            查無待處理工作
+                                            查無預定工作
                                         </div>
                                     ) : (
                                         tableData.paginatedData.map((e: any, index: number) => (

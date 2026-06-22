@@ -81,13 +81,13 @@ export default function EngineeringWorkNewPage() {
             if (error) throw error
 
             // 發送 Telegram 通知
-            sendTelegramNotify(formatCreateMessage('工務今日施工項目', pendingData, ENGINEERING_WORK_LABELS))
+            sendTelegramNotify(formatCreateMessage('工務室今日排程項目', pendingData, ENGINEERING_WORK_LABELS))
 
             // 寫入系統異動紀錄
             logChangeRecord({ actionType: 'Insert', modifyTable: 'engineering_today_work', modifyRecordId: inserted?.id || '', newData: pendingData })
 
             setIsSuccess(true)
-            toast({ title: '新增成功', description: '工務今日施工項目已新增' })
+            toast({ title: '新增成功', description: '工務室今日排程項目已新增' })
             setTimeout(() => router.push('/'), 1500)
         } catch (error: any) {
             toast({ title: '新增失敗', description: error.message, variant: 'destructive' })
@@ -96,7 +96,7 @@ export default function EngineeringWorkNewPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 to-slate-100">
-            <FormHeader title="工務今日施工項目 - 新增" currentStep={getFilledSteps()} totalSteps={totalSteps} themeColor="bg-amber-500">
+            <FormHeader title="工務室今日排程項目 - 新增" currentStep={getFilledSteps()} totalSteps={totalSteps} themeColor="bg-amber-500">
                 <BackButton />
             </FormHeader>
 
@@ -160,7 +160,7 @@ export default function EngineeringWorkNewPage() {
                 open={showConfirm}
                 onConfirm={onConfirmSubmit}
                 onCancel={() => setShowConfirm(false)}
-                title="確認提交工務施工項目"
+                title="確認提交工務室排程項目"
                 data={pendingData || {}}
                 fieldLabels={FIELD_LABELS}
             />

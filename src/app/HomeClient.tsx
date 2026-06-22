@@ -67,9 +67,9 @@ function useCountUp(target: number, duration: number = 1200) {
 
 // 各卡片的空狀態文案
 const EMPTY_STATE_MESSAGES: Record<string, string> = {
-    blue: '今日暫無廠商施工',
-    amber: '今日暫無工務施工',
-    purple: '目前無待處理事項',
+    blue: '今日暫無廠商工作',
+    amber: '今日暫無工務室排程',
+    purple: '目前無預定工作',
 }
 
 // 統計卡片元件
@@ -368,7 +368,7 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
                 <div className="flex flex-col md:grid md:grid-cols-3 gap-6 pb-2 md:pb-0 -mx-6 px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
                     <StatCard
                         icon={Users}
-                        label="廠商今日施工項目"
+                        label="廠商今日工作項目"
                         count={counts.vendor}
                         color="blue"
                         href="/vendor-work"
@@ -379,7 +379,7 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
                     />
                     <StatCard
                         icon={HardHat}
-                        label="工務今日施工項目"
+                        label="工務室今日排程項目"
                         count={counts.engineering}
                         color="amber"
                         href="/engineering-work"
@@ -391,7 +391,7 @@ export default function HomeClient({ initialCounts, initialPendingRecent, initia
                     />
                     <StatCard
                         icon={FileClock}
-                        label="待處理工作項目"
+                        label="預定工作項目"
                         count={counts.pending}
                         color="purple"
                         href="/pending-work"

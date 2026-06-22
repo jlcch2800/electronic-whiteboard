@@ -16,7 +16,7 @@ const VALUE_TRANSFORMERS: Record<string, Record<string, string>> = {
 // 各模組欄位中文名稱對照表
 // ═══════════════════════════════════
 
-/** 廠商今日施工項目 - 欄位標籤 */
+/** 廠商今日工作項目 - 欄位標籤 */
 export const VENDOR_WORK_LABELS: Record<string, string> = {
     entry_status: '到院/離院',
     work_date: '施工日期',
@@ -37,7 +37,7 @@ export const VENDOR_WORK_LABELS: Record<string, string> = {
     returned_items: '歸還項目',
 }
 
-/** 工務今日施工項目（施工回報）- 欄位標籤 */
+/** 工務室今日排程項目（施工回報）- 欄位標籤 */
 export const WORK_REPORT_LABELS: Record<string, string> = {
     report_date: '日期',
     report_time: '時間',
@@ -49,7 +49,7 @@ export const WORK_REPORT_LABELS: Record<string, string> = {
     note: '備註',
 }
 
-/** 待處理工作項目 - 欄位標籤 */
+/** 預定工作項目 - 欄位標籤 */
 export const PENDING_WORK_LABELS: Record<string, string> = {
     start_date: '開始日期',
     end_date: '結束日期',
@@ -61,7 +61,7 @@ export const PENDING_WORK_LABELS: Record<string, string> = {
     note: '備註',
 }
 
-/** 工務今日施工項目 - 欄位標籤 */
+/** 工務室今日排程項目 - 欄位標籤 */
 export const ENGINEERING_WORK_LABELS: Record<string, string> = {
     start_date: '開始日期',
     end_date: '結束日期',

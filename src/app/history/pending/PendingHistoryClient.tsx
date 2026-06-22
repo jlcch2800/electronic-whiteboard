@@ -119,7 +119,7 @@ export default function PendingHistoryClient() {
         const dataToExport = await getExportData()
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '', '開始日期': r.start_date, '結束日期': r.end_date, '時間': r.time || '', '廠商': r.vendor_name, '單位': r.unit, '負責人': r.engineering_contact, '施工內容': r.work_content || '', '備註': r.note || '' }))
-        exportToExcelFile(sheetData, '待處理工作歷史')
+        exportToExcelFile(sheetData, '預定工作歷史')
         toast({ title: '匯出成功', description: `已匯出 ${dataToExport.length} 筆資料` })
     }
 
@@ -144,9 +144,9 @@ export default function PendingHistoryClient() {
 
         try {
             await exportToPdfFile({
-                title: '待處理工作歷史記錄清單',
+                title: '預定工作歷史記錄清單',
                 sheetData,
-                filenamePrefix: '待處理工作歷史',
+                filenamePrefix: '預定工作歷史',
                 orientation: 'landscape',
                 themeColor: [124, 58, 237] // 紫色品牌色
             })
@@ -162,7 +162,7 @@ export default function PendingHistoryClient() {
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="sm" onClick={() => router.push('/')}><ArrowLeft className="w-4 h-4 mr-1" />返回首頁</Button>
                     <div className="h-6 w-px bg-border" />
-                    <h1 className="text-lg font-black text-foreground flex items-center gap-2"><FileClock className="w-5 h-5 text-purple-500" />待處理工作歷史記錄</h1>
+                    <h1 className="text-lg font-black text-foreground flex items-center gap-2"><FileClock className="w-5 h-5 text-purple-500" />預定工作歷史記錄</h1>
                 </div>
             </header>
             <main className="p-6">

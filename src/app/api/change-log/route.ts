@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
     try {
@@ -76,8 +76,9 @@ export async function POST(req: NextRequest) {
             new_data: new_data ? '(有資料)' : null,
         })
 
-        // 寫入 system_change_log
-        const { error: insertError } = await supabase.from('system_change_log').insert(insertPayload)
+        // 寫入 system_change_log (使用 Admin Client 避免 RLS 阻擋未登入的 guest 寫入)
+        const supabaseAdmin = createAdminClient()
+        const { error: insertError } = await supabaseAdmin.from('system_change_log').insert(insertPayload)
 
         if (insertError) {
             console.error('[API /change-log] 寫入失敗:', insertError)
