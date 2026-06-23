@@ -44,7 +44,6 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
     const [currentPage, setCurrentPage] = useState(1)
     const [selected, setSelected] = useState<Set<string>>(new Set())
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
-    const [selectedTable, setSelectedTable] = useState('')
 
     const TABLE_NAME_MAP: Record<string, string> = {
         'vendor_today_work': '廠商今日工作項目',
@@ -218,10 +217,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             query = query.lte('date', endDate)
         }
 
-        // 資料表篩選
-        if (selectedTable) {
-            query = query.eq('modify_table', selectedTable)
-        }
+
 
         const { data } = await query.limit(500)
         if (data) setLogs(data)
@@ -547,16 +543,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                                 <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full md:w-36" placeholder="結束日期" />
                             </div>
 
-                            <select
-                                value={selectedTable}
-                                onChange={(e) => { setSelectedTable(e.target.value); setCurrentPage(1) }}
-                                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 w-full md:w-48 text-muted-foreground"
-                            >
-                                <option value="">所有異動項目 (全部)</option>
-                                {Object.entries(TABLE_NAME_MAP).map(([key, name]) => (
-                                    <option key={key} value={key}>{name}</option>
-                                ))}
-                            </select>
+
 
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
