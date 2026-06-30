@@ -441,8 +441,77 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         return null
     }
 
+    // 失去焦點觸發工程單編號格式驗證
+    const handleProjectOrderIdBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        const val = e.target.value.trim();
+        if (!val) return;
+
+        const errs: string[] = [];
+        if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
+            errs.push("請勿輸入全型字！");
+        }
+        if (val.length !== 12) {
+            errs.push("總字數必須為 12 字元！");
+        }
+        const secondToLast = val.charAt(val.length - 2);
+        if (secondToLast !== 'M') {
+            errs.push("最後第二個字需為大寫 M！");
+        }
+
+        if (errs.length > 0) {
+            alert(`工程單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
+        }
+    };
+
     // 儲存並前進狀態
     const handleSave = async (nextStatus?: string) => {
+        const orderErrors: string[] = [];
+
+        // 驗證工單編號規則
+        if (formData.work_order_id && formData.work_order_id.trim() !== '') {
+            const val = formData.work_order_id.trim();
+            const errs: string[] = [];
+            if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
+                errs.push("請勿輸入全型字！");
+            }
+            if (val.length !== 12) {
+                errs.push("總字數必須為 12 字元！");
+            }
+            if (!val.startsWith('F')) {
+                errs.push("第一個字需為大寫 F！");
+            }
+            if (!val.endsWith('a')) {
+                errs.push("最後一個字需為小寫 a！");
+            }
+            if (errs.length > 0) {
+                orderErrors.push(`工單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
+            }
+        }
+
+        // 驗證工程單編號規則
+        if (formData.project_order_id && formData.project_order_id.trim() !== '') {
+            const val = formData.project_order_id.trim();
+            const errs: string[] = [];
+            if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
+                errs.push("請勿輸入全型字！");
+            }
+            if (val.length !== 12) {
+                errs.push("總字數必須為 12 字元！");
+            }
+            const secondToLast = val.charAt(val.length - 2);
+            if (secondToLast !== 'M') {
+                errs.push("最後第二個字需為大寫 M！");
+            }
+            if (errs.length > 0) {
+                orderErrors.push(`工程單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
+            }
+        }
+
+        if (orderErrors.length > 0) {
+            alert(orderErrors.join('\n\n'));
+            return;
+        }
+
         // 狀態推進時必須驗證當前區塊必填欄位
         if (nextStatus) {
             const error = validateCurrentSection(nextStatus)
@@ -1208,7 +1277,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2 col-span-full">
                                         <Label>工程單編號 <span className="text-red-500">*</span></Label>
-                                        <Input name="project_order_id" value={formData.project_order_id || ''} onChange={handleInputChange} disabled={!isSectionEditable(6)} />
+                                        <Input name="project_order_id" value={formData.project_order_id || ''} onChange={handleInputChange} onBlur={handleProjectOrderIdBlur} disabled={!isSectionEditable(6)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>施工預計開始日期 <span className="text-red-500">*</span></Label>

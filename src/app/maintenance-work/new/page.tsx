@@ -86,11 +86,33 @@ export default function MaintenanceWorkNewPage() {
         }
     }, [profile, setValue])
 
-    // 失氣觸發單欄驗證
+    // 失焦觸發單欄驗證
     const handleFieldBlur = useCallback((fieldName: string) => {
         setTouchedFields(prev => ({ ...prev, [fieldName]: true }))
         trigger(fieldName as any)
-    }, [trigger])
+
+        if (fieldName === 'work_order_id') {
+            const val = (getValues('work_order_id') || '').trim();
+            if (val) {
+                const errs: string[] = [];
+                if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
+                    errs.push("請勿輸入全型字！");
+                }
+                if (val.length !== 12) {
+                    errs.push("總字數必須為 12 字元！");
+                }
+                if (!val.startsWith('F')) {
+                    errs.push("第一個字需為大寫 F！");
+                }
+                if (!val.endsWith('a')) {
+                    errs.push("最後一個字需為小寫 a！");
+                }
+                if (errs.length > 0) {
+                    alert(`工單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
+                }
+            }
+        }
+    }, [trigger, getValues])
 
     // 進度計算
     const totalSteps = 3
@@ -107,6 +129,28 @@ export default function MaintenanceWorkNewPage() {
 
     // 點擊提交 → 先檢查工單編號唯一性，再開確認 Dialog
     const onPreSubmit = async (data: MaintenanceWorkOrderFormValues) => {
+        // 驗證工單編號邏輯，一次顯示所有違反的規則
+        const workOrderVal = (data.work_order_id || '').trim();
+        if (workOrderVal) {
+            const errs: string[] = [];
+            if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(workOrderVal)) {
+                errs.push("請勿輸入全型字！");
+            }
+            if (workOrderVal.length !== 12) {
+                errs.push("總字數必須為 12 字元！");
+            }
+            if (!workOrderVal.startsWith('F')) {
+                errs.push("第一個字需為大寫 F！");
+            }
+            if (!workOrderVal.endsWith('a')) {
+                errs.push("最後一個字需為小寫 a！");
+            }
+            if (errs.length > 0) {
+                alert(`工單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
+                return;
+            }
+        }
+
         // 檢查工單編號是否已存在
         const { data: existing } = await supabase
             .from('maintenance_work_orders')
