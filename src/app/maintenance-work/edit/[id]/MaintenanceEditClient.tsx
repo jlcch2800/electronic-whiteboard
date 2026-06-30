@@ -450,8 +450,8 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
             errs.push("請勿輸入全型字！");
         }
-        if (val.length !== 12) {
-            errs.push("總字數必須為 12 字元！");
+        if (val.length !== 11) {
+            errs.push("總字數必須為 11 字元！");
         }
         const secondToLast = val.charAt(val.length - 2);
         if (secondToLast !== 'M') {
@@ -495,8 +495,8 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
                 errs.push("請勿輸入全型字！");
             }
-            if (val.length !== 12) {
-                errs.push("總字數必須為 12 字元！");
+            if (val.length !== 11) {
+                errs.push("總字數必須為 11 字元！");
             }
             const secondToLast = val.charAt(val.length - 2);
             if (secondToLast !== 'M') {
