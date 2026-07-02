@@ -110,7 +110,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         accept_dept_mgr_name: '驗收-開單主管姓名', accept_dept_mgr_date: '驗收-開單主管日期',
         accept_handler_name: '驗收-承辦人', accept_handler_date: '驗收-承辦人日期',
         accept_mgr_name: '驗收單位主管', accept_mgr_date: '驗收單位主管日期',
-        accept_director_name: '驗收部門主管', accept_director_date: '驗收部門主管日期',
+        accept_director_name: '驗收部門主管',
+        accept_director_date: '驗收部門主管日期',
+        is_contract: '是否為合約維修單',
+        contract_received_date: '紙本合約收到日期',
     }
 
     // 定義各資料表的欄位顯示順序 (整合排序)
@@ -164,6 +167,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'accept_mgr_name', 'accept_mgr_date',
         'accept_director_name', 'accept_director_date',
         'installment_count', 'installment_note',
+        'is_contract', 'contract_received_date',
     ];
 
     const formatLogValue = (key: string, value: any) => {
@@ -179,6 +183,10 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             if (value === 'none') return '"未借物"';
             if (value === 'return') return '"歸還"';
             if (value === 'partial_return') return '"部分未歸還"';
+        }
+
+        if (key === 'is_contract') {
+            return value === true ? '"合約"' : '"非合約"';
         }
 
         if (key === 'borrowed_items' || key === 'returned_items') {

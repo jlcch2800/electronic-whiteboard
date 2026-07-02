@@ -70,6 +70,8 @@ const EXPORT_LABELS: Record<string, string> = {
     'accept_mgr_date': '驗收單位主管日期',
     'accept_director_name': '驗收部門主管',
     'accept_director_date': '驗收部門主管日期',
+    'is_contract': '是否為合約維修單',
+    'contract_received_date': '紙本合約收到日期',
 }
 
 // ==========================================
@@ -145,7 +147,7 @@ export function MaintenanceDetailDialog({
             iconColor: "text-indigo-600 dark:text-indigo-400",
             bgColor: "bg-indigo-50/50 dark:bg-indigo-950/20",
             borderColor: "border-indigo-100 dark:border-indigo-900/40",
-            fields: ['project_order_id', 'plan_start_date', 'plan_end_date', 'procurement_name', 'procurement_date', 'material_name', 'material_date', 'rev_vice_dean_name', 'rev_vice_dean_date', 'rev_dean_name', 'rev_dean_date']
+            fields: ['is_contract', 'contract_received_date', 'project_order_id', 'plan_start_date', 'plan_end_date', 'procurement_name', 'procurement_date', 'material_name', 'material_date', 'rev_vice_dean_name', 'rev_vice_dean_date', 'rev_dean_name', 'rev_dean_date']
         },
         {
             title: "✅ 施工完工與驗收簽章",
@@ -197,7 +199,10 @@ export function MaintenanceDetailDialog({
                                         let isPending = false;
                                         let formattedVal = "";
 
-                                        if (rawVal === null || rawVal === undefined || String(rawVal).trim() === "" || rawVal === "-") {
+                                        if (key === 'is_contract') {
+                                            formattedVal = rawVal === true ? "合約" : "非合約";
+                                            isPending = false;
+                                        } else if (rawVal === null || rawVal === undefined || String(rawVal).trim() === "" || rawVal === "-") {
                                             isPending = true;
                                             formattedVal = "待簽核 / 未填寫";
                                         } else {

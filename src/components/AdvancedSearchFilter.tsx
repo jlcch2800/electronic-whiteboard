@@ -15,6 +15,7 @@ export interface SearchFilters {
     planEndDate: string;
     installmentCountGte: string;
     installmentCountLte: string;
+    isContract: string; // 'yes' | 'no' | ''
 }
 
 export const defaultFilters: SearchFilters = {
@@ -26,19 +27,22 @@ export const defaultFilters: SearchFilters = {
     planStartDate: '',
     planEndDate: '',
     installmentCountGte: '',
-    installmentCountLte: ''
+    installmentCountLte: '',
+    isContract: ''
 };
 
 interface AdvancedSearchFilterProps {
     onSearch: (filters: SearchFilters) => void;
     onReset: () => void;
     hideStatus?: boolean;
+    hidePlanDates?: boolean;
 }
 
 export function AdvancedSearchFilter({ 
     onSearch, 
     onReset, 
-    hideStatus = false
+    hideStatus = false,
+    hidePlanDates = false
 }: AdvancedSearchFilterProps) {
     const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
     const [expanded, setExpanded] = useState(false);
@@ -113,14 +117,18 @@ export function AdvancedSearchFilter({
                                 <label className="text-sm font-medium text-muted-foreground mb-1 block">結束日期</label>
                                 <Input type="date" value={filters.endDate} onChange={(e) => handleChange('endDate', e.target.value)} />
                             </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計開始</label>
-                                <Input type="date" value={filters.planStartDate} onChange={(e) => handleChange('planStartDate', e.target.value)} />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計結束</label>
-                                <Input type="date" value={filters.planEndDate} onChange={(e) => handleChange('planEndDate', e.target.value)} />
-                            </div>
+                            {!hidePlanDates && (
+                                <>
+                                    <div>
+                                        <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計開始</label>
+                                        <Input type="date" value={filters.planStartDate} onChange={(e) => handleChange('planStartDate', e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-muted-foreground mb-1 block">施工預計結束</label>
+                                        <Input type="date" value={filters.planEndDate} onChange={(e) => handleChange('planEndDate', e.target.value)} />
+                                    </div>
+                                </>
+                            )}
                             {!hideStatus && (
                                 <div>
                                     <label className="text-sm font-medium text-muted-foreground mb-1 block">維修狀態</label>
@@ -153,6 +161,19 @@ export function AdvancedSearchFilter({
                                         <SelectItem value="all">不限</SelectItem>
                                         <SelectItem value="lte20k">小於等於2萬</SelectItem>
                                         <SelectItem value="gt20k">大於2萬</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-muted-foreground mb-1 block">合約類型</label>
+                                <Select value={filters.isContract || 'all'} onValueChange={(val) => handleChange('isContract', val === 'all' ? '' : val)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="不限" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">不限</SelectItem>
+                                        <SelectItem value="yes">合約維修單</SelectItem>
+                                        <SelectItem value="no">非合約維修單</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

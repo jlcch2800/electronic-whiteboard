@@ -97,6 +97,8 @@ const EXPORT_LABELS: Record<string, string> = {
     'accept_mgr_date': '驗收單位主管日期',
     'accept_director_name': '驗收部門主管',
     'accept_director_date': '驗收部門主管日期',
+    'is_contract': '是否為合約維修單',
+    'contract_received_date': '紙本合約收到日期',
 }
 
 // STATUS_BADGE_CLASSES: 定義維修流程各狀態所對應的 Tailwind 顏色類別 (比照儀表板與流程配色風格)
@@ -163,7 +165,13 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
             if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
                 const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
                 for (const kw of keywords) {
-                    query = query.or(`work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,handler_name.ilike.%${kw}%,cost_center.ilike.%${kw}%,requester_name.ilike.%${kw}%,vendor_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,procurement_name.ilike.%${kw}%,status.ilike.%${kw}%`);
+                    let orConditions = `work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,handler_name.ilike.%${kw}%,cost_center.ilike.%${kw}%,requester_name.ilike.%${kw}%,vendor_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,procurement_name.ilike.%${kw}%,status.ilike.%${kw}%`;
+                    if (kw === '合約' || kw === '合約維修單') {
+                        orConditions += `,is_contract.eq.true`;
+                    } else if (kw === '非合約' || kw === '非合約維修單') {
+                        orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                    }
+                    query = query.or(orConditions);
                 }
             }
             if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
@@ -174,6 +182,12 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
             if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
             if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
             if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
+
+            if (activeFilters.isContract === 'yes') {
+                query = query.eq('is_contract', true)
+            } else if (activeFilters.isContract === 'no') {
+                query = query.or('is_contract.eq.false,is_contract.is.null')
+            }
 
             if (activeFilters.amount === 'lte20k') {
                 query = query.lte('amount', 20000)
@@ -333,7 +347,9 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
             const row: any = { '#': index + 1 }
             for (const key of Object.keys(EXPORT_LABELS)) {
                 let cellValue = v[key]
-                if (key === 'created_at' && cellValue) {
+                if (key === 'is_contract') {
+                    cellValue = cellValue === true ? '合約' : '非合約'
+                } else if (key === 'created_at' && cellValue) {
                     try {
                         cellValue = format(new Date(cellValue), 'yyyy-MM-dd HH:mm:ss')
                     } catch (e) {
@@ -363,7 +379,9 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
             const row: any = { '#': index + 1 }
             for (const key of Object.keys(EXPORT_LABELS)) {
                 let cellValue = v[key]
-                if (key === 'created_at' && cellValue) {
+                if (key === 'is_contract') {
+                    cellValue = cellValue === true ? '合約' : '非合約'
+                } else if (key === 'created_at' && cellValue) {
                     try {
                         cellValue = format(new Date(cellValue), 'yyyy-MM-dd HH:mm:ss')
                     } catch (e) {
@@ -522,7 +540,14 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                                     onCheckedChange={() => toggleSelect(item.id)}
                                                 />
                                             </TableCell>
-                                            <TableCell className="font-mono font-medium">{item.work_order_id}</TableCell>
+                                            <TableCell className="font-mono font-medium">
+                                                 <div className="flex items-center gap-2">
+                                                     {item.work_order_id}
+                                                     {item.is_contract && (
+                                                         <Badge className="bg-purple-100 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40 text-[10px] px-1.5 py-0 font-semibold">合約</Badge>
+                                                     )}
+                                                 </div>
+                                             </TableCell>
                                             <TableCell>
                                                 {/* 根據工單狀態動態顯示對應顏色之 Badge */}
                                                 <Badge variant="outline" className={STATUS_BADGE_CLASSES[item.status] || 'bg-blue-100 text-blue-700 border-blue-200'}>
@@ -581,7 +606,7 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                     <MobileTableCard
                                         key={item.id}
                                         id={item.id}
-                                        title={item.work_order_id}
+                                        title={item.is_contract ? `${item.work_order_id} (合約)` : item.work_order_id}
                                         subtitle={item.cost_center}
                                         status={{
                                             label: item.status,

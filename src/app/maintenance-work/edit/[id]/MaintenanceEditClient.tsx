@@ -106,6 +106,8 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         installment_note: initialData.installment_note || '',
         printer_name: initialData.printer_name || '',
         submit_date: initialData.submit_date || '',
+        is_contract: initialData.is_contract !== undefined && initialData.is_contract !== null ? initialData.is_contract : false,
+        contract_received_date: initialData.contract_received_date || '',
     }))
     const [lastSavedData, setLastSavedData] = useState<any>(() => ({
         ...initialData,
@@ -115,6 +117,8 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         installment_note: initialData.installment_note || '',
         printer_name: initialData.printer_name || '',
         submit_date: initialData.submit_date || '',
+        is_contract: initialData.is_contract !== undefined && initialData.is_contract !== null ? initialData.is_contract : false,
+        contract_received_date: initialData.contract_received_date || '',
     }))
     const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({})
 
@@ -344,6 +348,12 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
     // 驗證目前狀態的必填欄位
     const validateCurrentSection = (targetStatus?: string): string | null => {
+        // 特別處理：目標狀態為「已驗收」且是合約維修單時
+        if (targetStatus === '已驗收' && formData.is_contract === true) {
+            if (!formData.contract_received_date) return '請選擇紙本合約收到日期'
+            return null
+        }
+
         // 特別處理：目標狀態為「開單主管簽核完成」時
         if (targetStatus === '開單主管簽核完成') {
             // 如果是在狀態 2 區塊內進行的「開單主管簽核完成」儲存（原本狀態為開單主管簽核完成，或者基本資料已完成送審）
@@ -391,6 +401,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 if (!formData.dean_name) return '請選擇院長'
                 break
             case '採購發包簽核中':
+                if (formData.is_contract === true) {
+                    // 合約維修單：不需要驗證原本採購發包欄位
+                    break
+                }
                 if (!formData.procurement_name) return '請輸入採購組姓名'
                 if (!formData.material_name) return '請輸入資材室姓名'
                 if (!formData.rev_vice_dean_name) return '請選擇審查-副院長'
@@ -462,6 +476,19 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             alert(`工程單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
         }
     };
+
+    // 合約維修單結案
+    const handleContractSignoff = async () => {
+        if (formData.is_contract !== true) {
+            toast({ title: '驗證失敗', description: '請確認是否已選取合約為「是」', variant: 'destructive' })
+            return
+        }
+        if (!formData.contract_received_date) {
+            toast({ title: '驗證失敗', description: '請輸入紙本合約收到日期', variant: 'destructive' })
+            return
+        }
+        await handleSave('已驗收')
+    }
 
     // 儲存並前進狀態
     const handleSave = async (nextStatus?: string) => {
@@ -1160,106 +1187,169 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                             {openSections.section5 && (
                                 <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                                     <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>採購組姓名 <span className="text-red-500">*</span></Label>
-                                            <Input name="procurement_name" value={formData.procurement_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>採購組日期</Label>
-                                            <Input name="procurement_date" type="date" value={formData.procurement_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>資材室姓名 <span className="text-red-500">*</span></Label>
-                                            <Input name="material_name" value={formData.material_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>資材室日期</Label>
-                                            <Input name="material_date" type="date" value={formData.material_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
-                                        </div>
-                                        <div className="col-span-full h-px bg-slate-100 my-2" />
-                                        <div className="space-y-2">
-                                            <Label>審查-副院長 <span className="text-red-500">*</span></Label>
-                                            <Select 
-                                                value={isOtherSelected('rev_vice_dean_name', formData.rev_vice_dean_name, VICE_DEAN_NAMES) ? '其他' : (formData.rev_vice_dean_name || '')} 
-                                                onValueChange={(v) => {
-                                                    if (v === '其他') {
-                                                        setOtherSelected(prev => ({ ...prev, rev_vice_dean_name: true }))
-                                                        setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: '' }))
-                                                    } else {
-                                                        setOtherSelected(prev => ({ ...prev, rev_vice_dean_name: false }))
-                                                        setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: v }))
-                                                    }
-                                                }} 
-                                                disabled={!isSectionEditable(5)}
-                                            >
-                                                <SelectTrigger><SelectValue placeholder="選擇副院長" /></SelectTrigger>
-                                                <SelectContent>
-                                                    {VICE_DEAN_NAMES.map(n => (
-                                                        <SelectItem key={n} value={n}>{n}</SelectItem>
-                                                    ))}
-                                                    <SelectItem value="其他">其他</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            {isOtherSelected('rev_vice_dean_name', formData.rev_vice_dean_name, VICE_DEAN_NAMES) && (
-                                                <Input
-                                                    placeholder="請輸入審查副院長姓名"
-                                                    value={formData.rev_vice_dean_name || ''}
-                                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: e.target.value }))}
+                                        {/* 管理員專用：合約選取器 */}
+                                        {isAdmin && (
+                                            <div className="col-span-full space-y-2 bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-100 dark:border-slate-800 mb-2">
+                                                <Label className="font-semibold text-slate-700 dark:text-slate-300">合約選取 (管理員)</Label>
+                                                <Select
+                                                    value={formData.is_contract === true ? "true" : formData.is_contract === false ? "false" : ""}
+                                                    onValueChange={(val) => {
+                                                        setFormData((prev: any) => ({
+                                                            ...prev,
+                                                            is_contract: val === "true" ? true : val === "false" ? false : null
+                                                        }))
+                                                    }}
                                                     disabled={!isSectionEditable(5)}
-                                                    className="mt-2"
-                                                />
-                                            )}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>審查-副院長日期</Label>
-                                            <Input name="rev_vice_dean_date" type="date" value={formData.rev_vice_dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>
-                                                審查-院長 {Number(formData.amount) > 200000 && <span className="text-red-500">*</span>}
-                                            </Label>
-                                            <Select 
-                                                value={isOtherSelected('rev_dean_name', formData.rev_dean_name, DEAN_NAMES) ? '其他' : (formData.rev_dean_name || '')} 
-                                                onValueChange={(v) => {
-                                                    if (v === '其他') {
-                                                        setOtherSelected(prev => ({ ...prev, rev_dean_name: true }))
-                                                        setFormData((prev: any) => ({ ...prev, rev_dean_name: '' }))
-                                                    } else {
-                                                        setOtherSelected(prev => ({ ...prev, rev_dean_name: false }))
-                                                        setFormData((prev: any) => ({ ...prev, rev_dean_name: v }))
-                                                    }
-                                                }} 
-                                                disabled={!isSectionEditable(5)}
-                                            >
-                                                <SelectTrigger><SelectValue placeholder="選擇院長" /></SelectTrigger>
-                                                <SelectContent>
-                                                    {DEAN_NAMES.map(n => (
-                                                        <SelectItem key={n} value={n}>{n}</SelectItem>
-                                                    ))}
-                                                    <SelectItem value="其他">其他</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            {isOtherSelected('rev_dean_name', formData.rev_dean_name, DEAN_NAMES) && (
-                                                <Input
-                                                    placeholder="請輸入審查院長姓名"
-                                                    value={formData.rev_dean_name || ''}
-                                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, rev_dean_name: e.target.value }))}
-                                                    disabled={!isSectionEditable(5)}
-                                                    className="mt-2"
-                                                />
-                                            )}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>審查-院長日期</Label>
-                                            <Input name="rev_dean_date" type="date" value={formData.rev_dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
-                                        </div>
-                                        {isSectionEditable(5) && (
-                                            <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
-                                                <Button className="flex-1 bg-violet-600 hover:bg-violet-700" onClick={() => handleSave('採購已發包')}>審查完成，採購已發包</Button>
-                                                <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
-                                                    <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
-                                                </Button>
+                                                >
+                                                    <SelectTrigger className="w-full bg-white dark:bg-slate-950 border-slate-200">
+                                                        <SelectValue placeholder="請選擇是否為合約維修單 (非必填)" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="true">是</SelectItem>
+                                                        <SelectItem value="false">否</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
+                                        )}
+
+                                        {formData.is_contract === true ? (
+                                            /* 當選取是：僅出現紙本合約收到日期 (必填) 以及結案與僅儲存按鈕，其他原欄位隱藏 */
+                                            <>
+                                                <div className="col-span-full space-y-2">
+                                                    <Label className="font-semibold">紙本合約收到日期 <span className="text-red-500">*</span></Label>
+                                                    <Input
+                                                        name="contract_received_date"
+                                                        type="date"
+                                                        value={formData.contract_received_date || ''}
+                                                        onChange={handleInputChange}
+                                                        disabled={!isSectionEditable(5)}
+                                                    />
+                                                </div>
+                                                {isSectionEditable(5) && (
+                                                    <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                                        <Button
+                                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm"
+                                                            onClick={handleContractSignoff}
+                                                            disabled={loading}
+                                                        >
+                                                            合約維修單結案
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            className="flex-1 border-slate-300 dark:border-slate-700 font-semibold"
+                                                            onClick={() => handleSave()}
+                                                            disabled={loading}
+                                                        >
+                                                            <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            /* 當選取否或未選取：維持原先的填寫方式 */
+                                            <>
+                                                <div className="space-y-2">
+                                                    <Label>採購組姓名 <span className="text-red-500">*</span></Label>
+                                                    <Input name="procurement_name" value={formData.procurement_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>採購組日期</Label>
+                                                    <Input name="procurement_date" type="date" value={formData.procurement_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>資材室姓名 <span className="text-red-500">*</span></Label>
+                                                    <Input name="material_name" value={formData.material_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>資材室日期</Label>
+                                                    <Input name="material_date" type="date" value={formData.material_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
+                                                </div>
+                                                <div className="col-span-full h-px bg-slate-100 my-2" />
+                                                <div className="space-y-2">
+                                                    <Label>審查-副院長 <span className="text-red-500">*</span></Label>
+                                                    <Select 
+                                                        value={isOtherSelected('rev_vice_dean_name', formData.rev_vice_dean_name, VICE_DEAN_NAMES) ? '其他' : (formData.rev_vice_dean_name || '')} 
+                                                        onValueChange={(v) => {
+                                                            if (v === '其他') {
+                                                                setOtherSelected(prev => ({ ...prev, rev_vice_dean_name: true }))
+                                                                setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: '' }))
+                                                            } else {
+                                                                setOtherSelected(prev => ({ ...prev, rev_vice_dean_name: false }))
+                                                                setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: v }))
+                                                            }
+                                                        }} 
+                                                        disabled={!isSectionEditable(5)}
+                                                    >
+                                                        <SelectTrigger><SelectValue placeholder="選擇副院長" /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {VICE_DEAN_NAMES.map(n => (
+                                                                <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                            ))}
+                                                            <SelectItem value="其他">其他</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {isOtherSelected('rev_vice_dean_name', formData.rev_vice_dean_name, VICE_DEAN_NAMES) && (
+                                                        <Input
+                                                            placeholder="請輸入審查副院長姓名"
+                                                            value={formData.rev_vice_dean_name || ''}
+                                                            onChange={(e) => setFormData((prev: any) => ({ ...prev, rev_vice_dean_name: e.target.value }))}
+                                                            disabled={!isSectionEditable(5)}
+                                                            className="mt-2"
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>審查-副院長日期</Label>
+                                                    <Input name="rev_vice_dean_date" type="date" value={formData.rev_vice_dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>
+                                                        審查-院長 {Number(formData.amount) > 200000 && <span className="text-red-500">*</span>}
+                                                    </Label>
+                                                    <Select 
+                                                        value={isOtherSelected('rev_dean_name', formData.rev_dean_name, DEAN_NAMES) ? '其他' : (formData.rev_dean_name || '')} 
+                                                        onValueChange={(v) => {
+                                                            if (v === '其他') {
+                                                                setOtherSelected(prev => ({ ...prev, rev_dean_name: true }))
+                                                                setFormData((prev: any) => ({ ...prev, rev_dean_name: '' }))
+                                                            } else {
+                                                                setOtherSelected(prev => ({ ...prev, rev_dean_name: false }))
+                                                                setFormData((prev: any) => ({ ...prev, rev_dean_name: v }))
+                                                            }
+                                                        }} 
+                                                        disabled={!isSectionEditable(5)}
+                                                    >
+                                                        <SelectTrigger><SelectValue placeholder="選擇院長" /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {DEAN_NAMES.map(n => (
+                                                                <SelectItem key={n} value={n}>{n}</SelectItem>
+                                                            ))}
+                                                            <SelectItem value="其他">其他</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {isOtherSelected('rev_dean_name', formData.rev_dean_name, DEAN_NAMES) && (
+                                                        <Input
+                                                            placeholder="請輸入審查院長姓名"
+                                                            value={formData.rev_dean_name || ''}
+                                                            onChange={(e) => setFormData((prev: any) => ({ ...prev, rev_dean_name: e.target.value }))}
+                                                            disabled={!isSectionEditable(5)}
+                                                            className="mt-2"
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>審查-院長日期</Label>
+                                                    <Input name="rev_dean_date" type="date" value={formData.rev_dean_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(5)} />
+                                                </div>
+                                                {isSectionEditable(5) && (
+                                                    <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
+                                                        <Button className="flex-1 bg-violet-600 hover:bg-violet-700" onClick={() => handleSave('採購已發包')}>審查完成，採購已發包</Button>
+                                                        <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
+                                                            <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </CardContent>
                                 </motion.div>

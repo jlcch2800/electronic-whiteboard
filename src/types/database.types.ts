@@ -623,6 +623,8 @@ export interface Database {
           accept_mgr_date: string | null
           accept_director_name: string | null
           accept_director_date: string | null
+          is_contract: boolean | null
+          contract_received_date: string | null
         }
         Insert: {
           id?: string
@@ -675,6 +677,8 @@ export interface Database {
           accept_mgr_date?: string | null
           accept_director_name?: string | null
           accept_director_date?: string | null
+          is_contract?: boolean | null
+          contract_received_date?: string | null
         }
         Update: {
           id?: string
@@ -727,6 +731,8 @@ export interface Database {
           accept_mgr_date?: string | null
           accept_director_name?: string | null
           accept_director_date?: string | null
+          is_contract?: boolean | null
+          contract_received_date?: string | null
         }
       }
       maintenance_work_orders_history: {
@@ -781,6 +787,8 @@ export interface Database {
           accept_mgr_date: string | null
           accept_director_name: string | null
           accept_director_date: string | null
+          is_contract: boolean | null
+          contract_received_date: string | null
         }
         Insert: {
           id?: string
@@ -833,6 +841,8 @@ export interface Database {
           accept_mgr_date?: string | null
           accept_director_name?: string | null
           accept_director_date?: string | null
+          is_contract?: boolean | null
+          contract_received_date?: string | null
         }
         Update: {
           id?: string
@@ -885,6 +895,8 @@ export interface Database {
           accept_mgr_date?: string | null
           accept_director_name?: string | null
           accept_director_date?: string | null
+          is_contract?: boolean | null
+          contract_received_date?: string | null
         }
       }
     }

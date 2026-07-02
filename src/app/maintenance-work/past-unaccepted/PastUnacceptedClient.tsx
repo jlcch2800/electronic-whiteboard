@@ -81,6 +81,8 @@ const EXPORT_LABELS: Record<string, string> = {
     'accept_mgr_date': '驗收單位主管日期',
     'accept_director_name': '驗收部門主管',
     'accept_director_date': '驗收部門主管日期',
+    'is_contract': '是否為合約維修單',
+    'contract_received_date': '紙本合約收到日期',
 }
 
 // ROSE_THEME: Rose 顏色主題樣式設定物件，用於表格邊框、背景、文字與頂端裝飾條
@@ -146,7 +148,13 @@ export default function PastUnacceptedClient() {
 
             // 如果有輸入關鍵字，對工單編號、內容、承辦人、印單人及狀態進行模糊搜尋
             if (searchTerm) {
-                query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%`)
+                let orConditions = `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%`;
+                if (searchTerm === '合約' || searchTerm === '合約維修單') {
+                    orConditions += `,is_contract.eq.true`;
+                } else if (searchTerm === '非合約' || searchTerm === '非合約維修單') {
+                    orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                }
+                query = query.or(orConditions);
             }
 
             // 若有設定排序欄位，則套用對應的排序規則
@@ -218,7 +226,13 @@ export default function PastUnacceptedClient() {
                     .lt('request_date', startOfThisYear)
 
                 if (searchTerm) {
-                    query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%`)
+                    let orConditions = `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%`;
+                    if (searchTerm === '合約' || searchTerm === '合約維修單') {
+                        orConditions += `,is_contract.eq.true`;
+                    } else if (searchTerm === '非合約' || searchTerm === '非合約維修單') {
+                        orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                    }
+                    query = query.or(orConditions);
                 }
 
                 if (sort) {
@@ -256,7 +270,9 @@ export default function PastUnacceptedClient() {
             const row: any = { '#': index + 1 }
             for (const key of Object.keys(EXPORT_LABELS)) {
                 let cellValue = v[key]
-                if (key === 'created_at' && cellValue) {
+                if (key === 'is_contract') {
+                    cellValue = cellValue === true ? '合約' : '非合約'
+                } else if (key === 'created_at' && cellValue) {
                     try {
                         cellValue = format(new Date(cellValue), 'yyyy-MM-dd HH:mm:ss')
                     } catch (e) {
@@ -286,7 +302,9 @@ export default function PastUnacceptedClient() {
             const row: any = { '#': index + 1 }
             for (const key of Object.keys(EXPORT_LABELS)) {
                 let cellValue = v[key]
-                if (key === 'created_at' && cellValue) {
+                if (key === 'is_contract') {
+                    cellValue = cellValue === true ? '合約' : '非合約'
+                } else if (key === 'created_at' && cellValue) {
                     try {
                         cellValue = format(new Date(cellValue), 'yyyy-MM-dd HH:mm:ss')
                     } catch (e) {
@@ -427,7 +445,14 @@ export default function PastUnacceptedClient() {
                                                     onCheckedChange={() => toggleSelect(item.id)}
                                                 />
                                             </TableCell>
-                                            <TableCell className="font-mono font-bold text-slate-700 dark:text-slate-200">{item.work_order_id}</TableCell>
+                                            <TableCell className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                                                 <div className="flex items-center gap-2">
+                                                     {item.work_order_id}
+                                                     {item.is_contract && (
+                                                         <Badge className="bg-purple-100 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40 text-[10px] px-1.5 py-0 font-semibold">合約</Badge>
+                                                     )}
+                                                 </div>
+                                             </TableCell>
                                             <TableCell className="text-slate-500 dark:text-slate-400">{item.request_date}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
@@ -479,7 +504,7 @@ export default function PastUnacceptedClient() {
                                 <MobileTableCard
                                     key={item.id}
                                     id={item.id}
-                                    title={item.work_order_id}
+                                    title={item.is_contract ? `${item.work_order_id} (合約)` : item.work_order_id}
                                     subtitle={item.cost_center}
                                     status={{ 
                                         label: item.status, 
