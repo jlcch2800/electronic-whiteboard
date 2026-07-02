@@ -22,9 +22,7 @@ import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
-import {
-    AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle
-} from '@/components/ui/alert-dialog'
+import { MaintenanceDetailDialog } from '@/components/maintenance-work/MaintenanceDetailDialog'
 import { exportToExcelFile, exportToPdfFile } from '@/lib/export-utils'
 import { format } from 'date-fns'
 import {
@@ -516,143 +514,16 @@ export default function PastUnacceptedClient() {
             </main>
 
             {/* 檢視單筆明細對話框 (比照狀態 10 的流程顯示，包含完整步驟及簽章資訊) */}
-            <AlertDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <AlertDialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-2 border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl">
-                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 shrink-0 relative pt-5">
-                        <div className={`absolute top-0 left-0 right-0 h-1.5 ${ROSE_THEME.topBar}`} />
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm shrink-0 border border-white/20">
-                                <Activity className="w-6 h-6 text-rose-300 animate-pulse" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold tracking-wider">工務維修單單筆記錄明細 (今年之前未驗收)</h2>
-                            </div>
-                        </div>
-                        {viewingItem && (
-                            <div className="text-right hidden sm:block font-mono">
-                                <span className="text-[10px] text-rose-200 block">SYSTEM ID</span>
-                                <span className="text-xs text-slate-300 tracking-tighter opacity-90">{viewingItem.id}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30 dark:bg-slate-900/10">
-                        {viewingItem && (
-                            <div className="space-y-6">
-                                {[
-                                    {
-                                        title: "📋 設備開單基本資訊",
-                                        iconColor: "text-blue-600 dark:text-blue-400",
-                                        bgColor: "bg-blue-50/50 dark:bg-blue-950/20",
-                                        borderColor: "border-blue-100 dark:border-blue-900/40",
-                                        fields: ['work_order_id', 'status', 'request_date', 'cost_center', 'requester_name', 'printer_name', 'submit_date', 'created_at']
-                                    },
-                                    {
-                                        title: "🔧 故障描述與承辦接單",
-                                        iconColor: "text-amber-600 dark:text-amber-400",
-                                        bgColor: "bg-amber-50/50 dark:bg-amber-950/20",
-                                        borderColor: "border-amber-100 dark:border-amber-900/40",
-                                        fields: ['maintain_content', 'handler_name', 'work_order_date', 'maint_mgr_name', 'maint_mgr_date', 'req_dept_mgr_name', 'req_dept_mgr_date']
-                                    },
-                                    {
-                                        title: "💰 報價發包與行政簽核",
-                                        iconColor: "text-emerald-600 dark:text-emerald-400",
-                                        bgColor: "bg-emerald-50/50 dark:bg-emerald-950/20",
-                                        borderColor: "border-emerald-100 dark:border-emerald-900/40",
-                                        fields: ['quote_user_name', 'quote_user_date', 'vendor_name', 'amount', 'dispatch_mgr_name', 'dispatch_mgr_date', 'dispatch_director_name', 'dispatch_director_date', 'vice_dean_name', 'vice_dean_date', 'dean_name', 'dean_date']
-                                    },
-                                    {
-                                        title: "🏗️ 採購招標與工程審查",
-                                        iconColor: "text-indigo-600 dark:text-indigo-400",
-                                        bgColor: "bg-indigo-50/50 dark:bg-indigo-950/20",
-                                        borderColor: "border-indigo-100 dark:border-indigo-900/40",
-                                        fields: ['project_order_id', 'plan_start_date', 'plan_end_date', 'procurement_name', 'procurement_date', 'material_name', 'material_date', 'rev_vice_dean_name', 'rev_vice_dean_date', 'rev_dean_name', 'rev_dean_date']
-                                    },
-                                    {
-                                        title: "✅ 施工完工與驗收簽章",
-                                        iconColor: "text-teal-600 dark:text-teal-400",
-                                        bgColor: "bg-teal-50/50 dark:bg-teal-950/20",
-                                        borderColor: "border-teal-100 dark:border-teal-900/40",
-                                        fields: ['construct_end_date', 'installment_count', 'installment_note', 'accept_dept_mgr_name', 'accept_dept_mgr_date', 'accept_handler_name', 'accept_handler_date', 'accept_mgr_name', 'accept_mgr_date', 'accept_director_name', 'accept_director_date']
-                                    }
-                                ].map((group, gIdx) => (
-                                    <div
-                                        key={gIdx}
-                                        className={`rounded-xl border ${group.borderColor} ${group.bgColor} p-4 shadow-sm space-y-4 backdrop-blur-[2px] transition-all hover:shadow-md`}
-                                    >
-                                        <div className="flex items-center gap-2 border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
-                                            <span className={`text-base font-bold ${group.iconColor} tracking-wide`}>
-                                                {group.title}
-                                            </span>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3.5">
-                                            {group.fields.map((key) => {
-                                                const label = EXPORT_LABELS[key] || key;
-                                                let rawVal = viewingItem[key];
-                                                let isPending = false;
-                                                let formattedVal = "";
-
-                                                if (rawVal === null || rawVal === undefined || String(rawVal).trim() === "" || rawVal === "-") {
-                                                    isPending = true;
-                                                    formattedVal = "待簽核 / 未填寫";
-                                                } else {
-                                                    if (key === 'amount') {
-                                                        formattedVal = `$${Number(rawVal).toLocaleString()}`;
-                                                    } else if (key === 'created_at') {
-                                                        try {
-                                                            formattedVal = format(new Date(rawVal), 'yyyy-MM-dd HH:mm:ss');
-                                                        } catch (e) {
-                                                            formattedVal = String(rawVal);
-                                                        }
-                                                    } else if (key === 'installment_count') {
-                                                        formattedVal = `${rawVal} 期`;
-                                                    } else {
-                                                        formattedVal = String(rawVal);
-                                                    }
-                                                }
-
-                                                return (
-                                                    <div
-                                                        key={key}
-                                                        className={`flex flex-col gap-1 pb-2 border-b border-dashed border-slate-200/50 dark:border-slate-800/40 last:border-b-0 ${key === 'maintain_content' ? 'sm:col-span-2 md:col-span-3' : ''
-                                                            }`}
-                                                    >
-                                                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                                                            {label}
-                                                        </span>
-                                                        {key === 'status' ? (
-                                                            <div className="pt-0.5">
-                                                                <Badge className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-0.5 px-2 tracking-wide rounded-md">
-                                                                    {formattedVal}
-                                                                </Badge>
-                                                            </div>
-                                                        ) : isPending ? (
-                                                            <span className="text-xs text-slate-400/80 italic font-medium tracking-tight">
-                                                                {formattedVal}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 whitespace-pre-line break-words">
-                                                                {formattedVal}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-900 px-6 py-4 flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 shrink-0">
-                        <Button className="bg-slate-700 hover:bg-slate-800 text-white font-bold" onClick={() => setViewDialogOpen(false)}>
-                            關閉明細
-                        </Button>
-                    </div>
-                </AlertDialogContent>
-            </AlertDialog>
+            <MaintenanceDetailDialog
+                open={viewDialogOpen}
+                onOpenChange={setViewDialogOpen}
+                viewingItem={viewingItem}
+                title="工務維修單單筆記錄明細 (今年之前未驗收)"
+                themeTopBar={ROSE_THEME.topBar}
+                themeGradient="from-slate-900 via-slate-800 to-slate-900"
+                themeTextColor="text-rose-300"
+                themeSystemIdColor="text-rose-200"
+            />
         </div>
     )
 }
