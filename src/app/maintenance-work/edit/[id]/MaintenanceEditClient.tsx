@@ -173,7 +173,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     // 初始化載入分期資訊
     useEffect(() => {
         const count = Number(formData.installment_count) || 0
-        if (count >= 2) {
+        if (count >= 1) {
             setInstallmentList(parseInstallmentNote(formData.installment_note, count))
         } else {
             setInstallmentList([])
@@ -193,11 +193,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (isNaN(count)) return
 
         setFormData((prev: any) => {
-            const nextNote = count >= 2 ? prev.installment_note : ''
+            const nextNote = count >= 1 ? prev.installment_note : ''
             return { ...prev, installment_count: count, installment_note: nextNote }
         })
 
-        if (count >= 2) {
+        if (count >= 1) {
             setInstallmentList(prev => {
                 const newList = Array.from({ length: count }, (_, i) => {
                     return prev[i] || { content: '', amount: '', date: '', handler: '' }
@@ -245,7 +245,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
     // 使用 state 記錄「開單主管簽核」是否已完成
     const [section2Completed, setSection2Completed] = useState(
-        !!(initialData.req_dept_mgr_name && initialData.req_dept_mgr_date)
+        !!initialData.req_dept_mgr_name
     )
 
     // 使用 state 記錄「報價階段」是否已完成，避免輸入時即時判定導致鎖死與自動收合/展開
@@ -373,8 +373,13 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             return null
         }
 
-        // 特別處理：目標狀態為「工務部門報價，主管簽核中」時，驗證報價區塊必填欄位
+        // 特別處理：目標狀態為「工務部門報價，主管簽核中」時
         if (targetStatus === '工務部門報價，主管簽核中') {
+            // 若當前是狀態 2 (開單主管簽核完成)，此時是從狀態 2 推進到狀態 3，只需驗證狀態 2 的開單主管姓名
+            if (formData.status === '開單主管簽核完成') {
+                if (!formData.req_dept_mgr_name) return '請輸入開單主管姓名'
+                return null
+            }
             if (!formData.quote_user_name) return '請選擇報價承辦人'
             if (!formData.quote_user_date) return '請輸入報價承辦人日期'
             return null
@@ -434,7 +439,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 if (numCount < 0) {
                     return '分期期數不能為負數'
                 }
-                if (numCount >= 2) {
+                if (numCount >= 1) {
                     for (let i = 0; i < installmentList.length; i++) {
                         const item = installmentList[i]
                         if (!item.content) return `請輸入第 ${i + 1} 期的請款內容`
@@ -548,7 +553,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             }
         } else {
             // 僅儲存不變更狀態時的特殊驗證：若在狀態 10 且分期 >= 2，必須驗證當前正在填寫的這一期是否已填寫完整
-            if (formData.status === '維修部門驗收中' && formData.installment_count !== null && Number(formData.installment_count) >= 2) {
+            if (formData.status === '維修部門驗收中' && formData.installment_count !== null && Number(formData.installment_count) >= 1) {
                 const activeIndex = getActiveIndex()
                 const count = Number(formData.installment_count)
                 if (activeIndex < count) {
@@ -643,8 +648,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 ) {
                     setSection1Completed(true)
                 }
-                if (cleanData.req_dept_mgr_name && cleanData.req_dept_mgr_date) {
+                if (cleanData.req_dept_mgr_name) {
                     setSection2Completed(true)
+                } else {
+                    setSection2Completed(false)
                 }
                 if (cleanData.quote_user_name && cleanData.quote_user_date) {
                     setQuoteCompleted(true)
@@ -930,7 +937,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     {isSectionEditable(1) && (
                                         <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
-                                            <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleSave('開單主管簽核完成')}>開單主管簽核完成</Button>
+                                            <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleSave('工務部門報價，主管簽核中')}>開單主管簽核完成</Button>
                                             <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
                                                 <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
                                             </Button>
@@ -1468,10 +1475,10 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                 value={formData.installment_count !== null && formData.installment_count !== undefined ? formData.installment_count : ''}
                                                 onChange={handleInstallmentCountChange}
                                                 disabled={!isSectionEditable(9) || (lastSavedData.installment_count !== null && lastSavedData.installment_count !== undefined)}
-                                                placeholder="請輸入分期期數"
+                                                placeholder="請輸入分期期數，若未分期，請輸入0"
                                                 className="flex-1"
                                             />
-                                            {formData.installment_count !== null && Number(formData.installment_count) >= 2 && (
+                                            {formData.installment_count !== null && Number(formData.installment_count) >= 1 && (
                                                 <Dialog>
                                                     <DialogTrigger asChild>
                                                         <Button variant="outline" type="button" className="shrink-0 h-10 border-slate-300 dark:border-slate-700">
@@ -1579,14 +1586,14 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     )}
 
                                     {/* 當期數為 1 時的提示 */}
-                                    {formData.installment_count !== null && Number(formData.installment_count) === 1 && (
+                                    {false && (
                                         <div className="col-span-full text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-md border border-blue-200 dark:border-blue-800/30">
                                             系統提示：已輸入為「1」期，無需填寫分期說明。
                                         </div>
                                     )}
 
                                     {/* 當期數 >= 2 時，動態呈現每一期的填寫欄位 */}
-                                    {formData.installment_count !== null && Number(formData.installment_count) >= 2 && (
+                                    {formData.installment_count !== null && Number(formData.installment_count) >= 1 && (
                                         <div className="col-span-full space-y-4 border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-900/30">
                                             <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">
                                                 分期明細填寫 (共 {formData.installment_count} 期) <span className="text-red-500">*</span>
