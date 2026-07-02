@@ -466,6 +466,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (!val) return;
 
         const errs: string[] = [];
+        if (formData.work_order_id && val === formData.work_order_id.trim()) {
+            errs.push("工單編號等於工程單編號，請輸入正確的工程單編號");
+        }
         if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
             errs.push("請勿輸入全型字！");
         }
@@ -524,6 +527,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (formData.project_order_id && formData.project_order_id.trim() !== '') {
             const val = formData.project_order_id.trim();
             const errs: string[] = [];
+            if (formData.work_order_id && val === formData.work_order_id.trim()) {
+                errs.push("工單編號等於工程單編號，請輸入正確的工程單編號");
+            }
             if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
                 errs.push("請勿輸入全型字！");
             }
