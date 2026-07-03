@@ -375,11 +375,6 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
         // 特別處理：目標狀態為「工務部門報價，主管簽核中」時
         if (targetStatus === '工務部門報價，主管簽核中') {
-            // 若當前是狀態 2 (開單主管簽核完成)，此時是從狀態 2 推進到狀態 3，只需驗證狀態 2 的開單主管姓名
-            if (formData.status === '開單主管簽核完成') {
-                if (!formData.req_dept_mgr_name) return '請輸入開單主管姓名'
-                return null
-            }
             if (!formData.quote_user_name) return '請選擇報價承辦人'
             if (!formData.quote_user_date) return '請輸入報價承辦人日期'
             return null
@@ -943,7 +938,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                     </div>
                                     {isSectionEditable(1) && (
                                         <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
-                                            <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleSave('工務部門報價，主管簽核中')}>開單主管簽核完成</Button>
+                                            <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleSave('開單主管簽核完成')}>開單主管簽核完成</Button>
                                             <Button variant="outline" className="flex-1 border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
                                                 <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
                                             </Button>
