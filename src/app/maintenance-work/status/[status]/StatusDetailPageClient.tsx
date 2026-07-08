@@ -341,9 +341,11 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
 
                 if (searchTerm) {
                     if (hidePrinter) {
-                        query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                        //當前狀態不是「已轉維修單」時（例如：廠商施工中、已驗收等），會搜尋以下欄位：
+                        query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,req_dept_mgr_name.ilike.%${searchTerm}%,procurement_name.ilike.%${searchTerm}%,material_name.ilike.%${searchTerm}%,project_order_id.ilike.%${searchTerm}%,`)
                     } else {
-                        query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                        //當前狀態是「已轉維修單」時，會搜尋以下欄位
+                        query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
                     }
                 }
 
@@ -590,13 +592,13 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                                 />
                                             </TableCell>
                                             <TableCell className="font-mono font-bold text-slate-700 dark:text-slate-200">
-                                                 <div className="flex items-center gap-2">
-                                                     {item.work_order_id}
-                                                     {item.is_contract && (
-                                                         <Badge className="bg-purple-100 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40 text-[10px] px-1.5 py-0 font-semibold">合約</Badge>
-                                                     )}
-                                                 </div>
-                                             </TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    {item.work_order_id}
+                                                    {item.is_contract && (
+                                                        <Badge className="bg-purple-100 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40 text-[10px] px-1.5 py-0 font-semibold">合約</Badge>
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                             <TableCell className="text-slate-500 dark:text-slate-400">{item.request_date}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
                                             <TableCell>{item.requester_name}</TableCell>
@@ -661,9 +663,9 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                     id={item.id}
                                     title={item.is_contract ? `${item.work_order_id} (合約)` : item.work_order_id}
                                     subtitle={item.cost_center}
-                                    status={{ 
-                                        label: item.status, 
-                                        className: `${c.bg} ${c.text} ${c.border} border font-bold text-[10px]` 
+                                    status={{
+                                        label: item.status,
+                                        className: `${c.bg} ${c.text} ${c.border} border font-bold text-[10px]`
                                     }}
                                     date={item.request_date}
                                     dateLabel="開單日"
