@@ -86,6 +86,27 @@ export default function MaintenanceWorkNewPage() {
         }
     }, [profile, setValue])
 
+    // 工單編號自動大小寫轉換：第一碼 f→F，最後一碼 A→a
+    const transformWorkOrderId = (value: string): string => {
+        if (!value) return value;
+        let result = value;
+        // 第一碼小寫 f 自動轉大寫 F
+        if (result.charAt(0) === 'f') {
+            result = 'F' + result.slice(1);
+        }
+        // 最後一碼大寫 A 自動轉小寫 a
+        if (result.length > 0 && result.charAt(result.length - 1) === 'A') {
+            result = result.slice(0, -1) + 'a';
+        }
+        return result;
+    };
+
+    // 工單編號輸入時自動轉換大小寫
+    const handleWorkOrderIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const transformed = transformWorkOrderId(e.target.value);
+        setValue('work_order_id', transformed, { shouldValidate: false });
+    };
+
     // 失焦觸發單欄驗證
     const handleFieldBlur = useCallback((fieldName: string) => {
         setTouchedFields(prev => ({ ...prev, [fieldName]: true }))
@@ -299,7 +320,7 @@ export default function MaintenanceWorkNewPage() {
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="工單編號" required error={errors.work_order_id?.message} touched={touchedFields.work_order_id} tooltip="工單編號不得重複">
-                                        <Input {...register('work_order_id')} placeholder="請輸入工單編號" onBlur={() => handleFieldBlur('work_order_id')} />
+                                        <Input {...register('work_order_id', { onChange: handleWorkOrderIdChange })} placeholder="請輸入工單編號" onBlur={() => handleFieldBlur('work_order_id')} />
                                     </FormField>
                                     <FormField label="接單日期" required error={errors.work_order_date?.message} touched={touchedFields.work_order_date}>
                                         <Input type="date" {...register('work_order_date')} onBlur={() => handleFieldBlur('work_order_date')} />

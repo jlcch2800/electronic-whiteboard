@@ -337,9 +337,22 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         }
     }, [formData.status, section1Completed, section2Completed, quoteCompleted])
 
+    // 工程單編號自動大小寫轉換：最後第二碼 m→M
+    const transformProjectOrderId = (value: string): string => {
+        if (!value || value.length < 2) return value;
+        const secondToLast = value.length - 2;
+        // 最後第二碼小寫 m 自動轉大寫 M
+        if (value.charAt(secondToLast) === 'm') {
+            return value.slice(0, secondToLast) + 'M' + value.slice(secondToLast + 1);
+        }
+        return value;
+    };
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
-        setFormData((prev: any) => ({ ...prev, [name]: value }))
+        // 工程單編號自動轉換大小寫
+        const finalValue = name === 'project_order_id' ? transformProjectOrderId(value) : value;
+        setFormData((prev: any) => ({ ...prev, [name]: finalValue }))
     }
 
     const handleSelectChange = (name: string, value: string) => {
