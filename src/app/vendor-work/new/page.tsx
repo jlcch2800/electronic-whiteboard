@@ -434,7 +434,7 @@ export default function VendorWorkNewPage() {
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <FormField label="工作證號" required error={errors.vendor_badge_id?.message} touched={touchedFields.vendor_badge_id}>
-                                                <Input type="number" {...register('vendor_badge_id')} onBlur={() => handleFieldBlur('vendor_badge_id')} />
+                                                <Input type="text" placeholder="多張卡號輸入1~5或1、2、3" {...register('vendor_badge_id')} onBlur={() => handleFieldBlur('vendor_badge_id')} />
                                             </FormField>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

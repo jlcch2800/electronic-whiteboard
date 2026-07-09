@@ -169,17 +169,17 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
             // 1. 比較標準項目
             const missingItems = originalBorrowedItems.filter(item => !returnedItems.includes(item))
             const extraItems = returnedItems.filter(item => !originalBorrowedItems.includes(item))
-            
+
             // 2. 比較「其他」文字內容 (處理手動輸入的多個項目)
             const splitOther = (text: string) => text ? text.split(/[、,，\s\.]+/).map(s => s.trim()).filter(Boolean) : []
             const originalOtherList = splitOther(originalBorrowedOtherText)
             const currentOtherList = splitOther(returnedOtherText)
-            
+
             const missingOthers = originalOtherList.filter(item => !currentOtherList.includes(item))
             const extraOthers = currentOtherList.filter(item => !originalOtherList.includes(item))
 
             const errorMsgs: string[] = []
-            
+
             if (missingItems.length > 0) {
                 errorMsgs.push(`尚未歸還: ${missingItems.join('、')}`)
             }
@@ -192,13 +192,13 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
             if (extraOthers.length > 0) {
                 errorMsgs.push(`未曾借出卻歸還 (其他): ${extraOthers.join('、')}`)
             }
-            
+
             const hasMissing = missingItems.length > 0 || missingOthers.length > 0
             const hasExtra = extraItems.length > 0 || extraOthers.length > 0
-            
+
             if (hasMissing || hasExtra) {
-                setMismatchWarning({ 
-                    open: true, 
+                setMismatchWarning({
+                    open: true,
                     messages: errorMsgs,
                     allowSave: !hasExtra // 只有在沒有「多餘歸還」的情況下才允許強行存檔（部分歸還）
                 })
@@ -230,7 +230,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                 payload.borrow_action = isPartialReturn ? 'partial_return' : returnAction
                 payload.returned_items = (payload.borrow_action === 'return' || payload.borrow_action === 'partial_return') ? { items: returnedItems, other_text: returnedOtherText } : null
                 payload.receiver_name = (payload.borrow_action === 'return' || payload.borrow_action === 'partial_return') ? receiverName : null
-                
+
                 if (payload.borrow_action === 'partial_return' && originalBorrowedItems) {
                     // 計算並存入「尚未歸還」的項目
                     const missing = originalBorrowedItems.filter(i => !returnedItems.includes(i))
@@ -238,12 +238,12 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                     const originalOthers = splitOther(originalBorrowedOtherText)
                     const currentOthers = splitOther(returnedOtherText)
                     const missingOthers = originalOthers.filter(item => !currentOthers.includes(item))
-                    
-                    payload.borrowed_items = { 
-                        items: missing, 
-                        other_text: missingOthers.join('、') 
+
+                    payload.borrowed_items = {
+                        items: missing,
+                        other_text: missingOthers.join('、')
                     }
-                    payload.lender_name = lenderName 
+                    payload.lender_name = lenderName
                 } else {
                     payload.borrowed_items = null
                     payload.lender_name = null
@@ -339,7 +339,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <FormField label="工作證號" required error={errors.vendor_badge_id?.message} touched={touchedFields.vendor_badge_id}>
-                                            <Input type="number" {...register('vendor_badge_id')} onBlur={() => handleFieldBlur('vendor_badge_id')} />
+                                            <Input type="text" placeholder="多張卡號輸入1~5或1、2、3" {...register('vendor_badge_id')} onBlur={() => handleFieldBlur('vendor_badge_id')} />
                                         </FormField>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -367,11 +367,10 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                     <CardContent className="space-y-4">
                                         <div className="flex gap-3">
                                             {(['none', 'borrow'] as const).map(val => (
-                                                <label key={val} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-bold ${
-                                                    borrowAction === val
-                                                        ? 'border-amber-500 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                                                        : 'border-border hover:border-amber-300'
-                                                }`}>
+                                                <label key={val} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-bold ${borrowAction === val
+                                                    ? 'border-amber-500 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                                    : 'border-border hover:border-amber-300'
+                                                    }`}>
                                                     <input type="radio" className="sr-only" checked={borrowAction === val} onChange={() => { setBorrowAction(val); if (val === 'none') { setBorrowedItems([]); setLenderName('') } }} />
                                                     {val === 'none' ? '未借物' : '已借物'}
                                                 </label>
@@ -383,11 +382,10 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                                     <p className="text-sm font-medium mb-2">借出項目 <span className="text-red-500">*</span></p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {BORROW_ITEM_OPTIONS.map(item => (
-                                                            <label key={item} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all ${
-                                                                borrowedItems.includes(item)
-                                                                    ? 'border-amber-500 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                                                                    : 'border-border hover:border-amber-300 bg-background'
-                                                            }`}>
+                                                            <label key={item} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all ${borrowedItems.includes(item)
+                                                                ? 'border-amber-500 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                                                : 'border-border hover:border-amber-300 bg-background'
+                                                                }`}>
                                                                 <input type="checkbox" className="sr-only" checked={borrowedItems.includes(item)} onChange={() => toggleItem(item, borrowedItems, setBorrowedItems)} />
                                                                 {item}
                                                             </label>
@@ -423,11 +421,10 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                     <CardContent className="space-y-4">
                                         <div className="flex gap-3">
                                             {(['none', 'return'] as const).map(val => (
-                                                <label key={val} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-bold ${
-                                                    returnAction === val
-                                                        ? 'border-green-500 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                                                        : 'border-border hover:border-green-300'
-                                                }`}>
+                                                <label key={val} className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-bold ${returnAction === val
+                                                    ? 'border-green-500 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                                                    : 'border-border hover:border-green-300'
+                                                    }`}>
                                                     <input type="radio" className="sr-only" checked={returnAction === val} onChange={() => { setReturnAction(val); if (val === 'none') { setReturnedItems([]); setReceiverName('') } }} />
                                                     {val === 'none' ? '未借物' : '已歸還'}
                                                 </label>
@@ -439,11 +436,10 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                                     <p className="text-sm font-medium mb-2">歸還項目 <span className="text-red-500">*</span></p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {BORROW_ITEM_OPTIONS.map(item => (
-                                                            <label key={item} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all ${
-                                                                returnedItems.includes(item)
-                                                                    ? 'border-green-500 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                                                                    : 'border-border hover:border-green-300 bg-background'
-                                                            }`}>
+                                                            <label key={item} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-all ${returnedItems.includes(item)
+                                                                ? 'border-green-500 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                                                                : 'border-border hover:border-green-300 bg-background'
+                                                                }`}>
                                                                 <input type="checkbox" className="sr-only" checked={returnedItems.includes(item)} onChange={() => toggleItem(item, returnedItems, setReturnedItems)} />
                                                                 {item}
                                                             </label>
@@ -516,7 +512,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                 ))}
                             </ul>
                             <p className="mt-4 text-sm text-muted-foreground font-medium">
-                                {mismatchWarning.allowSave 
+                                {mismatchWarning.allowSave
                                     ? "若確認部份物品暫時無法歸還，請點擊「已確認存檔」，系統將標記為「部份未歸還」。"
                                     : "因為你歸還了未曾借出的物品，請按返回修改按鈕，進行修改"
                                 }

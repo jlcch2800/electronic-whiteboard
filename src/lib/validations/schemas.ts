@@ -61,8 +61,8 @@ export const vendorWorkSchema = z.object({
     departure_time: z.string().nullable().optional(),
     location: z.string().nullable().optional(),
     vendor_badge_id: z.preprocess(
-        (val) => (val === '' || val === null || val === undefined) ? null : Number(val),
-        z.number().nullable().optional()
+        (val) => (val === '' || val === null || val === undefined) ? null : String(val).trim(),
+        z.string().nullable().optional()
     ),
     head_count: z.preprocess(
         (val) => (val === '' || val === null || val === undefined) ? null : Number(val),

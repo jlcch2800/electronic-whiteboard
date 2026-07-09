@@ -41,7 +41,7 @@ export interface Database {
           arrival_time: string | null
           departure_time: string | null
           location: string | null
-          vendor_badge_id: number | null
+          vendor_badge_id: string | null
           head_count: number | null
           vendor_name: string
           vendor_contact: string | null
@@ -64,7 +64,7 @@ export interface Database {
           arrival_time?: string | null
           departure_time?: string | null
           location?: string | null
-          vendor_badge_id?: number | null
+          vendor_badge_id?: string | null
           head_count?: number | null
           vendor_name: string
           vendor_contact?: string | null
@@ -86,7 +86,7 @@ export interface Database {
           arrival_time?: string | null
           departure_time?: string | null
           location?: string | null
-          vendor_badge_id?: number | null
+          vendor_badge_id?: string | null
           head_count?: number | null
           vendor_name?: string
           vendor_contact?: string | null
@@ -110,7 +110,7 @@ export interface Database {
           arrival_time: string | null
           departure_time: string | null
           location: string | null
-          vendor_badge_id: number | null
+          vendor_badge_id: string | null
           head_count: number | null
           vendor_name: string
           vendor_contact: string | null
@@ -132,7 +132,7 @@ export interface Database {
           arrival_time?: string | null
           departure_time?: string | null
           location?: string | null
-          vendor_badge_id?: number | null
+          vendor_badge_id?: string | null
           head_count?: number | null
           vendor_name: string
           vendor_contact?: string | null
@@ -154,7 +154,7 @@ export interface Database {
           arrival_time?: string | null
           departure_time?: string | null
           location?: string | null
-          vendor_badge_id?: number | null
+          vendor_badge_id?: string | null
           head_count?: number | null
           vendor_name?: string
           vendor_contact?: string | null
