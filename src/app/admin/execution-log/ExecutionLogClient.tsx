@@ -347,7 +347,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
 
         if (log.old_data || log.new_data) {
             if (isArraySnapshot) {
-                const allKeys = Array.from(new Set(newData.flatMap((item: any) => Object.keys(item))));
+                const allKeys = Array.from(new Set(newData.flatMap((item: any) => Object.keys(item)))) as string[];
                 const sortedKeys = allKeys.sort((a, b) => {
                     const indexA = FIELD_ORDER.indexOf(a);
                     const indexB = FIELD_ORDER.indexOf(b);
