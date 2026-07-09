@@ -252,8 +252,8 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
 
             if (searchTerm) {
                 let orConditions = hidePrinter
-                    ? `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`
-                    : `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`;
+                    ? `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,project_order_id.ilike.%${searchTerm}%,req_dept_mgr_name.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%`
+                    : `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,project_order_id.ilike.%${searchTerm}%,req_dept_mgr_name.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%`;
                 if (searchTerm === '合約' || searchTerm === '合約維修單') {
                     orConditions += `,is_contract.eq.true`;
                 } else if (searchTerm === '非合約' || searchTerm === '非合約維修單') {
@@ -340,13 +340,15 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     .eq('status', status)
 
                 if (searchTerm) {
-                    if (hidePrinter) {
-                        //當前狀態不是「已轉維修單」時（例如：廠商施工中、已驗收等），會搜尋以下欄位：
-                        query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,req_dept_mgr_name.ilike.%${searchTerm}%,procurement_name.ilike.%${searchTerm}%,material_name.ilike.%${searchTerm}%,project_order_id.ilike.%${searchTerm}%,`)
-                    } else {
-                        //當前狀態是「已轉維修單」時，會搜尋以下欄位
-                        query = query.or(`work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%`)
+                    let orConditions = hidePrinter
+                        ? `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,project_order_id.ilike.%${searchTerm}%,req_dept_mgr_name.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%`
+                        : `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,project_order_id.ilike.%${searchTerm}%,req_dept_mgr_name.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%`;
+                    if (searchTerm === '合約' || searchTerm === '合約維修單') {
+                        orConditions += `,is_contract.eq.true`;
+                    } else if (searchTerm === '非合約' || searchTerm === '非合約維修單') {
+                        orConditions += `,is_contract.eq.false,is_contract.is.null`;
                     }
+                    query = query.or(orConditions);
                 }
 
                 if (sort) {
@@ -530,7 +532,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                     <div className="relative w-72">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
-                            placeholder={hidePrinter ? "搜尋工單、廠商、承辦人..." : "搜尋工單、印單人、承辦人..."}
+                            placeholder="搜尋工單、工程單、開單人、主管、成本中心、承辦人..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9 bg-white dark:bg-slate-900"
