@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Activity, ArrowLeft, Save, CheckCircle2, AlertCircle,
-    ChevronDown, ChevronRight, Lock, Unlock, Clock
+    ChevronDown, ChevronRight, Lock, Unlock, Clock, FolderKanban, Plus, FolderPlus
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -19,8 +19,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
 import {
     MAINTENANCE_STATUS, HANDLER_NAMES, MAINT_MGR_NAMES,
@@ -108,6 +109,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         submit_date: initialData.submit_date || '',
         is_contract: initialData.is_contract !== undefined && initialData.is_contract !== null ? initialData.is_contract : false,
         contract_received_date: initialData.contract_received_date || '',
+        is_maintenance_project: initialData.is_maintenance_project !== undefined && initialData.is_maintenance_project !== null ? initialData.is_maintenance_project : false,
+        maintenance_project_id: initialData.maintenance_project_id || '',
+        maintenance_project_category_id: initialData.maintenance_project_category_id || '',
     }))
     const [lastSavedData, setLastSavedData] = useState<any>(() => ({
         ...initialData,
@@ -119,6 +123,9 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         submit_date: initialData.submit_date || '',
         is_contract: initialData.is_contract !== undefined && initialData.is_contract !== null ? initialData.is_contract : false,
         contract_received_date: initialData.contract_received_date || '',
+        is_maintenance_project: initialData.is_maintenance_project !== undefined && initialData.is_maintenance_project !== null ? initialData.is_maintenance_project : false,
+        maintenance_project_id: initialData.maintenance_project_id || '',
+        maintenance_project_category_id: initialData.maintenance_project_category_id || '',
     }))
     const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({})
 
@@ -132,6 +139,132 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
 
     const [installmentList, setInstallmentList] = useState<InstallmentItem[]>([])
+
+    // 專案相關狀態
+    const [projects, setProjects] = useState<any[]>([])
+    const [categories, setCategories] = useState<any[]>([])
+    
+    // 快速新增 Dialog 狀態
+    const [quickProjectOpen, setQuickProjectOpen] = useState(false)
+    const [quickCategoryOpen, setQuickCategoryOpen] = useState(false)
+    const [newProjectName, setNewProjectName] = useState('')
+    const [newCategoryName, setNewCategoryName] = useState('')
+
+    // 初始載入未結案專案
+    useEffect(() => {
+        const loadProjects = async () => {
+            const { data } = await supabase
+                .from('maintenance_project')
+                .select('*')
+                .eq('is_closed', false)
+                .order('created_at', { ascending: false })
+            setProjects(data || [])
+        }
+        loadProjects()
+    }, [supabase])
+
+    // 當專案 ID 改變時載入對應主項目
+    const selectedProjectId = formData.maintenance_project_id
+    useEffect(() => {
+        if (selectedProjectId) {
+            const loadCategories = async () => {
+                const { data } = await supabase
+                    .from('maintenance_project_category')
+                    .select('*')
+                    .eq('maintenance_project_id', selectedProjectId)
+                    .order('created_at', { ascending: true })
+                setCategories(data || [])
+            }
+            loadCategories()
+        } else {
+            setCategories([])
+        }
+    }, [selectedProjectId, supabase])
+
+    // 快速新增專案處理
+    const handleQuickAddProject = async () => {
+        if (!newProjectName.trim()) return
+        try {
+            const payload = {
+                maintenance_project_name: newProjectName.trim(),
+                description: '由工單編輯快速建立',
+                is_closed: false,
+                closed_at: null
+            }
+            const { data, error } = await supabase
+                .from('maintenance_project')
+                .insert(payload)
+                .select('id, maintenance_project_name')
+                .single()
+
+            if (error) throw error
+
+            logChangeRecord({
+                actionType: 'Insert',
+                modifyTable: 'maintenance_project',
+                modifyRecordId: data.id,
+                newData: payload
+            })
+
+            // 更新選單並預設選取
+            setProjects(prev => [data, ...prev])
+            setFormData((prev: any) => ({
+                ...prev,
+                maintenance_project_id: data.id,
+                is_maintenance_project: true
+            }))
+            setNewProjectName('')
+            setQuickProjectOpen(false)
+            toast({ title: '專案建立成功', description: `專案「${data.maintenance_project_name}」已建立並選取` })
+        } catch (err: any) {
+            toast({
+                title: '快速建立專案失敗',
+                description: err.message,
+                variant: 'destructive'
+            })
+        }
+    }
+
+    // 快速新增主項目處理
+    const handleQuickAddCategory = async () => {
+        if (!newCategoryName.trim() || !selectedProjectId) return
+        try {
+            const payload = {
+                maintenance_project_id: selectedProjectId,
+                maintenance_category_name: newCategoryName.trim()
+            }
+            const { data, error } = await supabase
+                .from('maintenance_project_category')
+                .insert(payload)
+                .select('id, maintenance_category_name')
+                .single()
+
+            if (error) throw error
+
+            logChangeRecord({
+                actionType: 'Insert',
+                modifyTable: 'maintenance_project_category',
+                modifyRecordId: data.id,
+                newData: payload
+            })
+
+            // 更新選單並預設選取
+            setCategories(prev => [...prev, data])
+            setFormData((prev: any) => ({
+                ...prev,
+                maintenance_project_category_id: data.id
+            }))
+            setNewCategoryName('')
+            setQuickCategoryOpen(false)
+            toast({ title: '主項目建立成功', description: `主項目「${data.maintenance_category_name}」已建立並選取` })
+        } catch (err: any) {
+            toast({
+                title: '快速建立主項目失敗',
+                description: err.message,
+                variant: 'destructive'
+            })
+        }
+    }
 
     // 當 profile 載入且角色是 staff 時，自動將印單人、承辦人、報價及驗收承辦人預設填入自己（若原本為空）
     useEffect(() => {
@@ -262,7 +395,6 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (formData.status === '已轉維修單' || formData.status === '開單主管簽核完成') {
             if (sectionIndex === 0) return !section1Completed
             if (sectionIndex === 1) return section1Completed && !section2Completed
-            if (sectionIndex === 2) return section1Completed && section2Completed
             return false
         }
 
@@ -337,10 +469,17 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         }
     }, [formData.status, section1Completed, section2Completed, quoteCompleted])
 
-    // 工程單編號自動大小寫轉換：最後第二碼 m→M
+    // 工程單編號自動大小寫轉換：第四碼 a/b/c→A/B/C、最後第二碼 m→M
     const transformProjectOrderId = (value: string): string => {
         if (!value) return value;
         let result = value;
+        // 第四碼小寫 a/b/c 自動轉大寫 A/B/C
+        if (result.length >= 4) {
+            const ch4 = result.charAt(3);
+            if (ch4 === 'a' || ch4 === 'b' || ch4 === 'c') {
+                result = result.slice(0, 3) + ch4.toUpperCase() + result.slice(4);
+            }
+        }
         // 最後第二碼小寫 m 自動轉大寫 M
         if (result.length >= 2) {
             const secondToLast = result.length - 2;
@@ -486,23 +625,27 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (val.length !== 11) {
             errs.push("總字數必須為 11 字元！");
         }
+        // 第四碼：只能輸入 1-9 或 A、B、C
+        if (val.length >= 4 && !/^[1-9ABC]$/.test(val.charAt(3))) {
+            errs.push("第四碼只能輸入 1-9 或 A、B、C！");
+        }
         // 最後第二碼：需為大寫 M
         if (val.length >= 2 && val.charAt(val.length - 2) !== 'M') {
             errs.push("最後第二個字需為大寫 M！");
         }
-        // 除最後第二碼以外，只能輸入數字 0-9
+        // 除第四碼和最後第二碼以外，只能輸入數字 0-9
         if (val.length > 0) {
             for (let i = 0; i < val.length; i++) {
-                if (i === val.length - 2) continue; // 跳過最後第二碼
+                if (i === 3 || i === val.length - 2) continue; // 跳過第四碼和最後第二碼
                 if (!/^[0-9]$/.test(val.charAt(i))) {
-                    errs.push("除最後第二碼以外，只能輸入數字 0-9！");
+                    errs.push("除第四碼和最後第二碼以外，只能輸入數字 0-9！");
                     break;
                 }
             }
         }
-        // 允許字元：只能輸入大寫 M 和數字 0-9
-        if (!/^[M0-9]+$/.test(val)) {
-            errs.push("只能輸入大寫 M 和數字 0-9！");
+        // 允許字元：只能輸入大寫 A、B、C、M 和數字 0-9
+        if (!/^[ABCM0-9]+$/.test(val)) {
+            errs.push("只能輸入大寫 A、B、C、M 和數字 0-9！");
         }
 
         if (errs.length > 0) {
@@ -597,23 +740,27 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             if (val.length !== 11) {
                 errs.push("總字數必須為 11 字元！");
             }
+            // 第四碼：只能輸入 1-9 或 A、B、C
+            if (val.length >= 4 && !/^[1-9ABC]$/.test(val.charAt(3))) {
+                errs.push("第四碼只能輸入 1-9 或 A、B、C！");
+            }
             // 最後第二碼：需為大寫 M
             if (val.length >= 2 && val.charAt(val.length - 2) !== 'M') {
                 errs.push("最後第二個字需為大寫 M！");
             }
-            // 除最後第二碼以外，只能輸入數字 0-9
+            // 除第四碼和最後第二碼以外，只能輸入數字 0-9
             if (val.length > 0) {
                 for (let i = 0; i < val.length; i++) {
-                    if (i === val.length - 2) continue;
+                    if (i === 3 || i === val.length - 2) continue;
                     if (!/^[0-9]$/.test(val.charAt(i))) {
-                        errs.push("除最後第二碼以外，只能輸入數字 0-9！");
+                        errs.push("除第四碼 and 最後第二碼以外，只能輸入數字 0-9！");
                         break;
                     }
                 }
             }
-            // 允許字元：只能輸入大寫 M 和數字 0-9
-            if (!/^[M0-9]+$/.test(val)) {
-                errs.push("只能輸入大寫 M 和數字 0-9！");
+            // 允許字元：只能輸入大寫 A、B、C、M 和數字 0-9
+            if (!/^[ABCM0-9]+$/.test(val)) {
+                errs.push("只能輸入大寫 A、B、C、M 和數字 0-9！");
             }
             if (errs.length > 0) {
                 orderErrors.push(`工程單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
@@ -985,6 +1132,104 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         <Label>送呈日期 <span className="text-red-500">*</span></Label>
                                         <Input name="submit_date" type="date" value={formData.submit_date || ''} onChange={handleInputChange} disabled={!isSectionEditable(0)} />
                                     </div>
+
+                                    {/* 專案維修單資訊 */}
+                                    <div className="col-span-full border-t border-slate-200 dark:border-slate-800 my-4 pt-4 space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id="is_maintenance_project"
+                                                checked={formData.is_maintenance_project || false}
+                                                onCheckedChange={(checked) => {
+                                                    setFormData((prev: any) => ({
+                                                        ...prev,
+                                                        is_maintenance_project: checked === true,
+                                                        maintenance_project_id: checked === true ? prev.maintenance_project_id : '',
+                                                        maintenance_project_category_id: checked === true ? prev.maintenance_project_category_id : ''
+                                                    }))
+                                                }}
+                                                disabled={!isSectionEditable(0)}
+                                            />
+                                            <Label htmlFor="is_maintenance_project" className="text-sm font-semibold cursor-pointer">
+                                                此為專案維修單
+                                            </Label>
+                                        </div>
+
+                                        {formData.is_maintenance_project && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>所屬專案 <span className="text-red-500">*</span></Label>
+                                                    <div className="flex gap-2">
+                                                        <select
+                                                            value={formData.maintenance_project_id || ''}
+                                                            onChange={(e) => {
+                                                                setFormData((prev: any) => ({
+                                                                    ...prev,
+                                                                    maintenance_project_id: e.target.value,
+                                                                    maintenance_project_category_id: ''
+                                                                }))
+                                                            }}
+                                                            disabled={!isSectionEditable(0)}
+                                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
+                                                        >
+                                                            <option value="">請選擇專案</option>
+                                                            {projects.map(proj => (
+                                                                <option key={proj.id} value={proj.id}>
+                                                                    {proj.maintenance_project_name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={() => setQuickProjectOpen(true)}
+                                                            disabled={!isSectionEditable(0)}
+                                                            title="快速建立專案"
+                                                            className="border-slate-200 dark:border-slate-800 shrink-0"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label>專案主項目 <span className="text-red-500">*</span></Label>
+                                                    <div className="flex gap-2">
+                                                        <select
+                                                            value={formData.maintenance_project_category_id || ''}
+                                                            onChange={(e) => {
+                                                                setFormData((prev: any) => ({
+                                                                    ...prev,
+                                                                    maintenance_project_category_id: e.target.value
+                                                                }))
+                                                            }}
+                                                            disabled={!isSectionEditable(0) || !selectedProjectId}
+                                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                        >
+                                                            <option value="">請選擇專案主項目</option>
+                                                            {categories.map(cat => (
+                                                                <option key={cat.id} value={cat.id}>
+                                                                    {cat.maintenance_category_name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={() => setQuickCategoryOpen(true)}
+                                                            disabled={!isSectionEditable(0) || !selectedProjectId}
+                                                            title="快速建立主項目"
+                                                            className="border-slate-200 dark:border-slate-800 shrink-0 disabled:opacity-50"
+                                                        >
+                                                            <FolderPlus className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     {isSectionEditable(0) && (
                                         <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
                                             {formData.status === '已轉維修單' && (
@@ -1882,6 +2127,56 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                 </Card>
 
             </main>
+
+            {/* 快速新增專案 Dialog */}
+            <Dialog open={quickProjectOpen} onOpenChange={setQuickProjectOpen}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>快速新增專案</DialogTitle>
+                        <DialogDescription>建立新專案以歸類此張維修單。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-3">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="projectName" className="font-semibold text-sm">專案名稱</Label>
+                            <Input
+                                id="projectName"
+                                placeholder="例如: 新建C棟工程"
+                                value={newProjectName}
+                                onChange={(e) => setNewProjectName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setQuickProjectOpen(false)}>取消</Button>
+                        <Button onClick={handleQuickAddProject} className="bg-primary text-white">建立</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 快速新增主項目 Dialog */}
+            <Dialog open={quickCategoryOpen} onOpenChange={setQuickCategoryOpen}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>快速新增主項目</DialogTitle>
+                        <DialogDescription>在此專案下新增主項目（例如: 水電、隔間裝修）。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-3">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="categoryName" className="font-semibold text-sm">項目名稱</Label>
+                            <Input
+                                id="categoryName"
+                                placeholder="例如: 水電、隔間裝修"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setQuickCategoryOpen(false)}>取消</Button>
+                        <Button onClick={handleQuickAddCategory} className="bg-primary text-white">建立</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

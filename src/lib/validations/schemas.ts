@@ -82,7 +82,21 @@ export const vendorWorkSchema = z.object({
     returned_other_text: z.string().nullable().optional(),
     receiver_name: z.string().nullable().optional(),
     ref_arrival_id: z.string().nullable().optional(),
+    // 專案維修單關聯欄位
+    is_maintenance_project: z.boolean().nullable().optional(),
+    maintenance_project_id: z.string().nullable().optional(),
+    maintenance_project_category_id: z.string().nullable().optional(),
 }).superRefine((data, ctx) => {
+    // 專案維修單驗證：若勾選則專案與主項目必填
+    if (data.is_maintenance_project === true) {
+        if (!data.maintenance_project_id) {
+            ctx.addIssue({ code: 'custom', message: '請選擇所屬專案', path: ['maintenance_project_id'] })
+        }
+        if (!data.maintenance_project_category_id) {
+            ctx.addIssue({ code: 'custom', message: '請選擇專案主項目', path: ['maintenance_project_category_id'] })
+        }
+    }
+
     if (data.entry_status === 'arrival') {
         // 到院時驗證
         if (!data.arrival_time) {
@@ -283,6 +297,9 @@ export const MAINTENANCE_FIELD_LABELS: Record<string, string> = {
     accept_mgr_date: '驗收單位主管日期',
     accept_director_name: '驗收部門主管',
     accept_director_date: '驗收部門主管日期',
+    is_maintenance_project: '是否為專案維修單',
+    maintenance_project_id: '關聯專案',
+    maintenance_project_category_id: '關聯專案主項目',
 }
 
 /** 新增維修單表單 Schema（步驟 1：已轉維修單） */
@@ -298,5 +315,8 @@ export const maintenanceWorkOrderSchema = z.object({
     maint_mgr_date: z.string().min(1, '請選擇工務單位主管日期'),
     printer_name: z.string().min(1, '請輸入印單人'),
     submit_date: z.string().min(1, '請選擇送呈日期'),
+    is_maintenance_project: z.boolean().nullable().optional(),
+    maintenance_project_id: z.string().nullable().optional(),
+    maintenance_project_category_id: z.string().nullable().optional(),
 })
 export type MaintenanceWorkOrderFormValues = z.infer<typeof maintenanceWorkOrderSchema>

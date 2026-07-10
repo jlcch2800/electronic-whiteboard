@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { format } from 'date-fns'
 import { motion } from 'framer-motion'
-import { Wrench } from 'lucide-react'
+import { Wrench, FolderKanban, Plus, FolderPlus } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { logChangeRecord } from '@/lib/change-log'
@@ -23,6 +23,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { useAppStore } from '@/stores/useAppStore'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 // 共用表單元件
 import FormField from '@/components/forms/FormField'
@@ -43,6 +49,16 @@ export default function MaintenanceWorkNewPage() {
     const [isSuccess, setIsSuccess] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
     const [pendingData, setPendingData] = useState<MaintenanceWorkOrderFormValues | null>(null)
+
+    // 專案相關狀態
+    const [projects, setProjects] = useState<any[]>([])
+    const [categories, setCategories] = useState<any[]>([])
+    
+    // 快速新增 Dialog 狀態
+    const [quickProjectOpen, setQuickProjectOpen] = useState(false)
+    const [quickCategoryOpen, setQuickCategoryOpen] = useState(false)
+    const [newProjectName, setNewProjectName] = useState('')
+    const [newCategoryName, setNewCategoryName] = useState('')
 
     // 追蹤各欄位 touched 狀態（失焦驗證用）
     const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
@@ -66,8 +82,122 @@ export default function MaintenanceWorkNewPage() {
             handler_name: '',
             maint_mgr_name: '',
             printer_name: '',
+            is_maintenance_project: false,
+            maintenance_project_id: '',
+            maintenance_project_category_id: '',
         }
     })
+
+    // 初始載入未結案專案
+    useEffect(() => {
+        const loadProjects = async () => {
+            const { data } = await supabase
+                .from('maintenance_project')
+                .select('*')
+                .eq('is_closed', false)
+                .order('created_at', { ascending: false })
+            setProjects(data || [])
+        }
+        loadProjects()
+    }, [supabase])
+
+    // 當選擇專案 ID 改變時，動態讀取類別
+    const selectedProjectId = watch('maintenance_project_id')
+    useEffect(() => {
+        if (selectedProjectId) {
+            const loadCategories = async () => {
+                const { data } = await supabase
+                    .from('maintenance_project_category')
+                    .select('*')
+                    .eq('maintenance_project_id', selectedProjectId)
+                    .order('created_at', { ascending: true })
+                setCategories(data || [])
+            }
+            loadCategories()
+        } else {
+            setCategories([])
+            setValue('maintenance_project_category_id', '')
+        }
+    }, [selectedProjectId, supabase, setValue])
+
+    // 快速新增專案處理
+    const handleQuickAddProject = async () => {
+        if (!newProjectName.trim()) return
+        try {
+            const payload = {
+                maintenance_project_name: newProjectName.trim(),
+                description: '由工單新增快速建立',
+                is_closed: false,
+                closed_at: null
+            }
+            const { data, error } = await supabase
+                .from('maintenance_project')
+                .insert(payload)
+                .select('id, maintenance_project_name')
+                .single()
+
+            if (error) throw error
+
+            logChangeRecord({
+                actionType: 'Insert',
+                modifyTable: 'maintenance_project',
+                modifyRecordId: data.id,
+                newData: payload
+            })
+
+            // 更新下拉選單
+            setProjects(prev => [data, ...prev])
+            setValue('maintenance_project_id', data.id)
+            setValue('is_maintenance_project', true)
+            setNewProjectName('')
+            setQuickProjectOpen(false)
+            toast({ title: '專案建立成功', description: `專案「${data.maintenance_project_name}」已建立並選取` })
+        } catch (err: any) {
+            toast({
+                title: '快速建立專案失敗',
+                description: err.message,
+                variant: 'destructive'
+            })
+        }
+    }
+
+    // 快速新增主項目處理
+    const handleQuickAddCategory = async () => {
+        if (!newCategoryName.trim() || !selectedProjectId) return
+        try {
+            const payload = {
+                maintenance_project_id: selectedProjectId,
+                maintenance_category_name: newCategoryName.trim()
+            }
+            const { data, error } = await supabase
+                .from('maintenance_project_category')
+                .insert(payload)
+                .select('id, maintenance_category_name')
+                .single()
+
+            if (error) throw error
+
+            logChangeRecord({
+                actionType: 'Insert',
+                modifyTable: 'maintenance_project_category',
+                modifyRecordId: data.id,
+                newData: payload
+            })
+
+            // 更新類別下拉選單
+            setCategories(prev => [...prev, data])
+            setValue('maintenance_project_category_id', data.id)
+            setNewCategoryName('')
+            setQuickCategoryOpen(false)
+            toast({ title: '主項目建立成功', description: `主項目「${data.maintenance_category_name}」已建立並選取` })
+        } catch (err: any) {
+            toast({
+                title: '快速建立主項目失敗',
+                description: err.message,
+                variant: 'destructive'
+            })
+        }
+    }
 
     // 當 profile 載入且角色是 staff 時，自動將印單人與承辦人預設填入自己
     useEffect(() => {
@@ -307,6 +437,9 @@ export default function MaintenanceWorkNewPage() {
                 maint_mgr_date: pendingData.maint_mgr_date,
                 printer_name: pendingData.printer_name,
                 submit_date: pendingData.submit_date,
+                is_maintenance_project: pendingData.is_maintenance_project || false,
+                maintenance_project_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_id || null) : null,
+                maintenance_project_category_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_category_id || null) : null,
             }
 
             const { data: inserted, error } = await supabase
@@ -499,7 +632,97 @@ export default function MaintenanceWorkNewPage() {
                                 </FormField>
                             </CardContent>
                         </Card>
- 
+
+                        {/* 專案資訊區塊 (非必填) */}
+                        <Card className="border-[#ffe3db] dark:border-[#5c3c33]">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-base flex items-center gap-2 text-[#d8725b] dark:text-[#ffbdae]">
+                                    <FolderKanban className="w-4 h-4" />
+                                    專案維修單資訊 (選填)
+                                </CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        id="is_maintenance_project"
+                                        checked={watch('is_maintenance_project') || false}
+                                        onCheckedChange={(checked) => {
+                                            setValue('is_maintenance_project', checked === true)
+                                            if (checked !== true) {
+                                                setValue('maintenance_project_id', '')
+                                                setValue('maintenance_project_category_id', '')
+                                            }
+                                        }}
+                                    />
+                                    <Label htmlFor="is_maintenance_project" className="text-sm font-semibold cursor-pointer">
+                                        此為專案維修單
+                                    </Label>
+                                </div>
+                            </CardHeader>
+                            {watch('is_maintenance_project') && (
+                                <CardContent className="space-y-4 pt-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField label="所屬專案" required={watch('is_maintenance_project')}>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={watch('maintenance_project_id') || ''}
+                                                    onChange={(e) => {
+                                                        setValue('maintenance_project_id', e.target.value)
+                                                        setValue('maintenance_project_category_id', '')
+                                                    }}
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
+                                                >
+                                                    <option value="">請選擇專案</option>
+                                                    {projects.map(proj => (
+                                                        <option key={proj.id} value={proj.id}>
+                                                            {proj.maintenance_project_name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => setQuickProjectOpen(true)}
+                                                    title="快速建立專案"
+                                                    className="border-slate-200 dark:border-slate-800 shrink-0"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </FormField>
+
+                                        <FormField label="專案主項目" required={watch('is_maintenance_project')}>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={watch('maintenance_project_category_id') || ''}
+                                                    onChange={(e) => setValue('maintenance_project_category_id', e.target.value)}
+                                                    disabled={!selectedProjectId}
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                >
+                                                    <option value="">請選擇專案主項目</option>
+                                                    {categories.map(cat => (
+                                                        <option key={cat.id} value={cat.id}>
+                                                            {cat.maintenance_category_name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => setQuickCategoryOpen(true)}
+                                                    disabled={!selectedProjectId}
+                                                    title="快速建立主項目"
+                                                    className="border-slate-200 dark:border-slate-800 shrink-0 disabled:opacity-50"
+                                                >
+                                                    <FolderPlus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </FormField>
+                                    </div>
+                                </CardContent>
+                            )}
+                        </Card>
+
                         {/* 區塊 4：主管簽核 */}
                         <Card className="border-[#ffe3db] bg-[#fff7f5]/80 dark:border-[#5c3c33] dark:bg-[#2c1d1a]/20">
                             <CardHeader>
@@ -577,6 +800,56 @@ export default function MaintenanceWorkNewPage() {
                 data={pendingData || {}}
                 fieldLabels={MAINTENANCE_FIELD_LABELS}
             />
+
+            {/* 快速新增專案 Dialog */}
+            <Dialog open={quickProjectOpen} onOpenChange={setQuickProjectOpen}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>快速新增專案</DialogTitle>
+                        <DialogDescription>建立新專案以歸類此張維修單。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-3">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="projectName" className="font-semibold text-sm">專案名稱</Label>
+                            <Input
+                                id="projectName"
+                                placeholder="例如: 新建C棟工程"
+                                value={newProjectName}
+                                onChange={(e) => setNewProjectName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setQuickProjectOpen(false)}>取消</Button>
+                        <Button onClick={handleQuickAddProject} className="bg-primary text-white">建立</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 快速新增主項目 Dialog */}
+            <Dialog open={quickCategoryOpen} onOpenChange={setQuickCategoryOpen}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>快速新增主項目</DialogTitle>
+                        <DialogDescription>在此專案下新增主項目（例如: 水電、隔間裝修）。</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-3">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="categoryName" className="font-semibold text-sm">項目名稱</Label>
+                            <Input
+                                id="categoryName"
+                                placeholder="例如: 水電、隔間裝修"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setQuickCategoryOpen(false)}>取消</Button>
+                        <Button onClick={handleQuickAddCategory} className="bg-primary text-white">建立</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

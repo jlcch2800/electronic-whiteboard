@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
 import { format } from 'date-fns'
 import { motion } from 'framer-motion'
-import { MapPin, Package, AlertTriangle } from 'lucide-react'
+import { MapPin, Package, AlertTriangle, FolderKanban } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatCreateMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
@@ -48,6 +48,9 @@ const FIELD_LABELS: Record<string, string> = {
     borrowed_items: '借出項目',
     receiver_name: '歸還人員',
     returned_items: '歸還項目',
+    is_maintenance_project: '此為專案工作',
+    maintenance_project_id: '所屬專案',
+    maintenance_project_category_id: '專案主項目',
 }
 
 export default function VendorWorkNewPage() {
@@ -63,6 +66,10 @@ export default function VendorWorkNewPage() {
 
     const supabase = createClient()
     const { toast } = useToast()
+
+    // 專案相關狀態
+    const [projects, setProjects] = useState<any[]>([])
+    const [categories, setCategories] = useState<any[]>([])
 
     // 表單狀態
     const [isSuccess, setIsSuccess] = useState(false)
@@ -86,8 +93,43 @@ export default function VendorWorkNewPage() {
             arrival_time: format(new Date(), 'HH:mm'),
             departure_time: format(new Date(), 'HH:mm'),
             head_count: 1,
+            is_maintenance_project: false,
+            maintenance_project_id: '',
+            maintenance_project_category_id: '',
         }
     })
+
+    // 初始載入未結案專案
+    useEffect(() => {
+        const loadProjects = async () => {
+            const { data } = await supabase
+                .from('maintenance_project')
+                .select('*')
+                .eq('is_closed', false)
+                .order('created_at', { ascending: false })
+            setProjects(data || [])
+        }
+        loadProjects()
+    }, [supabase])
+
+    // 當專案 ID 改變時，載入項目
+    const watchProjectId = watch('maintenance_project_id')
+    useEffect(() => {
+        if (watchProjectId) {
+            const loadCategories = async () => {
+                const { data } = await supabase
+                    .from('maintenance_project_category')
+                    .select('*')
+                    .eq('maintenance_project_id', watchProjectId)
+                    .order('created_at', { ascending: true })
+                setCategories(data || [])
+            }
+            loadCategories()
+        } else {
+            setCategories([])
+            setValue('maintenance_project_category_id', '')
+        }
+    }, [watchProjectId, supabase, setValue])
 
     const entryStatus = watch('entry_status')
     const vendorName = watch('vendor_name')
@@ -224,12 +266,6 @@ export default function VendorWorkNewPage() {
             if (missingOthers.length > 0) {
                 errorMsgs.push(`尚未歸還 (其他): ${missingOthers.join('、')}`)
             }
-            if (extraItems.length > 0) {
-                errorMsgs.push(`未曾借出卻歸還: ${extraItems.join('、')}`)
-            }
-            if (extraOthers.length > 0) {
-                errorMsgs.push(`未曾借出卻歸還 (其他): ${extraOthers.join('、')}`)
-            }
 
             const hasMissing = missingItems.length > 0 || missingOthers.length > 0
             const hasExtra = extraItems.length > 0 || extraOthers.length > 0
@@ -258,6 +294,11 @@ export default function VendorWorkNewPage() {
             // 根據到離院狀態清除無關欄位，並組裝借物資料
             if (pendingData.entry_status === 'arrival') {
                 payload.departure_time = null
+                // 專案相關欄位
+                payload.is_maintenance_project = pendingData.is_maintenance_project || false
+                payload.maintenance_project_id = pendingData.is_maintenance_project ? (pendingData.maintenance_project_id || null) : null
+                payload.maintenance_project_category_id = pendingData.is_maintenance_project ? (pendingData.maintenance_project_category_id || null) : null
+
                 // 借物資料
                 payload.borrow_action = borrowAction
                 if (borrowAction === 'borrow') {
@@ -296,40 +337,92 @@ export default function VendorWorkNewPage() {
                             other_text: missingOthers.join('、')
                         }
                         payload.lender_name = lenderName
-                    } else {
-                        payload.borrowed_items = null
-                        payload.lender_name = null
                     }
                 } else {
                     payload.returned_items = null
                     payload.receiver_name = null
                     payload.ref_arrival_id = null
-                    payload.borrowed_items = null
-                    payload.lender_name = null
                 }
             }
             // 清除前端用的臨時 array 欄位（DB 只存 jsonb）
             delete payload.borrowed_other_text
             delete payload.returned_other_text
 
-            const { data: inserted, error } = await supabase.from('vendor_today_work').insert(payload).select('id').single()
-            if (error) throw error
+            let recordId = ''
+            if (pendingData.entry_status === 'departure' && refArrivalId) {
+                // 離院時：更新原到院紀錄
+                const updatePayload = {
+                    departure_time: pendingData.departure_time,
+                    entry_status: 'departure',
+                    borrow_action: payload.borrow_action,
+                    returned_items: payload.returned_items,
+                    receiver_name: payload.receiver_name,
+                    ref_arrival_id: payload.ref_arrival_id,
+                    ...(payload.borrow_action === 'partial_return' ? {
+                        borrowed_items: payload.borrowed_items,
+                        lender_name: payload.lender_name
+                    } : {})
+                }
 
+                const { error } = await supabase
+                    .from('vendor_today_work')
+                    .update(updatePayload)
+                    .eq('id', refArrivalId)
 
-            // 發送 Telegram 通知
-            sendTelegramNotify(formatCreateMessage('廠商今日工作項目', payload, VENDOR_WORK_LABELS))
+                if (error) throw error
+                recordId = refArrivalId
 
-            // 寫入系統異動紀錄
-            logChangeRecord({ actionType: 'Insert', modifyTable: 'vendor_today_work', modifyRecordId: inserted?.id || '', newData: payload })
+                // 寫入系統異動紀錄
+                logChangeRecord({ 
+                    actionType: 'Update', 
+                    modifyTable: 'vendor_today_work', 
+                    modifyRecordId: recordId, 
+                    oldData: { id: refArrivalId, entry_status: 'arrival' },
+                    newData: updatePayload 
+                })
+            } else {
+                // 到院時：新增紀錄
+                const { data: inserted, error } = await supabase
+                    .from('vendor_today_work')
+                    .insert(payload)
+                    .select('id')
+                    .single()
+
+                if (error) throw error
+                recordId = inserted?.id || ''
+
+                // 寫入系統異動紀錄
+                logChangeRecord({ 
+                    actionType: 'Insert', 
+                    modifyTable: 'vendor_today_work', 
+                    modifyRecordId: recordId, 
+                    newData: payload 
+                })
+            }
+
+            // 重新讀取完整紀錄以發送完整 Telegram 訊息
+            const { data: fullRecord } = await supabase
+                .from('vendor_today_work')
+                .select('*')
+                .eq('id', recordId)
+                .single()
+
+            if (fullRecord) {
+                // 發送 Telegram 通知
+                sendTelegramNotify(formatCreateMessage('廠商今日工作項目', fullRecord, VENDOR_WORK_LABELS))
+            }
 
             // 成功動畫
             setIsSuccess(true)
-            toast({ title: '新增成功', description: '廠商今日工作項目已新增' })
+            toast({ 
+                title: pendingData.entry_status === 'departure' ? '更新成功' : '新增成功', 
+                description: pendingData.entry_status === 'departure' ? '離院工作項目已更新' : '廠商今日工作項目已新增' 
+            })
 
             // 1.5 秒後跳轉
             setTimeout(() => router.push(isGuest ? '/vendor-work-guest' : '/'), 1500)
         } catch (error: any) {
-            toast({ title: '新增失敗', description: error.message, variant: 'destructive' })
+            toast({ title: '儲存失敗', description: error.message, variant: 'destructive' })
         }
     }
 
@@ -360,8 +453,8 @@ export default function VendorWorkNewPage() {
                                         <input type="radio" value="arrival" {...register('entry_status')} className="sr-only" />
                                         <span className="font-bold">到院 (Arrival)</span>
                                     </label>
-                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'border-border hover:border-slate-300 dark:hover:border-slate-700'}`}>
-                                        <input type="radio" value="departure" {...register('entry_status')} className="sr-only" />
+                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${watch('is_maintenance_project') ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-dashed pointer-events-none' : ''} ${entryStatus === 'departure' && !watch('is_maintenance_project') ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'border-border hover:border-slate-300 dark:hover:border-slate-700'}`}>
+                                        <input type="radio" value="departure" disabled={watch('is_maintenance_project') || false} {...register('entry_status')} className="sr-only" />
                                         <span className="font-bold">離院 (Departure)</span>
                                     </label>
                                 </div>
@@ -420,6 +513,78 @@ export default function VendorWorkNewPage() {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* 專案工作資訊 - 僅到院 */}
+                        {entryStatus === 'arrival' && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                                <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20">
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                        <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                                            <FolderKanban className="w-4 h-4" />
+                                            專案工作資訊 (選填)
+                                        </CardTitle>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id="is_maintenance_project"
+                                                {...register('is_maintenance_project')}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked
+                                                    setValue('is_maintenance_project', checked)
+                                                    if (!checked) {
+                                                        setValue('maintenance_project_id', '')
+                                                        setValue('maintenance_project_category_id', '')
+                                                    }
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                            <label htmlFor="is_maintenance_project" className="text-sm font-semibold cursor-pointer">
+                                                此為專案工作
+                                            </label>
+                                        </div>
+                                    </CardHeader>
+                                    {watch('is_maintenance_project') && (
+                                        <CardContent className="space-y-4 pt-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField label="所屬專案" required error={errors.maintenance_project_id?.message}>
+                                                    <select
+                                                        value={watch('maintenance_project_id') || ''}
+                                                        onChange={(e) => {
+                                                            setValue('maintenance_project_id', e.target.value)
+                                                            setValue('maintenance_project_category_id', '')
+                                                        }}
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
+                                                    >
+                                                        <option value="">請選擇專案</option>
+                                                        {projects.map(proj => (
+                                                            <option key={proj.id} value={proj.id}>
+                                                                {proj.maintenance_project_name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </FormField>
+
+                                                <FormField label="專案主項目" required error={errors.maintenance_project_category_id?.message}>
+                                                    <select
+                                                        value={watch('maintenance_project_category_id') || ''}
+                                                        onChange={(e) => setValue('maintenance_project_category_id', e.target.value)}
+                                                        disabled={!watchProjectId}
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                    >
+                                                        <option value="">請選擇專案主項目</option>
+                                                        {categories.map(cat => (
+                                                            <option key={cat.id} value={cat.id}>
+                                                                {cat.maintenance_category_name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </FormField>
+                                            </div>
+                                        </CardContent>
+                                    )}
+                                </Card>
+                            </motion.div>
+                        )}
 
                         {/* 施工位置 - 僅到院 */}
                         {entryStatus === 'arrival' && (
