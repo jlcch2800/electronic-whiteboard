@@ -339,13 +339,16 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
     // 工程單編號自動大小寫轉換：最後第二碼 m→M
     const transformProjectOrderId = (value: string): string => {
-        if (!value || value.length < 2) return value;
-        const secondToLast = value.length - 2;
+        if (!value) return value;
+        let result = value;
         // 最後第二碼小寫 m 自動轉大寫 M
-        if (value.charAt(secondToLast) === 'm') {
-            return value.slice(0, secondToLast) + 'M' + value.slice(secondToLast + 1);
+        if (result.length >= 2) {
+            const secondToLast = result.length - 2;
+            if (result.charAt(secondToLast) === 'm') {
+                result = result.slice(0, secondToLast) + 'M' + result.slice(secondToLast + 1);
+            }
         }
-        return value;
+        return result;
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -483,9 +486,23 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (val.length !== 11) {
             errs.push("總字數必須為 11 字元！");
         }
-        const secondToLast = val.charAt(val.length - 2);
-        if (secondToLast !== 'M') {
+        // 最後第二碼：需為大寫 M
+        if (val.length >= 2 && val.charAt(val.length - 2) !== 'M') {
             errs.push("最後第二個字需為大寫 M！");
+        }
+        // 除最後第二碼以外，只能輸入數字 0-9
+        if (val.length > 0) {
+            for (let i = 0; i < val.length; i++) {
+                if (i === val.length - 2) continue; // 跳過最後第二碼
+                if (!/^[0-9]$/.test(val.charAt(i))) {
+                    errs.push("除最後第二碼以外，只能輸入數字 0-9！");
+                    break;
+                }
+            }
+        }
+        // 允許字元：只能輸入大寫 M 和數字 0-9
+        if (!/^[M0-9]+$/.test(val)) {
+            errs.push("只能輸入大寫 M 和數字 0-9！");
         }
 
         if (errs.length > 0) {
@@ -514,18 +531,54 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         if (formData.work_order_id && formData.work_order_id.trim() !== '') {
             const val = formData.work_order_id.trim();
             const errs: string[] = [];
+            const unit = profile?.unit || '';
+
             if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
                 errs.push("請勿輸入全型字！");
             }
-            if (val.length !== 12) {
-                errs.push("總字數必須為 12 字元！");
+
+            if (unit === '醫工組') {
+                // 醫工組驗證規則：10碼、第六碼大寫F、只允許 F/f 和數字 0-9
+                if (val.length !== 10) {
+                    errs.push("總字數必須為 10 字元！");
+                }
+                if (val.length >= 6 && val.charAt(5) !== 'F') {
+                    errs.push("第六碼需為大寫 F！");
+                }
+                if (!/^[F0-9]+$/.test(val)) {
+                    errs.push("只能輸入大寫 F 和數字 0-9！");
+                }
+                // 除第六碼以外，只能輸入數字 0-9
+                for (let i = 0; i < val.length; i++) {
+                    if (i === 5) continue; // 跳過第六碼
+                    if (!/^[0-9]$/.test(val.charAt(i))) {
+                        errs.push("除第六碼以外，只能輸入數字 0-9！");
+                        break;
+                    }
+                }
+            } else {
+                // 工務室驗證規則：12碼、第一碼大寫F、最後一碼小寫a、只允許 F/f/A/a 和數字 0-9
+                if (val.length !== 12) {
+                    errs.push("總字數必須為 12 字元！");
+                }
+                if (!val.startsWith('F')) {
+                    errs.push("第一個字需為大寫 F！");
+                }
+                if (!val.endsWith('a')) {
+                    errs.push("最後一個字需為小寫 a！");
+                }
+                if (!/^[Fa0-9]+$/.test(val)) {
+                    errs.push("只能輸入大寫 F、小寫 a 和數字 0-9！");
+                }
+                // 除第一碼和最後一碼以外，只能輸入數字 0-9
+                for (let i = 1; i < val.length - 1; i++) {
+                    if (!/^[0-9]$/.test(val.charAt(i))) {
+                        errs.push("除第一碼和最後一碼以外，只能輸入數字 0-9！");
+                        break;
+                    }
+                }
             }
-            if (!val.startsWith('F')) {
-                errs.push("第一個字需為大寫 F！");
-            }
-            if (!val.endsWith('a')) {
-                errs.push("最後一個字需為小寫 a！");
-            }
+
             if (errs.length > 0) {
                 orderErrors.push(`工單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
             }
@@ -544,9 +597,23 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             if (val.length !== 11) {
                 errs.push("總字數必須為 11 字元！");
             }
-            const secondToLast = val.charAt(val.length - 2);
-            if (secondToLast !== 'M') {
+            // 最後第二碼：需為大寫 M
+            if (val.length >= 2 && val.charAt(val.length - 2) !== 'M') {
                 errs.push("最後第二個字需為大寫 M！");
+            }
+            // 除最後第二碼以外，只能輸入數字 0-9
+            if (val.length > 0) {
+                for (let i = 0; i < val.length; i++) {
+                    if (i === val.length - 2) continue;
+                    if (!/^[0-9]$/.test(val.charAt(i))) {
+                        errs.push("除最後第二碼以外，只能輸入數字 0-9！");
+                        break;
+                    }
+                }
+            }
+            // 允許字元：只能輸入大寫 M 和數字 0-9
+            if (!/^[M0-9]+$/.test(val)) {
+                errs.push("只能輸入大寫 M 和數字 0-9！");
             }
             if (errs.length > 0) {
                 orderErrors.push(`工程單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);

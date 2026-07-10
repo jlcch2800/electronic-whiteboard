@@ -55,6 +55,10 @@ export interface Database {
           returned_items: BorrowItems | null
           receiver_name: string | null
           ref_arrival_id: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project: boolean | null
+          maintenance_project_id: string | null
+          maintenance_project_category_id: string | null
         }
         Insert: {
           id?: string
@@ -77,6 +81,10 @@ export interface Database {
           returned_items?: BorrowItems | null
           receiver_name?: string | null
           ref_arrival_id?: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project?: boolean | null
+          maintenance_project_id?: string | null
+          maintenance_project_category_id?: string | null
         }
         Update: {
           id?: string
@@ -99,6 +107,10 @@ export interface Database {
           returned_items?: BorrowItems | null
           receiver_name?: string | null
           ref_arrival_id?: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project?: boolean | null
+          maintenance_project_id?: string | null
+          maintenance_project_category_id?: string | null
         }
       }
       vendor_today_work_history: {
@@ -123,6 +135,10 @@ export interface Database {
           returned_items: BorrowItems | null
           receiver_name: string | null
           ref_arrival_id: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project: boolean | null
+          maintenance_project_id: string | null
+          maintenance_project_category_id: string | null
         }
         Insert: {
           id?: string
@@ -145,6 +161,10 @@ export interface Database {
           returned_items?: BorrowItems | null
           receiver_name?: string | null
           ref_arrival_id?: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project?: boolean | null
+          maintenance_project_id?: string | null
+          maintenance_project_category_id?: string | null
         }
         Update: {
           id?: string
@@ -167,6 +187,10 @@ export interface Database {
           returned_items?: BorrowItems | null
           receiver_name?: string | null
           ref_arrival_id?: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project?: boolean | null
+          maintenance_project_id?: string | null
+          maintenance_project_category_id?: string | null
         }
       }
       engineering_today_work: {
@@ -625,6 +649,10 @@ export interface Database {
           accept_director_date: string | null
           is_contract: boolean | null
           contract_received_date: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project: boolean | null
+          maintenance_project_id: string | null
+          maintenance_project_category_id: string | null
         }
         Insert: {
           id?: string
@@ -679,6 +707,10 @@ export interface Database {
           accept_director_date?: string | null
           is_contract?: boolean | null
           contract_received_date?: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project?: boolean | null
+          maintenance_project_id?: string | null
+          maintenance_project_category_id?: string | null
         }
         Update: {
           id?: string
@@ -733,6 +765,10 @@ export interface Database {
           accept_director_date?: string | null
           is_contract?: boolean | null
           contract_received_date?: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project?: boolean | null
+          maintenance_project_id?: string | null
+          maintenance_project_category_id?: string | null
         }
       }
       maintenance_work_orders_history: {
@@ -789,6 +825,10 @@ export interface Database {
           accept_director_date: string | null
           is_contract: boolean | null
           contract_received_date: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project: boolean | null
+          maintenance_project_id: string | null
+          maintenance_project_category_id: string | null
         }
         Insert: {
           id?: string
@@ -843,6 +883,10 @@ export interface Database {
           accept_director_date?: string | null
           is_contract?: boolean | null
           contract_received_date?: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project?: boolean | null
+          maintenance_project_id?: string | null
+          maintenance_project_category_id?: string | null
         }
         Update: {
           id?: string
@@ -897,6 +941,98 @@ export interface Database {
           accept_director_date?: string | null
           is_contract?: boolean | null
           contract_received_date?: string | null
+          // 專案維修單關聯欄位
+          is_maintenance_project?: boolean | null
+          maintenance_project_id?: string | null
+          maintenance_project_category_id?: string | null
+        }
+      }
+      // ========== 專案維修單相關表 ==========
+      maintenance_project: {
+        Row: {
+          id: string
+          created_at: string
+          maintenance_project_name: string
+          description: string | null
+          is_closed: boolean
+          closed_at: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          maintenance_project_name: string
+          description?: string | null
+          is_closed?: boolean
+          closed_at?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          maintenance_project_name?: string
+          description?: string | null
+          is_closed?: boolean
+          closed_at?: string | null
+        }
+      }
+      maintenance_project_category: {
+        Row: {
+          id: string
+          created_at: string
+          maintenance_project_id: string
+          maintenance_category_name: string
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          maintenance_project_id: string
+          maintenance_category_name: string
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          maintenance_project_id?: string
+          maintenance_category_name?: string
+        }
+      }
+      maintenance_project_work_file: {
+        Row: {
+          id: string
+          created_at: string
+          vendor_work_id: string
+          maintenance_project_id: string
+          maintenance_project_name: string | null
+          maintenance_category_name: string | null
+          folder_name: string | null
+          uploader_name: string
+          file_url: string
+          image_url: string
+          video_url: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          vendor_work_id: string
+          maintenance_project_id: string
+          maintenance_project_name?: string | null
+          maintenance_category_name?: string | null
+          folder_name?: string | null
+          uploader_name: string
+          file_url: string
+          image_url: string
+          video_url?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          vendor_work_id?: string
+          maintenance_project_id?: string
+          maintenance_project_name?: string | null
+          maintenance_category_name?: string | null
+          folder_name?: string | null
+          uploader_name?: string
+          file_url?: string
+          image_url?: string
+          video_url?: string | null
         }
       }
     }

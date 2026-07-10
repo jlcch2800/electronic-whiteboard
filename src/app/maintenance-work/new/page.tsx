@@ -86,17 +86,25 @@ export default function MaintenanceWorkNewPage() {
         }
     }, [profile, setValue])
 
-    // 工單編號自動大小寫轉換：第一碼 f→F，最後一碼 A→a
+    // 工單編號自動大小寫轉換（依使用者單位區分）
     const transformWorkOrderId = (value: string): string => {
         if (!value) return value;
         let result = value;
-        // 第一碼小寫 f 自動轉大寫 F
-        if (result.charAt(0) === 'f') {
-            result = 'F' + result.slice(1);
-        }
-        // 最後一碼大寫 A 自動轉小寫 a
-        if (result.length > 0 && result.charAt(result.length - 1) === 'A') {
-            result = result.slice(0, -1) + 'a';
+        const unit = profile?.unit || '';
+
+        if (unit === '醫工組') {
+            // 醫工組：第六碼小寫 f 自動轉大寫 F
+            if (result.length >= 6 && result.charAt(5) === 'f') {
+                result = result.slice(0, 5) + 'F' + result.slice(6);
+            }
+        } else {
+            // 工務室（預設）：第一碼 f→F，最後一碼 A→a
+            if (result.charAt(0) === 'f') {
+                result = 'F' + result.slice(1);
+            }
+            if (result.length > 0 && result.charAt(result.length - 1) === 'A') {
+                result = result.slice(0, -1) + 'a';
+            }
         }
         return result;
     };
@@ -116,24 +124,60 @@ export default function MaintenanceWorkNewPage() {
             const val = (getValues('work_order_id') || '').trim();
             if (val) {
                 const errs: string[] = [];
+                const unit = profile?.unit || '';
+
                 if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(val)) {
                     errs.push("請勿輸入全型字！");
                 }
-                if (val.length !== 12) {
-                    errs.push("總字數必須為 12 字元！");
+
+                if (unit === '醫工組') {
+                    // 醫工組驗證規則：10碼、第六碼大寫F、只允許 F/f 和數字 0-9
+                    if (val.length !== 10) {
+                        errs.push("總字數必須為 10 字元！");
+                    }
+                    if (val.length >= 6 && val.charAt(5) !== 'F') {
+                        errs.push("第六碼需為大寫 F！");
+                    }
+                    if (!/^[F0-9]+$/.test(val)) {
+                        errs.push("只能輸入大寫 F 和數字 0-9！");
+                    }
+                    // 除第六碼以外，只能輸入數字 0-9
+                    for (let i = 0; i < val.length; i++) {
+                        if (i === 5) continue; // 跳過第六碼
+                        if (!/^[0-9]$/.test(val.charAt(i))) {
+                            errs.push("除第六碼以外，只能輸入數字 0-9！");
+                            break;
+                        }
+                    }
+                } else {
+                    // 工務室驗證規則：12碼、第一碼大寫F、最後一碼小寫a、只允許 F/f/A/a 和數字 0-9
+                    if (val.length !== 12) {
+                        errs.push("總字數必須為 12 字元！");
+                    }
+                    if (!val.startsWith('F')) {
+                        errs.push("第一個字需為大寫 F！");
+                    }
+                    if (!val.endsWith('a')) {
+                        errs.push("最後一個字需為小寫 a！");
+                    }
+                    if (!/^[Fa0-9]+$/.test(val)) {
+                        errs.push("只能輸入大寫 F、小寫 a 和數字 0-9！");
+                    }
+                    // 除第一碼和最後一碼以外，只能輸入數字 0-9
+                    for (let i = 1; i < val.length - 1; i++) {
+                        if (!/^[0-9]$/.test(val.charAt(i))) {
+                            errs.push("除第一碼和最後一碼以外，只能輸入數字 0-9！");
+                            break;
+                        }
+                    }
                 }
-                if (!val.startsWith('F')) {
-                    errs.push("第一個字需為大寫 F！");
-                }
-                if (!val.endsWith('a')) {
-                    errs.push("最後一個字需為小寫 a！");
-                }
+
                 if (errs.length > 0) {
                     alert(`工單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
                 }
             }
         }
-    }, [trigger, getValues])
+    }, [trigger, getValues, profile])
 
     // 進度計算
     const totalSteps = 3
@@ -154,18 +198,54 @@ export default function MaintenanceWorkNewPage() {
         const workOrderVal = (data.work_order_id || '').trim();
         if (workOrderVal) {
             const errs: string[] = [];
+            const unit = profile?.unit || '';
+
             if (/[\uFF00-\uFFEF\u3000\u4E00-\u9FFF]/.test(workOrderVal)) {
                 errs.push("請勿輸入全型字！");
             }
-            if (workOrderVal.length !== 12) {
-                errs.push("總字數必須為 12 字元！");
+
+            if (unit === '醫工組') {
+                // 醫工組驗證規則：10碼、第六碼大寫F、只允許 F/f 和數字 0-9
+                if (workOrderVal.length !== 10) {
+                    errs.push("總字數必須為 10 字元！");
+                }
+                if (workOrderVal.length >= 6 && workOrderVal.charAt(5) !== 'F') {
+                    errs.push("第六碼需為大寫 F！");
+                }
+                if (!/^[F0-9]+$/.test(workOrderVal)) {
+                    errs.push("只能輸入大寫 F 和數字 0-9！");
+                }
+                // 除第六碼以外，只能輸入數字 0-9
+                for (let i = 0; i < workOrderVal.length; i++) {
+                    if (i === 5) continue; // 跳過第六碼
+                    if (!/^[0-9]$/.test(workOrderVal.charAt(i))) {
+                        errs.push("除第六碼以外，只能輸入數字 0-9！");
+                        break;
+                    }
+                }
+            } else {
+                // 工務室驗證規則：12碼、第一碼大寫F、最後一碼小寫a、只允許 F/f/A/a 和數字 0-9
+                if (workOrderVal.length !== 12) {
+                    errs.push("總字數必須為 12 字元！");
+                }
+                if (!workOrderVal.startsWith('F')) {
+                    errs.push("第一個字需為大寫 F！");
+                }
+                if (!workOrderVal.endsWith('a')) {
+                    errs.push("最後一個字需為小寫 a！");
+                }
+                if (!/^[Fa0-9]+$/.test(workOrderVal)) {
+                    errs.push("只能輸入大寫 F、小寫 a 和數字 0-9！");
+                }
+                // 除第一碼和最後一碼以外，只能輸入數字 0-9
+                for (let i = 1; i < workOrderVal.length - 1; i++) {
+                    if (!/^[0-9]$/.test(workOrderVal.charAt(i))) {
+                        errs.push("除第一碼和最後一碼以外，只能輸入數字 0-9！");
+                        break;
+                    }
+                }
             }
-            if (!workOrderVal.startsWith('F')) {
-                errs.push("第一個字需為大寫 F！");
-            }
-            if (!workOrderVal.endsWith('a')) {
-                errs.push("最後一個字需為小寫 a！");
-            }
+
             if (errs.length > 0) {
                 alert(`工單編號不符合規則：\n${errs.map(e => `- ${e}`).join('\n')}`);
                 return;

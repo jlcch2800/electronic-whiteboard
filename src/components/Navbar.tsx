@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import {
     Users, HardHat, FileClock, ClipboardCheck, History, UserCog, Activity,
     LogOut, Home, Calendar, ChevronDown, FileText, RefreshCw, Menu, X, Lock,
-    Sun, Moon, User, Settings, Clock, LayoutDashboard
+    Sun, Moon, User, Settings, Clock, LayoutDashboard, FolderKanban
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
         label: '工務系統', icon: ClipboardCheck, children: [
             {
                 label: '維修單管理', icon: ClipboardCheck, children: [
+                    { label: '專案管理', icon: FolderKanban, href: '/maintenance-work/project-management' },
                     { label: '新增維修單', icon: FileText, href: '/maintenance-work/new' },
                     { label: '維修單狀態', icon: Activity, href: '/maintenance-work/status' },
                     { label: '維修單總表', icon: LayoutDashboard, href: '/maintenance-work/all' },
