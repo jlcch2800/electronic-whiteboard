@@ -214,24 +214,34 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
         setShowConfirm(false)
         try {
             const payload: any = { ...pendingData }
-            if (pendingData.entry_status === 'arrival') {
-                payload.departure_time = null
-                payload.borrow_action = borrowAction
-                payload.borrowed_items = borrowAction === 'borrow' ? { items: borrowedItems, other_text: borrowedOtherText } : null
-                payload.lender_name = borrowAction === 'borrow' ? lenderName : null
-                payload.returned_items = null
-                payload.receiver_name = null
-            } else {
-                payload.arrival_time = null
-                payload.location = null
-                payload.vendor_badge_id = null
-                payload.head_count = null
-                payload.vendor_contact_phone = null
-                payload.borrow_action = isPartialReturn ? 'partial_return' : returnAction
-                payload.returned_items = (payload.borrow_action === 'return' || payload.borrow_action === 'partial_return') ? { items: returnedItems, other_text: returnedOtherText } : null
-                payload.receiver_name = (payload.borrow_action === 'return' || payload.borrow_action === 'partial_return') ? receiverName : null
+            let updatePayload: any = {}
 
-                if (payload.borrow_action === 'partial_return' && originalBorrowedItems) {
+            if (pendingData.entry_status === 'arrival') {
+                updatePayload = {
+                    ...payload,
+                    departure_time: null,
+                    borrow_action: borrowAction,
+                    borrowed_items: borrowAction === 'borrow' ? { items: borrowedItems, other_text: borrowedOtherText } : null,
+                    lender_name: borrowAction === 'borrow' ? lenderName : null,
+                    returned_items: null,
+                    receiver_name: null
+                }
+            } else {
+                // 離院時：更新離院與歸還欄位，保留原本到院填好的欄位，絕對不能設為 null！
+                const returnActionVal = isPartialReturn ? 'partial_return' : returnAction
+                const returnedItemsVal = (returnActionVal === 'return' || returnActionVal === 'partial_return') ? { items: returnedItems, other_text: returnedOtherText } : null
+                const receiverNameVal = (returnActionVal === 'return' || returnActionVal === 'partial_return') ? receiverName : null
+
+                updatePayload = {
+                    departure_time: pendingData.departure_time,
+                    entry_status: 'departure',
+                    borrow_action: returnActionVal,
+                    returned_items: returnedItemsVal,
+                    receiver_name: receiverNameVal,
+                    ref_arrival_id: pendingData.ref_arrival_id || initialData.ref_arrival_id || initialData.id
+                }
+
+                if (returnActionVal === 'partial_return' && originalBorrowedItems) {
                     // 計算並存入「尚未歸還」的項目
                     const missing = originalBorrowedItems.filter(i => !returnedItems.includes(i))
                     const splitOther = (text: string) => text ? text.split(/[、,，\s\.]+/).map(s => s.trim()).filter(Boolean) : []
@@ -239,24 +249,23 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                     const currentOthers = splitOther(returnedOtherText)
                     const missingOthers = originalOthers.filter(item => !currentOthers.includes(item))
 
-                    payload.borrowed_items = {
+                    updatePayload.borrowed_items = {
                         items: missing,
                         other_text: missingOthers.join('、')
                     }
-                    payload.lender_name = lenderName
-                } else {
-                    payload.borrowed_items = null
-                    payload.lender_name = null
+                    updatePayload.lender_name = lenderName
                 }
             }
-            delete payload.borrowed_other_text
-            delete payload.returned_other_text
 
-            const { error } = await supabase.from('vendor_today_work').update(payload).eq('id', initialData.id)
+            // 清除臨時屬性
+            delete updatePayload.borrowed_other_text
+            delete updatePayload.returned_other_text
+
+            const { error } = await supabase.from('vendor_today_work').update(updatePayload).eq('id', initialData.id)
             if (error) throw error
 
-            sendTelegramNotify(formatUpdateMessage('廠商今日工作項目', initialData, payload, VENDOR_WORK_LABELS))
-            logChangeRecord({ actionType: 'Update', modifyTable: 'vendor_today_work', modifyRecordId: initialData.id, oldData: initialData, newData: payload })
+            sendTelegramNotify(formatUpdateMessage('廠商今日工作項目', initialData, updatePayload, VENDOR_WORK_LABELS))
+            logChangeRecord({ actionType: 'Update', modifyTable: 'vendor_today_work', modifyRecordId: initialData.id, oldData: initialData, newData: updatePayload })
 
             setIsSuccess(true)
             toast({ title: '修改成功', description: '廠商工作項目已更新' })
@@ -277,19 +286,24 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
             <main className="max-w-3xl mx-auto p-6">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                     <form onSubmit={handleSubmit(onPreSubmit, (e) => console.log(e))} className="space-y-6">
-                        {/* 到院/離院（不可修改） */}
+                        {/* 到院/離院 */}
                         <Card>
-                            <CardHeader><CardTitle className="text-base">到院或離院 (不可修改)</CardTitle></CardHeader>
+                            <CardHeader>
+                                <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100">到院或離院</CardTitle>
+                            </CardHeader>
                             <CardContent>
-                                <div className="flex gap-4 opacity-75 pointer-events-none">
-                                    <div className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 ${entryStatus === 'arrival' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border'}`}>
-                                        <span className="font-bold">到院</span>
-                                    </div>
-                                    <div className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border'}`}>
-                                        <span className="font-bold">離院</span>
-                                    </div>
+                                <div className="flex gap-4">
+                                    {/* 到院 (在修改頁面中禁用) */}
+                                    <label className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-dashed pointer-events-none">
+                                        <input type="radio" value="arrival" disabled={true} {...register('entry_status')} className="sr-only" />
+                                        <span className="font-bold text-slate-400">到院 (Arrival)</span>
+                                    </label>
+                                    {/* 離院 */}
+                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${entryStatus === 'departure' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'border-border hover:border-slate-300 dark:hover:border-slate-700'}`}>
+                                        <input type="radio" value="departure" disabled={false} {...register('entry_status')} className="sr-only" />
+                                        <span className="font-bold">離院 (Departure)</span>
+                                    </label>
                                 </div>
-                                <input type="hidden" {...register('entry_status')} />
                             </CardContent>
                         </Card>
 
@@ -298,7 +312,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                             <CardContent className="pt-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="日期" required error={errors.work_date?.message} touched={touchedFields.work_date}>
-                                        <Input type="date" {...register('work_date')} onBlur={() => handleFieldBlur('work_date')} />
+                                        <Input type="date" disabled={entryStatus === 'departure'} {...register('work_date')} onBlur={() => handleFieldBlur('work_date')} />
                                     </FormField>
                                     <FormField label={entryStatus === 'arrival' ? '到院時間' : '離院時間'} required
                                         error={entryStatus === 'arrival' ? errors.arrival_time?.message : errors.departure_time?.message}
@@ -315,11 +329,11 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                             <CardHeader><CardTitle className="text-base">廠商資訊</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
                                 <FormField label="廠商名稱" required error={errors.vendor_name?.message} touched={touchedFields.vendor_name}>
-                                    <Input {...register('vendor_name')} onBlur={() => handleFieldBlur('vendor_name')} />
+                                    <Input disabled={entryStatus === 'departure'} {...register('vendor_name')} onBlur={() => handleFieldBlur('vendor_name')} />
                                 </FormField>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField label="廠商負責人員" required error={errors.vendor_contact?.message} touched={touchedFields.vendor_contact}>
-                                        <Input {...register('vendor_contact')} onBlur={() => handleFieldBlur('vendor_contact')} />
+                                        <Input disabled={entryStatus === 'departure'} {...register('vendor_contact')} onBlur={() => handleFieldBlur('vendor_contact')} />
                                     </FormField>
                                     {entryStatus === 'arrival' && (
                                         <FormField label="負責人員電話" required error={errors.vendor_contact_phone?.message} touched={touchedFields.vendor_contact_phone}>
@@ -466,7 +480,7 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                         <Card>
                             <CardContent className="pt-6 space-y-4">
                                 <FormField label="施工內容" required error={errors.work_content?.message} touched={touchedFields.work_content}>
-                                    <Textarea {...register('work_content')} rows={4} onBlur={() => handleFieldBlur('work_content')} />
+                                    <Textarea disabled={entryStatus === 'departure'} {...register('work_content')} rows={4} onBlur={() => handleFieldBlur('work_content')} />
                                 </FormField>
                                 {entryStatus === 'arrival' && (
                                     <FormField label="備註" error={errors.note?.message} touched={touchedFields.note}>

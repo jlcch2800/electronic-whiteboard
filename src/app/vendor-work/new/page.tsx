@@ -453,9 +453,9 @@ export default function VendorWorkNewPage() {
                                         <input type="radio" value="arrival" {...register('entry_status')} className="sr-only" />
                                         <span className="font-bold">到院 (Arrival)</span>
                                     </label>
-                                    <label className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${watch('is_maintenance_project') ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-dashed pointer-events-none' : ''} ${entryStatus === 'departure' && !watch('is_maintenance_project') ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' : 'border-border hover:border-slate-300 dark:hover:border-slate-700'}`}>
-                                        <input type="radio" value="departure" disabled={watch('is_maintenance_project') || false} {...register('entry_status')} className="sr-only" />
-                                        <span className="font-bold">離院 (Departure)</span>
+                                    <label className="flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-dashed pointer-events-none">
+                                        <input type="radio" value="departure" disabled={true} {...register('entry_status')} className="sr-only" />
+                                        <span className="font-bold text-slate-400">離院 (Departure)</span>
                                     </label>
                                 </div>
                             </CardContent>
