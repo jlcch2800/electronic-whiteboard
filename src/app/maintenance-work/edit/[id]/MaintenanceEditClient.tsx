@@ -391,10 +391,19 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         // 特殊邏輯：已驗收則全部不可編輯
         if (formData.status === '已驗收') return false
 
-        // 特殊處理：「已轉維修單」與「開單主管簽核完成」
-        if (formData.status === '已轉維修單' || formData.status === '開單主管簽核完成') {
+        // 特殊處理：「已轉維修單」
+        if (formData.status === '已轉維修單') {
             if (sectionIndex === 0) return !section1Completed
-            if (sectionIndex === 1) return section1Completed && !section2Completed
+            if (sectionIndex === 1) return section1Completed
+            if (sectionIndex === 2) return section1Completed && section2Completed
+            return false
+        }
+
+        // 特殊處理：「開單主管簽核完成」
+        if (formData.status === '開單主管簽核完成') {
+            if (sectionIndex === 0) return false
+            if (sectionIndex === 1) return false
+            if (sectionIndex === 2) return true
             return false
         }
 
