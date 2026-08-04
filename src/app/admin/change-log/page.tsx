@@ -21,12 +21,8 @@ export default async function ChangeLogPage() {
 
     if (profile?.role !== 'admin') redirect('/')
 
-    // 取得異動記錄（預設最新 100 筆）
-    const { data: logs } = await supabase
-        .from('system_change_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100)
+    // 異動記錄改由 Client 端初次載入 (搭配分頁與搜尋)
+    const logs: any[] = []
 
-    return <ChangeLogClient initialLogs={logs || []} />
+    return <ChangeLogClient initialLogs={logs} />
 }

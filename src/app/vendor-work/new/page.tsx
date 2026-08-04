@@ -763,6 +763,12 @@ export default function VendorWorkNewPage() {
                     borrow_action: pendingData.borrow_action === 'borrow' ? '已借物' : pendingData.borrow_action === 'return' ? '歸還' : pendingData.borrow_action === 'partial_return' ? '部分未歸還' : pendingData.borrow_action === 'none' ? '未借物' : pendingData.borrow_action,
                     borrowed_items: formatItemsDisplay(pendingData.borrowed_items, pendingData.borrowed_other_text),
                     returned_items: formatItemsDisplay(pendingData.returned_items, pendingData.returned_other_text),
+                    maintenance_project_id: pendingData.maintenance_project_id 
+                        ? projects.find(p => p.id === pendingData.maintenance_project_id)?.maintenance_project_name || pendingData.maintenance_project_id 
+                        : '',
+                    maintenance_project_category_id: pendingData.maintenance_project_category_id 
+                        ? categories.find(c => c.id === pendingData.maintenance_project_category_id)?.maintenance_category_name || pendingData.maintenance_project_category_id 
+                        : '',
                 } : {}}
                 fieldLabels={FIELD_LABELS}
             />

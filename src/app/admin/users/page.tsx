@@ -21,11 +21,8 @@ export default async function AdminUsersPage() {
 
     if (profile?.role !== 'admin') redirect('/')
 
-    // Fetch all users
-    const { data: users } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
+    // 使用者列表改由 Client 端初次載入 (搭配分頁與搜尋)
+    const users: any[] = []
 
-    return <UserManagementClient initialUsers={users || []} />
+    return <UserManagementClient initialUsers={users} />
 }

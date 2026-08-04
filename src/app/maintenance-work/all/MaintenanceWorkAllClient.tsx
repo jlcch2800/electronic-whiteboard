@@ -31,6 +31,7 @@ import { MobileTableCard } from '@/components/MobileTableCard'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { EmptyState } from '@/components/EmptyState'
+import ProjectWorkRecordDialog from '@/components/projects/ProjectWorkRecordDialog'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem,
     DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel
@@ -146,6 +147,17 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [viewingItem, setViewingItem] = useState<any>(null)
 
+    // 專案工作紀錄 Dialog 狀態
+    const [workRecordDialog, setWorkRecordDialog] = useState<{
+        open: boolean
+        projectId: string
+        projectCategoryId: string
+    }>({
+        open: false,
+        projectId: '',
+        projectCategoryId: ''
+    })
+
     const handleViewDetails = () => {
         if (selected.size !== 1) return
         const targetId = Array.from(selected)[0]
@@ -162,37 +174,82 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         try {
             let query = supabase.from('maintenance_work_orders').select('*', { count: 'exact' })
 
-            if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
-                const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
-                for (const kw of keywords) {
-                    let orConditions = `work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,handler_name.ilike.%${kw}%,cost_center.ilike.%${kw}%,requester_name.ilike.%${kw}%,vendor_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,procurement_name.ilike.%${kw}%,status.ilike.%${kw}%`;
-                    if (kw === '合約' || kw === '合約維修單') {
-                        orConditions += `,is_contract.eq.true`;
-                    } else if (kw === '非合約' || kw === '非合約維修單') {
-                        orConditions += `,is_contract.eq.false,is_contract.is.null`;
-                    }
-                    query = query.or(orConditions);
+            if (activeFilters.searchMode === 'or') {
+                // OR 模式：一般搜尋關鍵字與進階搜尋條件全數加入 OR 條件陣列取聯集 (OR)
+                const conditions: string[] = []
+
+                if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
+                    const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                    keywords.forEach(kw => {
+                        const fields = [
+                            `work_order_id.ilike.%${kw}%`,
+                            `maintain_content.ilike.%${kw}%`,
+                            `handler_name.ilike.%${kw}%`,
+                            `cost_center.ilike.%${kw}%`,
+                            `requester_name.ilike.%${kw}%`,
+                            `vendor_name.ilike.%${kw}%`,
+                            `project_order_id.ilike.%${kw}%`,
+                            `procurement_name.ilike.%${kw}%`,
+                            `status.ilike.%${kw}%`
+                        ];
+                        if (kw === '合約' || kw === '合約維修單') {
+                            fields.push(`is_contract.eq.true`);
+                        } else if (kw === '非合約' || kw === '非合約維修單') {
+                            fields.push(`is_contract.eq.false`, `is_contract.is.null`);
+                        }
+                        conditions.push(...fields);
+                    });
                 }
-            }
-            if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
-            if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
-            if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
 
-            if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
-            if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
-            if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
-            if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
+                if (activeFilters.startDate) conditions.push(`request_date.gte.${activeFilters.startDate}`)
+                if (activeFilters.endDate) conditions.push(`request_date.lte.${activeFilters.endDate}`)
+                if (activeFilters.status) conditions.push(`status.ilike.%${activeFilters.status}%`)
+                if (activeFilters.planStartDate) conditions.push(`plan_start_date.gte.${activeFilters.planStartDate}`)
+                if (activeFilters.planEndDate) conditions.push(`plan_end_date.lte.${activeFilters.planEndDate}`)
+                if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') conditions.push(`installment_count.gte.${activeFilters.installmentCountGte}`)
+                if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') conditions.push(`installment_count.lte.${activeFilters.installmentCountLte}`)
+                if (activeFilters.isContract === 'yes') conditions.push(`is_contract.eq.true`)
+                else if (activeFilters.isContract === 'no') conditions.push(`is_contract.eq.false`, `is_contract.is.null`)
+                if (activeFilters.amount === 'lte20k') conditions.push(`amount.lte.20000`)
+                else if (activeFilters.amount === 'gt20k') conditions.push(`amount.gt.20000`)
 
-            if (activeFilters.isContract === 'yes') {
-                query = query.eq('is_contract', true)
-            } else if (activeFilters.isContract === 'no') {
-                query = query.or('is_contract.eq.false,is_contract.is.null')
-            }
+                if (conditions.length > 0) {
+                    query = query.or(conditions.join(','));
+                }
+            } else {
+                // AND 模式：一般搜尋關鍵字與進階搜尋條件全部取交集 (AND)
+                if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
+                    const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                    for (const kw of keywords) {
+                        let orConditions = `work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,handler_name.ilike.%${kw}%,cost_center.ilike.%${kw}%,requester_name.ilike.%${kw}%,vendor_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,procurement_name.ilike.%${kw}%,status.ilike.%${kw}%`;
+                        if (kw === '合約' || kw === '合約維修單') {
+                            orConditions += `,is_contract.eq.true`;
+                        } else if (kw === '非合約' || kw === '非合約維修單') {
+                            orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                        }
+                        query = query.or(orConditions);
+                    }
+                }
+                if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
+                if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
+                if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
 
-            if (activeFilters.amount === 'lte20k') {
-                query = query.lte('amount', 20000)
-            } else if (activeFilters.amount === 'gt20k') {
-                query = query.gt('amount', 20000)
+                if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
+                if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
+                if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
+                if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
+
+                if (activeFilters.isContract === 'yes') {
+                    query = query.eq('is_contract', true)
+                } else if (activeFilters.isContract === 'no') {
+                    query = query.or('is_contract.eq.false,is_contract.is.null')
+                }
+
+                if (activeFilters.amount === 'lte20k') {
+                    query = query.lte('amount', 20000)
+                } else if (activeFilters.amount === 'gt20k') {
+                    query = query.gt('amount', 20000)
+                }
             }
 
             if (sort) {
@@ -299,23 +356,81 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         } else {
             try {
                 let query = supabase.from('maintenance_work_orders').select('*')
-                if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
-                    const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
-                    for (const kw of keywords) {
-                        query = query.or(`work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,handler_name.ilike.%${kw}%,cost_center.ilike.%${kw}%,requester_name.ilike.%${kw}%,vendor_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,procurement_name.ilike.%${kw}%,status.ilike.%${kw}%`);
-                    }
-                }
-                if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
-                if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
-                if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
-                
-                if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
-                if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
-                if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
-                if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
 
-                if (activeFilters.amount === 'lte20k') query = query.lte('amount', 20000)
-                else if (activeFilters.amount === 'gt20k') query = query.gt('amount', 20000)
+                if (activeFilters.searchMode === 'or') {
+                    // OR 模式：一般搜尋關鍵字與進階搜尋條件全數加入 OR 條件陣列取聯集 (OR)
+                    const conditions: string[] = []
+
+                    if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
+                        const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                        keywords.forEach(kw => {
+                            const fields = [
+                                `work_order_id.ilike.%${kw}%`,
+                                `maintain_content.ilike.%${kw}%`,
+                                `handler_name.ilike.%${kw}%`,
+                                `cost_center.ilike.%${kw}%`,
+                                `requester_name.ilike.%${kw}%`,
+                                `vendor_name.ilike.%${kw}%`,
+                                `project_order_id.ilike.%${kw}%`,
+                                `procurement_name.ilike.%${kw}%`,
+                                `status.ilike.%${kw}%`
+                            ];
+                            if (kw === '合約' || kw === '合約維修單') {
+                                fields.push(`is_contract.eq.true`);
+                            } else if (kw === '非合約' || kw === '非合約維修單') {
+                                fields.push(`is_contract.eq.false`, `is_contract.is.null`);
+                            }
+                            conditions.push(...fields);
+                        });
+                    }
+
+                    if (activeFilters.startDate) conditions.push(`request_date.gte.${activeFilters.startDate}`)
+                    if (activeFilters.endDate) conditions.push(`request_date.lte.${activeFilters.endDate}`)
+                    if (activeFilters.status) conditions.push(`status.ilike.%${activeFilters.status}%`)
+                    if (activeFilters.planStartDate) conditions.push(`plan_start_date.gte.${activeFilters.planStartDate}`)
+                    if (activeFilters.planEndDate) conditions.push(`plan_end_date.lte.${activeFilters.planEndDate}`)
+                    if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') conditions.push(`installment_count.gte.${activeFilters.installmentCountGte}`)
+                    if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') conditions.push(`installment_count.lte.${activeFilters.installmentCountLte}`)
+                    if (activeFilters.isContract === 'yes') conditions.push(`is_contract.eq.true`)
+                    else if (activeFilters.isContract === 'no') conditions.push(`is_contract.eq.false`, `is_contract.is.null`)
+                    if (activeFilters.amount === 'lte20k') conditions.push(`amount.lte.20000`)
+                    else if (activeFilters.amount === 'gt20k') conditions.push(`amount.gt.20000`)
+
+                    if (conditions.length > 0) {
+                        query = query.or(conditions.join(','));
+                    }
+                } else {
+                    // AND 模式：一般搜尋關鍵字與進階搜尋條件全部取交集 (AND)
+                    if (activeFilters.customSearch && activeFilters.customSearch.trim()) {
+                        const keywords = activeFilters.customSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                        for (const kw of keywords) {
+                            let orConditions = `work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,handler_name.ilike.%${kw}%,cost_center.ilike.%${kw}%,requester_name.ilike.%${kw}%,vendor_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,procurement_name.ilike.%${kw}%,status.ilike.%${kw}%`;
+                            if (kw === '合約' || kw === '合約維修單') {
+                                orConditions += `,is_contract.eq.true`;
+                            } else if (kw === '非合約' || kw === '非合約維修單') {
+                                orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                            }
+                            query = query.or(orConditions);
+                        }
+                    }
+                    if (activeFilters.startDate) query = query.gte('request_date', activeFilters.startDate)
+                    if (activeFilters.endDate) query = query.lte('request_date', activeFilters.endDate)
+                    if (activeFilters.status) query = query.ilike('status', `%${activeFilters.status}%`)
+                    
+                    if (activeFilters.planStartDate) query = query.gte('plan_start_date', activeFilters.planStartDate)
+                    if (activeFilters.planEndDate) query = query.lte('plan_end_date', activeFilters.planEndDate)
+                    if (activeFilters.installmentCountGte !== undefined && activeFilters.installmentCountGte !== null && activeFilters.installmentCountGte !== '') query = query.gte('installment_count', activeFilters.installmentCountGte)
+                    if (activeFilters.installmentCountLte !== undefined && activeFilters.installmentCountLte !== null && activeFilters.installmentCountLte !== '') query = query.lte('installment_count', activeFilters.installmentCountLte)
+
+                    if (activeFilters.isContract === 'yes') {
+                        query = query.eq('is_contract', true)
+                    } else if (activeFilters.isContract === 'no') {
+                        query = query.or('is_contract.eq.false,is_contract.is.null')
+                    }
+
+                    if (activeFilters.amount === 'lte20k') query = query.lte('amount', 20000)
+                    else if (activeFilters.amount === 'gt20k') query = query.gt('amount', 20000)
+                }
                 if (sort) query = query.order(sort.key, { ascending: sort.direction === 'asc' })
                 else query = query.order('created_at', { ascending: false })
 
@@ -414,6 +529,10 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
         }
     }
 
+    const selectedId = Array.from(selected)[0]
+    const selectedItem = data.find(i => i.id === selectedId)
+    const isSelectedProject = selectedItem?.is_maintenance_project === true && selectedItem?.maintenance_project_id && selectedItem?.maintenance_project_category_id
+
     return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50 flex flex-col">
             {/* 響應式 Header：手機版下改為垂直堆疊並支援折行，避免撐爆畫面寬度 */}
@@ -437,11 +556,26 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                         size="sm"
                         onClick={handleViewDetails}
                         disabled={selected.size !== 1 || loading}
-                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center"
+                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center gap-1.5 font-bold"
                     >
-                        <Eye className="w-4 h-4 sm:mr-2 shrink-0" />
+                        <Eye className="w-4 h-4 shrink-0" />
                         <span className="hidden sm:inline">檢視明細</span>
                     </Button>
+                    {isSelectedProject && selectedItem && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setWorkRecordDialog({
+                                open: true,
+                                projectId: selectedItem.maintenance_project_id,
+                                projectCategoryId: selectedItem.maintenance_project_category_id
+                            })}
+                            className="px-2 sm:px-4 border-emerald-600 text-emerald-600 hover:bg-emerald-50/50 h-9 flex-1 sm:flex-initial justify-center gap-1.5 font-bold"
+                        >
+                            <History className="w-4 h-4 shrink-0" />
+                            <span>顯示所有紀錄</span>
+                        </Button>
+                    )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" disabled={loading} className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center">
@@ -546,6 +680,9 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                                      {item.is_contract && (
                                                          <Badge className="bg-purple-100 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40 text-[10px] px-1.5 py-0 font-semibold">合約</Badge>
                                                      )}
+                                                     {item.is_maintenance_project && (
+                                                         <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800/40 text-[10px] px-1.5 py-0 font-semibold">專案</Badge>
+                                                     )}
                                                  </div>
                                              </TableCell>
                                             <TableCell>
@@ -606,7 +743,15 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                                     <MobileTableCard
                                         key={item.id}
                                         id={item.id}
-                                        title={item.is_contract ? `${item.work_order_id} (合約)` : item.work_order_id}
+                                        title={
+                                            item.is_contract && item.is_maintenance_project
+                                                ? `${item.work_order_id} (合約) (專案)`
+                                                : item.is_contract
+                                                ? `${item.work_order_id} (合約)`
+                                                : item.is_maintenance_project
+                                                ? `${item.work_order_id} (專案)`
+                                                : item.work_order_id
+                                        }
                                         subtitle={item.cost_center}
                                         status={{
                                             label: item.status,
@@ -669,6 +814,13 @@ export default function MaintenanceWorkAllClient({ initialData }: MaintenanceWor
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <ProjectWorkRecordDialog
+                open={workRecordDialog.open}
+                onOpenChange={(open) => setWorkRecordDialog(prev => ({ ...prev, open }))}
+                projectId={workRecordDialog.projectId}
+                projectCategoryId={workRecordDialog.projectCategoryId}
+            />
 
             <MaintenanceDetailDialog
                 open={viewDialogOpen}

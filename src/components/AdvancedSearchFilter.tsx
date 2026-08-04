@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MAINTENANCE_STATUS } from '@/lib/maintenance-constants';
 
 export interface SearchFilters {
     startDate: string;
@@ -11,6 +12,7 @@ export interface SearchFilters {
     status: string;
     amount: string; // 'lte20k' | 'gt20k' | ''
     customSearch: string;
+    searchMode: 'and' | 'or';
     planStartDate: string;
     planEndDate: string;
     installmentCountGte: string;
@@ -24,6 +26,7 @@ export const defaultFilters: SearchFilters = {
     status: '',
     amount: '',
     customSearch: '',
+    searchMode: 'and',
     planStartDate: '',
     planEndDate: '',
     installmentCountGte: '',
@@ -72,15 +75,26 @@ export function AdvancedSearchFilter({
             <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                 <div className="flex-1">
                     <label className="text-sm font-medium text-muted-foreground mb-1 block">自訂搜尋 (關鍵字)</label>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                            placeholder="多關鍵字空白分割(AND)搜尋，支援搜尋單號、開單人、承辦人、廠商或內容等..."
-                            value={filters.customSearch}
-                            onChange={(e) => handleChange('customSearch', e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            className="pl-9 w-full"
-                        />
+                    <div className="flex items-center gap-2">
+                        <Select value={filters.searchMode || 'and'} onValueChange={(val) => handleChange('searchMode', val)}>
+                            <SelectTrigger className="w-[140px] h-10 shrink-0 bg-background border border-input">
+                                <SelectValue placeholder="條件" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="and">全部符合 (AND)</SelectItem>
+                                <SelectItem value="or">部分符合 (OR)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                placeholder="多關鍵字空白分割搜尋，支援搜尋單號、開單人、承辦人、廠商或內容等..."
+                                value={filters.customSearch}
+                                onChange={(e) => handleChange('customSearch', e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className="pl-9 w-full"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -137,16 +151,9 @@ export function AdvancedSearchFilter({
                                             <SelectValue placeholder="狀態" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="已轉維修單">已轉維修單</SelectItem>
-                                            <SelectItem value="開單主管簽核中">開單主管簽核中</SelectItem>
-                                            <SelectItem value="工務部門報價，主管簽核中">工務部門報價，主管簽核中</SelectItem>
-                                            <SelectItem value="發包部門主管簽核中">發包部門主管簽核中</SelectItem>
-                                            <SelectItem value="發包主任/院長簽核中">發包主任/院長簽核中</SelectItem>
-                                            <SelectItem value="副院長/院長簽核中">副院長/院長簽核中</SelectItem>
-                                            <SelectItem value="採購/資材/院長審查中">採購/資材/院長審查中</SelectItem>
-                                            <SelectItem value="廠商施工中">廠商施工中</SelectItem>
-                                            <SelectItem value="驗收單位主管簽核中">驗收單位主管簽核中</SelectItem>
-                                            <SelectItem value="維修部門驗收中">維修部門驗收中</SelectItem>
+                                            {MAINTENANCE_STATUS.map(status => (
+                                                <SelectItem key={status} value={status}>{status}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>

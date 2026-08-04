@@ -30,6 +30,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
 import { DataTablePagination } from '@/components/DataTablePagination'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
@@ -79,10 +80,21 @@ export default function VendorHistoryClient() {
     const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'))
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [keyword, setKeyword] = useState('')
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
+    const [debouncedKeyword, setDebouncedKeyword] = useState('')
 
     // Pagination state
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
+
+    // Debounce search keyword
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedKeyword(keyword)
+            setPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [keyword])
 
     const totalPages = Math.ceil(totalCount / pageSize)
 
@@ -129,26 +141,20 @@ export default function VendorHistoryClient() {
     }
 
     // Fetch data
-    const fetchData = async () => {
-        setLoading(true)
-
-        let query = supabase
+    const buildQuery = (isExport = false) => {
+        let q = supabase
             .from('vendor_today_work_history')
-            .select('*', { count: 'exact' })
+            .select('*', isExport ? {} : { count: 'exact' })
             .gte('work_date', startDate)
             .lte('work_date', endDate)
 
-        // 關鍵字搜尋：支援多關鍵字空白分割(AND)搜尋，在後端進行鏈式 OR 查詢
-        if (keyword.trim()) {
-            const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
-            for (const kw of keywords) {
+        if (debouncedKeyword.trim()) {
+            const keywords = debouncedKeyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+
+            const getKeywordConditions = (kw: string) => {
                 let statusConds = []
-                
-                // entry_status mapping
                 if ('到院'.includes(kw)) statusConds.push('entry_status.eq.arrival')
                 if ('離院'.includes(kw)) statusConds.push('entry_status.eq.departure')
-                
-                // borrow_action mapping
                 if ('借物中'.includes(kw)) statusConds.push('borrow_action.eq.borrow')
                 if ('已歸還'.includes(kw)) statusConds.push('borrow_action.eq.return')
                 if ('部份未歸還'.includes(kw)) statusConds.push('borrow_action.eq.partial_return')
@@ -156,39 +162,82 @@ export default function VendorHistoryClient() {
                     statusConds.push('borrow_action.eq.none')
                     statusConds.push('borrow_action.is.null')
                 }
-
-                // If kw is a number, match vendor_badge_id
                 const isNum = /^\d+$/.test(kw)
                 const badgeCond = isNum ? `,vendor_badge_id.eq.${kw}` : ''
-
                 const statusStr = statusConds.length > 0 ? `,${statusConds.join(',')}` : ''
 
-                query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,note.ilike.%${kw}%,location.ilike.%${kw}%,vendor_contact.ilike.%${kw}%,vendor_contact_phone.ilike.%${kw}%${badgeCond}${statusStr}`)
+                return `vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,note.ilike.%${kw}%,location.ilike.%${kw}%,vendor_contact.ilike.%${kw}%,vendor_contact_phone.ilike.%${kw}%${badgeCond}${statusStr}`
+            }
+
+            if (searchMode === 'and') {
+                for (const kw of keywords) {
+                    q = q.or(getKeywordConditions(kw))
+                }
+            } else {
+                const conditions: string[] = []
+                keywords.forEach(kw => {
+                    let statusConds = []
+                    if ('到院'.includes(kw)) statusConds.push(`entry_status.eq.arrival`)
+                    if ('離院'.includes(kw)) statusConds.push(`entry_status.eq.departure`)
+                    if ('借物中'.includes(kw)) statusConds.push(`borrow_action.eq.borrow`)
+                    if ('已歸還'.includes(kw)) statusConds.push(`borrow_action.eq.return`)
+                    if ('部份未歸還'.includes(kw)) statusConds.push(`borrow_action.eq.partial_return`)
+                    if ('未借物'.includes(kw)) {
+                        statusConds.push(`borrow_action.eq.none`, `borrow_action.is.null`)
+                    }
+                    const isNum = /^\d+$/.test(kw)
+                    
+                    const baseFields = [
+                        `vendor_name.ilike.%${kw}%`,
+                        `work_content.ilike.%${kw}%`,
+                        `note.ilike.%${kw}%`,
+                        `location.ilike.%${kw}%`,
+                        `vendor_contact.ilike.%${kw}%`,
+                        `vendor_contact_phone.ilike.%${kw}%`
+                    ]
+                    if (isNum) baseFields.push(`vendor_badge_id.eq.${kw}`)
+                    baseFields.push(...statusConds)
+                    
+                    conditions.push(...baseFields)
+                })
+                if (conditions.length > 0) {
+                    q = q.or(conditions.join(','))
+                }
             }
         }
 
-        query = query
-            .order('work_date', { ascending: false })
-            .order('created_at', { ascending: false })
-            .range((page - 1) * pageSize, page * pageSize - 1)
-
-        const { data: records, count, error } = await query
-
-        if (error) {
-            console.error('Fetch error:', error)
+        if (sort) {
+            q = q.order(sort.key, { ascending: sort.direction === 'asc' })
         } else {
-            setData(records || [])
-            setTotalCount(count || 0)
+            q = q.order('work_date', { ascending: false }).order('created_at', { ascending: false })
         }
 
-        setSelected(new Set())
-        setLoading(false)
+        return q
     }
 
-    // Initial fetch
+    const fetchData = async () => {
+        setLoading(true)
+        try {
+            const query = buildQuery()
+            const { data: records, count, error } = await query.range((page - 1) * pageSize, page * pageSize - 1)
+
+            if (error) {
+                console.error('Fetch error:', error)
+            } else {
+                setData(records || [])
+                setTotalCount(count || 0)
+            }
+        } catch (err) {
+            console.error('Fetch exception:', err)
+        } finally {
+            setSelected(new Set())
+            setLoading(false)
+        }
+    }
+
     useEffect(() => {
         fetchData()
-    }, [page, pageSize, startDate, endDate, keyword])
+    }, [page, pageSize, startDate, endDate, debouncedKeyword, searchMode, sort])
 
     // handleSearch 已經不需要，改為偵測關鍵字變動
 
@@ -199,42 +248,7 @@ export default function VendorHistoryClient() {
         if (selected.size > 0) {
             dataToExport = data.filter(r => selected.has(r.id))
         } else {
-            // Fetch all data for export
-            let query = supabase
-                .from('vendor_today_work_history')
-                .select('*')
-                .gte('work_date', startDate)
-                .lte('work_date', endDate)
-                .order('work_date', { ascending: false })
-
-            if (keyword.trim()) {
-                const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
-                for (const kw of keywords) {
-                    let statusConds = []
-                    
-                    // entry_status mapping
-                    if ('到院'.includes(kw)) statusConds.push('entry_status.eq.arrival')
-                    if ('離院'.includes(kw)) statusConds.push('entry_status.eq.departure')
-                    
-                    // borrow_action mapping
-                    if ('借物中'.includes(kw)) statusConds.push('borrow_action.eq.borrow')
-                    if ('已歸還'.includes(kw)) statusConds.push('borrow_action.eq.return')
-                    if ('部份未歸還'.includes(kw)) statusConds.push('borrow_action.eq.partial_return')
-                    if ('未借物'.includes(kw)) {
-                        statusConds.push('borrow_action.eq.none')
-                        statusConds.push('borrow_action.is.null')
-                    }
-
-                    // If kw is a number, match vendor_badge_id
-                    const isNum = /^\d+$/.test(kw)
-                    const badgeCond = isNum ? `,vendor_badge_id.eq.${kw}` : ''
-
-                    const statusStr = statusConds.length > 0 ? `,${statusConds.join(',')}` : ''
-
-                    query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,note.ilike.%${kw}%,location.ilike.%${kw}%,vendor_contact.ilike.%${kw}%,vendor_contact_phone.ilike.%${kw}%${badgeCond}${statusStr}`)
-                }
-            }
-
+            let query = buildQuery(true)
             const { data: allData } = await query
             dataToExport = allData || []
         }
@@ -279,42 +293,7 @@ export default function VendorHistoryClient() {
         if (selected.size > 0) {
             dataToExport = data.filter(r => selected.has(r.id))
         } else {
-            // Fetch all data for export
-            let query = supabase
-                .from('vendor_today_work_history')
-                .select('*')
-                .gte('work_date', startDate)
-                .lte('work_date', endDate)
-                .order('work_date', { ascending: false })
-
-            if (keyword.trim()) {
-                const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
-                for (const kw of keywords) {
-                    let statusConds = []
-                    
-                    // entry_status mapping
-                    if ('到院'.includes(kw)) statusConds.push('entry_status.eq.arrival')
-                    if ('離院'.includes(kw)) statusConds.push('entry_status.eq.departure')
-                    
-                    // borrow_action mapping
-                    if ('借物中'.includes(kw)) statusConds.push('borrow_action.eq.borrow')
-                    if ('已歸還'.includes(kw)) statusConds.push('borrow_action.eq.return')
-                    if ('部份未歸還'.includes(kw)) statusConds.push('borrow_action.eq.partial_return')
-                    if ('未借物'.includes(kw)) {
-                        statusConds.push('borrow_action.eq.none')
-                        statusConds.push('borrow_action.is.null')
-                    }
-
-                    // If kw is a number, match vendor_badge_id
-                    const isNum = /^\d+$/.test(kw)
-                    const badgeCond = isNum ? `,vendor_badge_id.eq.${kw}` : ''
-
-                    const statusStr = statusConds.length > 0 ? `,${statusConds.join(',')}` : ''
-
-                    query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,note.ilike.%${kw}%,location.ilike.%${kw}%,vendor_contact.ilike.%${kw}%,vendor_contact_phone.ilike.%${kw}%${badgeCond}${statusStr}`)
-                }
-            }
-
+            let query = buildQuery(true)
             const { data: allData } = await query
             dataToExport = allData || []
         }
@@ -400,7 +379,21 @@ export default function VendorHistoryClient() {
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="支援多關鍵字空白分割(AND)搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-80" /></div>
+                                <div className="space-y-1 flex flex-col">
+                                    <Label className="text-xs text-muted-foreground mb-1">關鍵字搜尋</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setPage(1); }}>
+                                            <SelectTrigger className="w-[140px] h-9 shrink-0 bg-background border border-input">
+                                                <SelectValue placeholder="條件" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="and">全部符合</SelectItem>
+                                                <SelectItem value="or">部分符合</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Input type="text" placeholder="多關鍵字空白分割搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-64" />
+                                    </div>
+                                </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <DropdownMenu>

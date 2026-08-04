@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
     Activity, ArrowLeft, Download, Plus, Search, Trash2,
-    RefreshCcw, CheckCircle2, MoreHorizontal, Edit2, Eye
+    RefreshCcw, CheckCircle2, MoreHorizontal, Edit2, Eye, History
 } from 'lucide-react'
 import { MaintenanceDetailDialog } from '@/components/maintenance-work/MaintenanceDetailDialog'
 import { Label } from '@/components/ui/label'
@@ -23,11 +23,13 @@ import {
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
+import ProjectWorkRecordDialog from '@/components/projects/ProjectWorkRecordDialog'
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
@@ -188,14 +190,14 @@ const getExtraColumns = (status: string): ExtraColumn[] => {
 
 // 顏色對應表 (中飽和度漸層設計)
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string; topBar: string }> = {
+    '#F7D6D2': { bg: 'bg-[#F7D6D2]/20 dark:bg-[#F7D6D2]/10', text: 'text-[#9e3a30] dark:text-[#f8b4ad]', border: 'border-[#F7D6D2]/60 dark:border-[#F7D6D2]/30', topBar: 'bg-[#eb948b]' },
+    '#D4E7EE': { bg: 'bg-[#D4E7EE]/20 dark:bg-[#D4E7EE]/10', text: 'text-[#2f6f85] dark:text-[#a0d2e2]', border: 'border-[#D4E7EE]/60 dark:border-[#D4E7EE]/30', topBar: 'bg-[#8bb4c4]' },
+    '#F3E8C3': { bg: 'bg-[#F3E8C3]/20 dark:bg-[#F3E8C3]/10', text: 'text-[#826a1d] dark:text-[#ecd997]', border: 'border-[#F3E8C3]/60 dark:border-[#F3E8C3]/30', topBar: 'bg-[#d2bc7a]' },
+    '#DDE9CC': { bg: 'bg-[#DDE9CC]/20 dark:bg-[#DDE9CC]/10', text: 'text-[#516e2d] dark:text-[#cce0b4]', border: 'border-[#DDE9CC]/60 dark:border-[#DDE9CC]/30', topBar: 'bg-[#b0cb8f]' },
+    'PASTEL Lavender': { bg: 'bg-violet-50/80 dark:bg-violet-950/20', text: 'text-violet-700 dark:text-violet-400', border: 'border-violet-200/60 dark:border-violet-800/40', topBar: 'bg-violet-400' },
     'Pastel blue': { bg: 'bg-sky-50/80 dark:bg-sky-950/20', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-200/60 dark:border-sky-800/40', topBar: 'bg-sky-400' },
-    'Dusty rose': { bg: 'bg-rose-50/80 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-200/60 dark:border-rose-800/40', topBar: 'bg-rose-400' },
-    'Dusty Lavender': { bg: 'bg-violet-50/80 dark:bg-violet-950/20', text: 'text-violet-700 dark:text-violet-400', border: 'border-violet-200/60 dark:border-violet-800/40', topBar: 'bg-violet-400' },
-    'Pink': { bg: 'bg-pink-50/80 dark:bg-pink-950/20', text: 'text-pink-700 dark:text-pink-400', border: 'border-pink-200/60 dark:border-pink-800/40', topBar: 'bg-pink-400' },
-    'blue': { bg: 'bg-blue-50/80 dark:bg-blue-950/20', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200/60 dark:border-blue-800/40', topBar: 'bg-blue-500' },
-    'cinnamon': { bg: 'bg-amber-50/80 dark:bg-amber-950/20', text: 'text-amber-800 dark:text-amber-400', border: 'border-amber-200/50 dark:border-amber-800/40', topBar: 'bg-amber-700' },
+    '#F1CEAF': { bg: 'bg-[#F1CEAF]/20 dark:bg-[#F1CEAF]/10', text: 'text-[#93521d] dark:text-[#f8d4b8]', border: 'border-[#F1CEAF]/60 dark:border-[#F1CEAF]/30', topBar: 'bg-[#dda170]' },
     'yellow': { bg: 'bg-yellow-50/80 dark:bg-yellow-950/20', text: 'text-yellow-700 dark:text-yellow-400', border: 'border-yellow-200/60 dark:border-yellow-800/40', topBar: 'bg-yellow-400' },
-    'olive': { bg: 'bg-lime-50/80 dark:bg-lime-950/20', text: 'text-lime-800 dark:text-lime-400', border: 'border-lime-200/60 dark:border-lime-800/40', topBar: 'bg-lime-600' },
     'Peach': { bg: 'bg-orange-50/80 dark:bg-orange-950/20', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200/60 dark:border-orange-800/40', topBar: 'bg-orange-400' },
     'Sage Green': { bg: 'bg-emerald-50/80 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200/60 dark:border-emerald-800/40', topBar: 'bg-emerald-400' },
 }
@@ -217,11 +219,33 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
     const [data, setData] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+
+    // Debounce 搜尋關鍵字
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm)
+            setCurrentPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [searchTerm])
     const [selected, setSelected] = useState<Set<string>>(new Set())
 
     // 檢視明細對話框狀態
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [viewingItem, setViewingItem] = useState<any>(null)
+
+    // 專案工作紀錄 Dialog 狀態
+    const [workRecordDialog, setWorkRecordDialog] = useState<{
+        open: boolean
+        projectId: string
+        projectCategoryId: string
+    }>({
+        open: false,
+        projectId: '',
+        projectCategoryId: ''
+    })
 
     const handleViewDetails = () => {
         if (selected.size !== 1) return
@@ -250,16 +274,55 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                 .select('*', { count: 'exact' })
                 .eq('status', status)
 
-            if (searchTerm) {
-                let orConditions = hidePrinter
-                    ? `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,vendor_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,project_order_id.ilike.%${searchTerm}%,req_dept_mgr_name.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%`
-                    : `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,requester_name.ilike.%${searchTerm}%,project_order_id.ilike.%${searchTerm}%,req_dept_mgr_name.ilike.%${searchTerm}%,cost_center.ilike.%${searchTerm}%`;
-                if (searchTerm === '合約' || searchTerm === '合約維修單') {
-                    orConditions += `,is_contract.eq.true`;
-                } else if (searchTerm === '非合約' || searchTerm === '非合約維修單') {
-                    orConditions += `,is_contract.eq.false,is_contract.is.null`;
+            if (debouncedSearchTerm.trim()) {
+                const keywords = debouncedSearchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                if (searchMode === 'and') {
+                    keywords.forEach(kw => {
+                        let orConditions = hidePrinter
+                            ? `work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,vendor_name.ilike.%${kw}%,handler_name.ilike.%${kw}%,requester_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,req_dept_mgr_name.ilike.%${kw}%,cost_center.ilike.%${kw}%`
+                            : `work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,printer_name.ilike.%${kw}%,handler_name.ilike.%${kw}%,requester_name.ilike.%${kw}%,project_order_id.ilike.%${kw}%,req_dept_mgr_name.ilike.%${kw}%,cost_center.ilike.%${kw}%`;
+                        if (kw === '合約' || kw === '合約維修單') {
+                            orConditions += `,is_contract.eq.true`;
+                        } else if (kw === '非合約' || kw === '非合約維修單') {
+                            orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                        }
+                        query = query.or(orConditions);
+                    });
+                } else {
+                    const conditions: string[] = [];
+                    keywords.forEach(kw => {
+                        const fields = hidePrinter
+                            ? [
+                                `work_order_id.ilike.%${kw}%`,
+                                `maintain_content.ilike.%${kw}%`,
+                                `vendor_name.ilike.%${kw}%`,
+                                `handler_name.ilike.%${kw}%`,
+                                `requester_name.ilike.%${kw}%`,
+                                `project_order_id.ilike.%${kw}%`,
+                                `req_dept_mgr_name.ilike.%${kw}%`,
+                                `cost_center.ilike.%${kw}%`
+                            ]
+                            : [
+                                `work_order_id.ilike.%${kw}%`,
+                                `maintain_content.ilike.%${kw}%`,
+                                `printer_name.ilike.%${kw}%`,
+                                `handler_name.ilike.%${kw}%`,
+                                `requester_name.ilike.%${kw}%`,
+                                `project_order_id.ilike.%${kw}%`,
+                                `req_dept_mgr_name.ilike.%${kw}%`,
+                                `cost_center.ilike.%${kw}%`
+                            ];
+                        if (kw === '合約' || kw === '合約維修單') {
+                            fields.push(`is_contract.eq.true`);
+                        } else if (kw === '非合約' || kw === '非合約維修單') {
+                            fields.push(`is_contract.eq.false`, `is_contract.is.null`);
+                        }
+                        conditions.push(...fields);
+                    });
+                    if (conditions.length > 0) {
+                        query = query.or(conditions.join(','));
+                    }
                 }
-                query = query.or(orConditions);
             }
 
             if (sort) {
@@ -285,7 +348,7 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
 
     useEffect(() => {
         refreshData()
-    }, [currentPage, itemsPerPage, sort, searchTerm])
+    }, [currentPage, itemsPerPage, sort, debouncedSearchTerm, searchMode])
 
     const handleSort = (key: string) => {
         setSort(prev => {
@@ -451,6 +514,10 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
         }
     }
 
+    const selectedId = Array.from(selected)[0]
+    const selectedItem = data.find(i => i.id === selectedId)
+    const isSelectedProject = selectedItem?.is_maintenance_project === true && selectedItem?.maintenance_project_id && selectedItem?.maintenance_project_category_id
+
     return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col">
             <Navbar onRefresh={refreshData} />
@@ -476,11 +543,26 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                         size="sm"
                         onClick={handleViewDetails}
                         disabled={selected.size !== 1 || loading}
-                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center"
+                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center gap-1.5 font-bold"
                     >
                         <Eye className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">檢視明細</span>
                     </Button>
+                    {isSelectedProject && selectedItem && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setWorkRecordDialog({
+                                open: true,
+                                projectId: selectedItem.maintenance_project_id,
+                                projectCategoryId: selectedItem.maintenance_project_category_id
+                            })}
+                            className="px-2 sm:px-4 border-emerald-600 text-emerald-600 hover:bg-emerald-50/50 h-9 flex-1 sm:flex-initial justify-center gap-1.5 font-bold"
+                        >
+                            <History className="w-4 h-4 shrink-0" />
+                            <span>顯示所有紀錄</span>
+                        </Button>
+                    )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" disabled={loading} className="px-2 sm:px-4 h-9 flex-1 sm:flex-initial justify-center">
@@ -529,14 +611,25 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
 
             <main className="flex-1 p-6 max-w-[1600px] mx-auto w-full">
                 <div className="mb-6 flex justify-between items-center">
-                    <div className="relative w-72">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                            placeholder="搜尋工單、工程單、開單人、主管、成本中心、承辦人..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-white dark:bg-slate-900"
-                        />
+                    <div className="flex items-center gap-2">
+                        <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setCurrentPage(1); }}>
+                            <SelectTrigger className="w-[140px] h-9 shrink-0 bg-white dark:bg-slate-900 border border-input">
+                                <SelectValue placeholder="條件" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="and">全部符合 (AND)</SelectItem>
+                                <SelectItem value="or">部分符合 (OR)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <div className="relative w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Input
+                                placeholder="搜尋工單、工程單、開單人、主管、成本中心、承辦人..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 bg-white dark:bg-slate-900 h-9"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -596,10 +689,13 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                             <TableCell className="font-mono font-bold text-slate-700 dark:text-slate-200">
                                                 <div className="flex items-center gap-2">
                                                     {item.work_order_id}
-                                                    {item.is_contract && (
-                                                        <Badge className="bg-purple-100 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40 text-[10px] px-1.5 py-0 font-semibold">合約</Badge>
-                                                    )}
-                                                </div>
+                                                     {item.is_contract && (
+                                                         <Badge className="bg-purple-100 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40 text-[10px] px-1.5 py-0 font-semibold">合約</Badge>
+                                                     )}
+                                                     {item.is_maintenance_project && (
+                                                         <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800/40 text-[10px] px-1.5 py-0 font-semibold">專案</Badge>
+                                                     )}
+                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-slate-500 dark:text-slate-400">{item.request_date}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
@@ -663,7 +759,15 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                                 <MobileTableCard
                                     key={item.id}
                                     id={item.id}
-                                    title={item.is_contract ? `${item.work_order_id} (合約)` : item.work_order_id}
+                                    title={
+                                        item.is_contract && item.is_maintenance_project
+                                            ? `${item.work_order_id} (合約) (專案)`
+                                            : item.is_contract
+                                            ? `${item.work_order_id} (合約)`
+                                            : item.is_maintenance_project
+                                            ? `${item.work_order_id} (專案)`
+                                            : item.work_order_id
+                                    }
                                     subtitle={item.cost_center}
                                     status={{
                                         label: item.status,
@@ -728,6 +832,13 @@ export default function StatusDetailPageClient({ status }: { status: string }) {
                 viewingItem={viewingItem}
                 themeTopBar={`absolute top-0 left-0 right-0 h-1.5 ${c.topBar}`}
                 themeGradient="from-slate-900 via-slate-800 to-slate-900"
+            />
+
+            <ProjectWorkRecordDialog
+                open={workRecordDialog.open}
+                onOpenChange={(open) => setWorkRecordDialog(prev => ({ ...prev, open }))}
+                projectId={workRecordDialog.projectId}
+                projectCategoryId={workRecordDialog.projectCategoryId}
             />
         </div>
     )

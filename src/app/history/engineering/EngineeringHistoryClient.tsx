@@ -28,6 +28,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
 import { DataTablePagination } from '@/components/DataTablePagination'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 
@@ -60,9 +61,19 @@ export default function EngineeringHistoryClient() {
     const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'))
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [keyword, setKeyword] = useState('')
-
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
+    const [debouncedKeyword, setDebouncedKeyword] = useState('')
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
+
+    // Debounce search keyword
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedKeyword(keyword)
+            setPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [keyword])
 
     const totalPages = Math.ceil(totalCount / pageSize)
 
@@ -117,11 +128,27 @@ export default function EngineeringHistoryClient() {
             .gte('start_date', startDate)
             .lte('start_date', endDate)
 
-        // 關鍵字搜尋：支援多關鍵字空白分割(AND)搜尋，在後端進行鏈式 OR 查詢
-        if (keyword.trim()) {
-            const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
-            for (const kw of keywords) {
-                query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,unit.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%`)
+        // 關鍵字搜尋：支援多關鍵字空白分割搜尋，在後端進行鏈式 OR 查詢
+        if (debouncedKeyword.trim()) {
+            const keywords = debouncedKeyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+            if (searchMode === 'and') {
+                for (const kw of keywords) {
+                    query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,unit.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%`)
+                }
+            } else {
+                const conditions: string[] = []
+                keywords.forEach(kw => {
+                    conditions.push(
+                        `vendor_name.ilike.%${kw}%`,
+                        `work_content.ilike.%${kw}%`,
+                        `unit.ilike.%${kw}%`,
+                        `engineering_contact.ilike.%${kw}%`,
+                        `note.ilike.%${kw}%`
+                    )
+                })
+                if (conditions.length > 0) {
+                    query = query.or(conditions.join(','))
+                }
             }
         }
 
@@ -145,7 +172,7 @@ export default function EngineeringHistoryClient() {
 
     useEffect(() => {
         fetchData()
-    }, [page, pageSize, startDate, endDate, keyword])
+    }, [page, pageSize, startDate, endDate, debouncedKeyword, searchMode, sort])
 
     // handleSearch 已經不需要，改為偵測關鍵字變動
 
@@ -162,10 +189,26 @@ export default function EngineeringHistoryClient() {
                 .lte('start_date', endDate)
                 .order('start_date', { ascending: false })
 
-            if (keyword.trim()) {
-                const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
-                for (const kw of keywords) {
-                    query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,unit.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%`)
+            if (debouncedKeyword.trim()) {
+                const keywords = debouncedKeyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+                if (searchMode === 'and') {
+                    for (const kw of keywords) {
+                        query = query.or(`vendor_name.ilike.%${kw}%,work_content.ilike.%${kw}%,unit.ilike.%${kw}%,engineering_contact.ilike.%${kw}%,note.ilike.%${kw}%`)
+                    }
+                } else {
+                    const conditions: string[] = []
+                    keywords.forEach(kw => {
+                        conditions.push(
+                            `vendor_name.ilike.%${kw}%`,
+                            `work_content.ilike.%${kw}%`,
+                            `unit.ilike.%${kw}%`,
+                            `engineering_contact.ilike.%${kw}%`,
+                            `note.ilike.%${kw}%`
+                        )
+                    })
+                    if (conditions.length > 0) {
+                        query = query.or(conditions.join(','))
+                    }
                 }
             }
 
@@ -270,7 +313,21 @@ export default function EngineeringHistoryClient() {
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="支援多關鍵字空白分割(AND)搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-80" /></div>
+                                <div className="space-y-1 flex flex-col">
+                                    <Label className="text-xs text-muted-foreground mb-1">關鍵字搜尋</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setPage(1); }}>
+                                            <SelectTrigger className="w-[140px] h-9 shrink-0 bg-background border border-input">
+                                                <SelectValue placeholder="條件" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="and">全部符合 (AND)</SelectItem>
+                                                <SelectItem value="or">部分符合 (OR)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Input type="text" placeholder="多關鍵字空白分割搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-64" />
+                                    </div>
+                                </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <DropdownMenu>

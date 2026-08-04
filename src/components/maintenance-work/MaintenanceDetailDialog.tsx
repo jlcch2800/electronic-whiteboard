@@ -1,13 +1,16 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Activity } from 'lucide-react'
+import { Activity, History } from 'lucide-react'
 import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogContent,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
 
 // 完整的欄位中文對照表
 const EXPORT_LABELS: Record<string, string> = {
@@ -106,6 +109,7 @@ interface MaintenanceDetailDialogProps {
     themeGradient?: string        // 頂部區塊的漸層 Class，預設為藍綠色漸層
     themeTextColor?: string       // 頂部圖示或高亮文字顏色，例如 text-teal-300
     themeSystemIdColor?: string   // SYSTEM ID 標籤的文字顏色，例如 text-teal-200
+    onOpenWorkRecords?: (projectId: string, categoryId: string) => void // 開啟專案施工紀錄彈窗回調
 }
 
 export function MaintenanceDetailDialog({
@@ -116,8 +120,47 @@ export function MaintenanceDetailDialog({
     themeTopBar,
     themeGradient = "from-blue-900 via-blue-800 to-teal-800",
     themeTextColor = "text-teal-300",
-    themeSystemIdColor = "text-teal-200"
+    themeSystemIdColor = "text-teal-200",
+    onOpenWorkRecords
 }: MaintenanceDetailDialogProps) {
+    const supabase = createClient()
+    const [projectName, setProjectName] = useState('')
+    const [categoryName, setCategoryName] = useState('')
+    const [loadingProject, setLoadingProject] = useState(false)
+
+    useEffect(() => {
+        if (!open || !viewingItem || !viewingItem.maintenance_project_id || !viewingItem.maintenance_project_category_id) {
+            setProjectName('')
+            setCategoryName('')
+            return
+        }
+
+        const fetchProjectDetails = async () => {
+            setLoadingProject(true)
+            try {
+                const { data: proj } = await supabase
+                    .from('maintenance_project')
+                    .select('maintenance_project_name')
+                    .eq('id', viewingItem.maintenance_project_id)
+                    .maybeSingle()
+                
+                const { data: cat } = await supabase
+                    .from('maintenance_project_category')
+                    .select('maintenance_category_name')
+                    .eq('id', viewingItem.maintenance_project_category_id)
+                    .maybeSingle()
+                
+                if (proj) setProjectName(proj.maintenance_project_name)
+                if (cat) setCategoryName(cat.maintenance_category_name)
+            } catch (e) {
+                console.error('Failed to load project details for dialog', e)
+            } finally {
+                setLoadingProject(false)
+            }
+        }
+
+        fetchProjectDetails()
+    }, [open, viewingItem, supabase])
     if (!viewingItem) return null
 
     const groups = [
@@ -181,6 +224,49 @@ export function MaintenanceDetailDialog({
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30 dark:bg-slate-900/10">
                     <div className="space-y-6">
+                        {Boolean(viewingItem.maintenance_project_id && viewingItem.maintenance_project_category_id) && (
+                            <div
+                                className="rounded-xl border border-[#F0BEBA] bg-gradient-to-r from-[#F0BEBA]/35 to-[#F0BEBA]/15 p-4 shadow-sm space-y-3 backdrop-blur-[2px] transition-all hover:shadow-md"
+                            >
+                                <div className="flex items-center justify-between border-b border-[#F0BEBA] pb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-base font-black tracking-wide text-red-950">
+                                            📁 專案維修單資訊
+                                        </span>
+                                        <Badge className="bg-red-700 hover:bg-red-700 text-white font-bold text-xs py-0.5 px-1.5 shrink-0">專案工單</Badge>
+                                    </div>
+                                    {onOpenWorkRecords && viewingItem.maintenance_project_id && viewingItem.maintenance_project_category_id && (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={() => {
+                                                onOpenChange(false)
+                                                onOpenWorkRecords(viewingItem.maintenance_project_id, viewingItem.maintenance_project_category_id)
+                                            }}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 h-8 shadow-sm transition-all"
+                                        >
+                                            <History className="w-3.5 h-3.5 mr-1" />
+                                            顯示專案所有施工紀錄
+                                        </Button>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5">
+                                    <div className="flex flex-col gap-1 pb-2 border-b border-dashed border-red-300/40 last:border-b-0">
+                                        <span className="text-[14px] font-bold text-red-900/75 uppercase tracking-wider">所屬專案</span>
+                                        <span className="text-[14px] font-semibold text-red-950 break-all leading-relaxed font-mono">
+                                            {loadingProject ? "載入中..." : projectName || viewingItem.maintenance_project_id || "無專案資料"}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-1 pb-2 border-b border-dashed border-red-300/40 last:border-b-0">
+                                        <span className="text-[14px] font-bold text-red-900/75 uppercase tracking-wider">專案主項目分類</span>
+                                        <span className="text-[14px] font-semibold text-red-950 break-all leading-relaxed font-mono">
+                                            {loadingProject ? "載入中..." : categoryName || viewingItem.maintenance_project_category_id || "無主項目分類"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {groups.map((group, gIdx) => (
                             <div
                                 key={gIdx}

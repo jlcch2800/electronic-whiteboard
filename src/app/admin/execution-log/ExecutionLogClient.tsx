@@ -7,7 +7,7 @@ import { motion } from 'framer-motion'
 import { format } from 'date-fns'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
-import { ArrowLeft, FileText, Search, RefreshCw, Download, AlertCircle, Info, AlertTriangle, Eye, Filter, Terminal } from 'lucide-react'
+import { ArrowLeft, FileText, Search, RefreshCw, Download, AlertCircle, Info, AlertTriangle, Eye, Filter, Terminal, X } from 'lucide-react'
 import { MobileTableCard } from '@/components/MobileTableCard'
 import { EmptyState } from '@/components/EmptyState'
 import { createClient } from '@/lib/supabase/client'
@@ -24,6 +24,7 @@ import { exportToExcelFile, exportToPdfFile, exportAoaToExcelFile } from '@/lib/
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface ExecutionLogClientProps { initialLogs: any[] }
 
@@ -34,12 +35,25 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
     const [logs, setLogs] = useState(initialLogs)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
     const [pageSize, setPageSize] = useState<number>(10)
     const [currentPage, setCurrentPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
     const [selected, setSelected] = useState<Set<string>>(new Set())
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+
+    // Debounce 搜尋關鍵字
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm)
+            setCurrentPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [searchTerm])
 
     const TABLE_NAME_MAP: Record<string, string> = {
         'vendor_today_work': '廠商今日工作項目',
@@ -122,29 +136,163 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
 
     const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
 
-    const fetchLogs = async () => {
-        setLoading(true)
-        let query = supabase.from('system_execution_log').select('*').order('created_at', { ascending: false })
+    // 建立後端查詢 query 的共用邏輯
+    const buildQuery = () => {
+        let query = supabase
+            .from('system_execution_log')
+            .select('*', { count: 'exact' })
+
         if (startDate) query = query.gte('date', startDate)
         if (endDate) query = query.lte('date', endDate)
-        const { data } = await query.limit(500)
-        if (data) setLogs(data)
-        setCurrentPage(1); setSelected(new Set()); setLoading(false)
+
+        // 關鍵字搜尋
+        if (debouncedSearchTerm.trim()) {
+        const keywords = debouncedSearchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean)
+
+            // 反向對照表：輸入中文，轉譯出可能的英文 table_name
+            const getEnglishTableNames = (kw: string) => {
+                return Object.entries(TABLE_NAME_MAP)
+                    .filter(([_, value]) => value.toLowerCase().includes(kw))
+                    .map(([key, _]) => key)
+            }
+
+            if (searchMode === 'and') {
+                keywords.forEach(kw => {
+                    const pattern = `%${kw}%`
+                    const engTables = getEnglishTableNames(kw)
+                    let tableConditions = `table_name.ilike.${pattern}`
+                    if (engTables.length > 0) {
+                        tableConditions += `,` + engTables.map(t => `table_name.eq.${t}`).join(',')
+                    }
+                    query = query.or(
+                        `${tableConditions},` +
+                        `message.ilike.${pattern},` +
+                        `log_level.ilike.${pattern}`
+                    )
+                })
+            } else {
+                const conditions = keywords.flatMap(kw => {
+                    const pattern = `%${kw}%`
+                    const engTables = getEnglishTableNames(kw)
+                    const conds = [
+                        `table_name.ilike.${pattern}`,
+                        `message.ilike.${pattern}`,
+                        `log_level.ilike.${pattern}`
+                    ]
+                    engTables.forEach(t => conds.push(`table_name.eq.${t}`))
+                    return conds
+                })
+                if (conditions.length > 0) {
+                    query = query.or(conditions.join(','))
+                }
+            }
+        }
+
+        if (sort) {
+            query = query.order(sort.key, { ascending: sort.direction === 'asc' })
+        } else {
+            query = query.order('created_at', { ascending: false })
+        }
+
+        return query
+    }
+
+    const fetchLogs = async () => {
+        setLoading(true)
+        try {
+            const query = buildQuery()
+            const from = (currentPage - 1) * pageSize
+            const to = from + pageSize - 1
+
+            const { data, count, error } = await query.range(from, to)
+            if (error) throw error
+
+            setLogs(data || [])
+            if (count !== null) setTotalCount(count)
+        } catch (err: any) {
+            console.error('Failed to fetch execution logs:', err)
+            toast({ title: '載入失敗', description: err.message, variant: 'destructive' })
+        } finally {
+            setSelected(new Set())
+            setLoading(false)
+        }
     }
 
     useEffect(() => {
         fetchLogs()
-    }, [startDate, endDate])
+    }, [currentPage, pageSize, startDate, endDate, sort, searchMode, debouncedSearchTerm])
 
-    const filteredLogs = logs.filter(log => (
-        (getTranslatedTableName(log.table_name)?.toLowerCase().includes(searchTerm.toLowerCase()) || log.table_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        translateMessage(log.message)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.log_level?.toLowerCase().includes(searchTerm.toLowerCase())
-    ))
-    const totalPages = Math.ceil(filteredLogs.length / pageSize)
+    // 取得匯出用的全部資料 (不受分頁限制)
+    const getExportLogs = async () => {
+        try {
+            setLoading(true)
+            let query = supabase.from('system_execution_log').select('*')
+            if (startDate) query = query.gte('date', startDate)
+            if (endDate) query = query.lte('date', endDate)
+
+            if (searchTerm.trim()) {
+                const keywords = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean)
+                const getEnglishTableNames = (kw: string) => {
+                    return Object.entries(TABLE_NAME_MAP)
+                        .filter(([_, value]) => value.toLowerCase().includes(kw))
+                        .map(([key, _]) => key)
+                }
+
+                if (searchMode === 'and') {
+                    keywords.forEach(kw => {
+                        const pattern = `%${kw}%`
+                        const engTables = getEnglishTableNames(kw)
+                        let tableConditions = `table_name.ilike.${pattern}`
+                        if (engTables.length > 0) {
+                            tableConditions += `,` + engTables.map(t => `table_name.eq.${t}`).join(',')
+                        }
+                        query = query.or(
+                            `${tableConditions},` +
+                            `message.ilike.${pattern},` +
+                            `log_level.ilike.${pattern}`
+                        )
+                    })
+                } else {
+                    const conditions = keywords.flatMap(kw => {
+                        const pattern = `%${kw}%`
+                        const engTables = getEnglishTableNames(kw)
+                        const conds = [
+                            `table_name.ilike.${pattern}`,
+                            `message.ilike.${pattern}`,
+                            `log_level.ilike.${pattern}`
+                        ]
+                        engTables.forEach(t => conds.push(`table_name.eq.${t}`))
+                        return conds
+                    })
+                    if (conditions.length > 0) {
+                        query = query.or(conditions.join(','))
+                    }
+                }
+            }
+
+            if (sort) {
+                query = query.order(sort.key, { ascending: sort.direction === 'asc' })
+            } else {
+                query = query.order('created_at', { ascending: false })
+            }
+
+            const { data, error } = await query
+            if (error) throw error
+            return data || []
+        } catch (err: any) {
+            console.error('Failed to get export logs:', err)
+            toast({ title: '獲取匯出資料失敗', description: err.message, variant: 'destructive' })
+            return []
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const filteredLogs = logs
+    const paginatedLogs = logs
+    const totalPages = Math.ceil(totalCount / pageSize)
 
     // 排序狀態
-    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
     const handleSort = (key: string) => {
         setSort(prev => {
             if (prev?.key === key && prev.direction === 'asc') return { key, direction: 'desc' }
@@ -153,30 +301,13 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
         })
         setCurrentPage(1)
     }
-    const sortedLogs = useMemo(() => {
-        if (!sort) return filteredLogs
-        return [...filteredLogs].sort((a, b) => {
-            const valA = (a as any)[sort.key] ?? ''
-            const valB = (b as any)[sort.key] ?? ''
-
-            if (typeof valA === 'string' && typeof valB === 'string') {
-                return sort.direction === 'asc'
-                    ? valA.localeCompare(valB, 'zh-Hant')
-                    : valB.localeCompare(valA, 'zh-Hant')
-            }
-
-            if (valA < valB) return sort.direction === 'asc' ? -1 : 1
-            if (valA > valB) return sort.direction === 'asc' ? 1 : -1
-            return 0
-        })
-    }, [filteredLogs, sort])
-    const paginatedLogs = sortedLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
     const toggleSelectAll = () => { selected.size === paginatedLogs.length && paginatedLogs.length > 0 ? setSelected(new Set()) : setSelected(new Set(paginatedLogs.map(i => i.id))) }
 
     // 匯出 Excel
-    const exportToExcel = () => {
-        const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
+    const exportToExcel = async () => {
+        const allLogs = await getExportLogs()
+        const dataToExport = selected.size > 0 ? allLogs.filter(r => selected.has(r.id)) : allLogs
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss'), '日期': r.date, '資料表': getTranslatedTableName(r.table_name), '記錄等級': r.log_level, '訊息': translateMessage(r.message) || '' }))
 
@@ -186,7 +317,8 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
 
     // 匯出 PDF
     const exportToPdf = async () => {
-        const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
+        const allLogs = await getExportLogs()
+        const dataToExport = selected.size > 0 ? allLogs.filter(r => selected.has(r.id)) : allLogs
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
 
         const sheetData = dataToExport.map((r, i) => ({
@@ -455,14 +587,41 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                                     className="w-full md:w-36"
                                 />
                             </div>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    value={searchTerm}
-                                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
-                                    placeholder="搜尋..."
-                                    className="pl-10 w-full md:w-48"
-                                />
+                            <div className="flex items-center gap-2">
+                                <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setCurrentPage(1); }}>
+                                    <SelectTrigger className="w-[140px] h-9 shrink-0">
+                                        <SelectValue placeholder="條件" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="and">全部符合 (AND)</SelectItem>
+                                        <SelectItem value="or">部分符合 (OR)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input
+                                        value={searchTerm}
+                                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+                                        placeholder="搜尋..."
+                                        className="pl-10 pr-8 w-full md:w-48"
+                                    />
+                                    {searchTerm && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSearchTerm('')
+                                                setDebouncedSearchTerm('')
+                                                setCurrentPage(1)
+                                            }}
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                </div>
+                                <Button variant="outline" onClick={fetchLogs} disabled={loading} className="shrink-0">
+                                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />查詢
+                                </Button>
                             </div>
                             <div className="flex items-center gap-2">
                                 <DropdownMenu>
@@ -837,7 +996,7 @@ export default function ExecutionLogClient({ initialLogs }: ExecutionLogClientPr
                         <DataTablePagination
                             currentPage={currentPage}
                             totalPages={totalPages || 1}
-                            totalItems={filteredLogs.length}
+                            totalItems={totalCount}
                             itemsPerPage={pageSize}
                             onPageChange={setCurrentPage}
                             onItemsPerPageChange={(size) => {

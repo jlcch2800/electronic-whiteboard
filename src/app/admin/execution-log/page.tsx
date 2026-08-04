@@ -21,12 +21,8 @@ export default async function ExecutionLogPage() {
 
     if (profile?.role !== 'admin') redirect('/')
 
-    // 取得執行記錄（預設最新 100 筆）
-    const { data: logs } = await supabase
-        .from('system_execution_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100)
+    // 執行記錄改由 Client 端初次載入 (搭配分頁與搜尋)
+    const logs: any[] = []
 
-    return <ExecutionLogClient initialLogs={logs || []} />
+    return <ExecutionLogClient initialLogs={logs} />
 }

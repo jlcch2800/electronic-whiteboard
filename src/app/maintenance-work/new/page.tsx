@@ -1,7 +1,7 @@
 // 新增維修單表單 — 步驟 1：已轉維修單
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -58,6 +58,7 @@ export default function MaintenanceWorkNewPage() {
     const [quickProjectOpen, setQuickProjectOpen] = useState(false)
     const [quickCategoryOpen, setQuickCategoryOpen] = useState(false)
     const [newProjectName, setNewProjectName] = useState('')
+    const [newProjectDesc, setNewProjectDesc] = useState('')
     const [newCategoryName, setNewCategoryName] = useState('')
 
     // 追蹤各欄位 touched 狀態（失焦驗證用）
@@ -126,7 +127,7 @@ export default function MaintenanceWorkNewPage() {
         try {
             const payload = {
                 maintenance_project_name: newProjectName.trim(),
-                description: '由工單新增快速建立',
+                description: newProjectDesc.trim() || null,
                 is_closed: false,
                 closed_at: null
             }
@@ -150,6 +151,7 @@ export default function MaintenanceWorkNewPage() {
             setValue('maintenance_project_id', data.id)
             setValue('is_maintenance_project', true)
             setNewProjectName('')
+            setNewProjectDesc('')
             setQuickProjectOpen(false)
             toast({ title: '專案建立成功', description: `專案「${data.maintenance_project_name}」已建立並選取` })
         } catch (err: any) {
@@ -206,7 +208,7 @@ export default function MaintenanceWorkNewPage() {
             setValue('handler_name', profile.user_name)
 
             const updates: Record<string, boolean> = {}
-            if (!HANDLER_OPTIONS.includes(profile.user_name)) {
+            if (!HANDLER_OPTIONS.includes(profile.user_name as any)) {
                 updates.printer_name = true
                 updates.handler_name = true
             }
@@ -469,6 +471,17 @@ export default function MaintenanceWorkNewPage() {
         }
     }
 
+    const confirmData = useMemo(() => {
+        if (!pendingData) return {}
+        const projName = projects.find(p => p.id === pendingData.maintenance_project_id)?.maintenance_project_name || pendingData.maintenance_project_id
+        const catName = categories.find(c => c.id === pendingData.maintenance_project_category_id)?.maintenance_category_name || pendingData.maintenance_project_category_id
+        return {
+            ...pendingData,
+            maintenance_project_id: projName,
+            maintenance_project_category_id: catName
+        }
+    }, [pendingData, projects, categories])
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#fff1ed] to-slate-100 dark:from-slate-900 dark:to-slate-950">
             {/* Header + 進度條（不用 sticky，避免行動版被狀態列遮住） */}
@@ -660,7 +673,7 @@ export default function MaintenanceWorkNewPage() {
                             {watch('is_maintenance_project') && (
                                 <CardContent className="space-y-4 pt-2">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField label="所屬專案" required={watch('is_maintenance_project')}>
+                                        <FormField label="所屬專案" required={!!watch('is_maintenance_project')}>
                                             <div className="flex gap-2">
                                                 <select
                                                     value={watch('maintenance_project_id') || ''}
@@ -690,7 +703,7 @@ export default function MaintenanceWorkNewPage() {
                                             </div>
                                         </FormField>
 
-                                        <FormField label="專案主項目" required={watch('is_maintenance_project')}>
+                                        <FormField label="專案主項目" required={!!watch('is_maintenance_project')}>
                                             <div className="flex gap-2">
                                                 <select
                                                     value={watch('maintenance_project_category_id') || ''}
@@ -797,31 +810,39 @@ export default function MaintenanceWorkNewPage() {
                 onConfirm={onConfirmSubmit}
                 onCancel={() => setShowConfirm(false)}
                 title="確認提交維修單"
-                data={pendingData || {}}
+                data={confirmData}
                 fieldLabels={MAINTENANCE_FIELD_LABELS}
             />
 
-            {/* 快速新增專案 Dialog */}
+            {/* 新增專案 Dialog */}
             <Dialog open={quickProjectOpen} onOpenChange={setQuickProjectOpen}>
-                <DialogContent className="sm:max-w-[400px]">
+                <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>快速新增專案</DialogTitle>
-                        <DialogDescription>建立新專案以歸類此張維修單。</DialogDescription>
+                        <DialogTitle>新增專案</DialogTitle>
+                        <DialogDescription>請填寫專案的基本資訊。</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-3">
-                        <div className="grid gap-1.5">
-                            <Label htmlFor="projectName" className="font-semibold text-sm">專案名稱</Label>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <span className="text-[16px] font-semibold">專案名稱 <span className="text-destructive">*</span></span>
                             <Input
-                                id="projectName"
-                                placeholder="例如: 新建C棟工程"
+                                placeholder="如: 新建C棟工程"
                                 value={newProjectName}
                                 onChange={(e) => setNewProjectName(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <span className="text-[16px] font-semibold">描述/說明</span>
+                            <Textarea
+                                placeholder="請輸入專案說明 (非必填)"
+                                value={newProjectDesc}
+                                onChange={(e) => setNewProjectDesc(e.target.value)}
+                                rows={3}
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setQuickProjectOpen(false)}>取消</Button>
-                        <Button onClick={handleQuickAddProject} className="bg-primary text-white">建立</Button>
+                        <Button onClick={handleQuickAddProject}>儲存</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

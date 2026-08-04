@@ -1,7 +1,7 @@
 // 系統異動記錄 Client Component
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
@@ -25,6 +25,7 @@ import { exportToExcelFile, exportToPdfFile, exportAoaToExcelFile } from '@/lib/
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface ChangeLogClientProps {
     initialLogs: any[]
@@ -38,12 +39,54 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
     const [logs, setLogs] = useState(initialLogs)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
     const [pageSize, setPageSize] = useState<number>(10)
     const [currentPage, setCurrentPage] = useState(1)
+    const [totalCount, setTotalCount] = useState(0)
     const [selected, setSelected] = useState<Set<string>>(new Set())
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+
+    // Debounce 搜尋關鍵字
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm)
+            setCurrentPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [searchTerm])
+
+    // 專案與項目 UUID 到名稱的映射 Map
+    const [projectMap, setProjectMap] = useState<Map<string, string>>(new Map())
+    const [categoryMap, setCategoryMap] = useState<Map<string, string>>(new Map())
+
+    useEffect(() => {
+        const loadMaps = async () => {
+            try {
+                // 載入專案
+                const { data: projs } = await supabase
+                    .from('maintenance_project')
+                    .select('id, maintenance_project_name')
+                const pMap = new Map<string, string>()
+                projs?.forEach(p => pMap.set(p.id, p.maintenance_project_name))
+                setProjectMap(pMap)
+
+                // 載入主項目
+                const { data: cats } = await supabase
+                    .from('maintenance_project_category')
+                    .select('id, maintenance_category_name')
+                const cMap = new Map<string, string>()
+                cats?.forEach(c => cMap.set(c.id, c.maintenance_category_name))
+                setCategoryMap(cMap)
+            } catch (err) {
+                console.error('Failed to load project/category maps for changelog:', err)
+            }
+        }
+        loadMaps()
+    }, [supabase])
 
     const TABLE_NAME_MAP: Record<string, string> = {
         'vendor_today_work': '廠商今日工作項目',
@@ -61,6 +104,9 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         'work_file': '施工文件',
         'maintenance_work_orders': '維修單',
         'maintenance_work_orders_history': '維修單歷史記錄',
+        'maintenance_project': '維修單專案',
+        'maintenance_project_category': '維修單專案主項目',
+        'maintenance_project_work_file': '維修單專案工作檔案',
     }
 
     const FIELD_LABELS: Record<string, string> = {
@@ -114,6 +160,11 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         accept_director_date: '驗收部門主管日期',
         is_contract: '是否為合約維修單',
         contract_received_date: '紙本合約收到日期',
+        is_maintenance_project: '是否為專案工作',
+        maintenance_project_id: '所屬專案',
+        maintenance_project_category_id: '專案主項目',
+        maintenance_project_name: '專案名稱',
+        maintenance_category_name: '專案項目名稱',
     }
 
     // 定義各資料表的欄位顯示順序 (整合排序)
@@ -189,6 +240,14 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             return value === true ? '"合約"' : '"非合約"';
         }
 
+        if (key === 'maintenance_project_id') {
+            return `"${projectMap.get(value) || value}"`;
+        }
+
+        if (key === 'maintenance_project_category_id') {
+            return `"${categoryMap.get(value) || value}"`;
+        }
+
         if (key === 'borrowed_items' || key === 'returned_items') {
             const obj = typeof value === 'string' ? (() => { try { return JSON.parse(value) } catch { return value } })() : value;
             if (obj && typeof obj === 'object') {
@@ -209,13 +268,14 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
     const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
 
-    // 重新載入資料
-    const fetchLogs = async () => {
-        setLoading(true)
+    // 建立後端查詢 query 的共用邏輯
+    const buildQuery = () => {
         let query = supabase
             .from('system_change_log')
-            .select('*')
-            .order('created_at', { ascending: false })
+            .select('*', { count: 'exact' })
+
+        // 排除 System (依據需求：系統執行記錄只存放 cron job，異動記錄存放使用者操作)
+        query = query.neq('user_name', 'System').neq('user_account', 'System')
 
         // 日期篩選
         if (startDate) {
@@ -225,59 +285,193 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
             query = query.lte('date', endDate)
         }
 
+        // 關鍵字搜尋
+        if (debouncedSearchTerm.trim()) {
+        const keywords = debouncedSearchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+            
+            // 動作類型的中文對應對照
+            const getActionTypeForKeyword = (kw: string) => {
+                if (kw === '新增') return 'Insert';
+                if (kw === '修改' || kw === '更新') return 'Update';
+                if (kw === '刪除') return 'Delete';
+                if (kw === '登入') return 'Login';
+                if (kw === '登出') return 'Logout';
+                return kw;
+            };
 
+            // 反向對照表：輸入中文 (如「帳號管理」)，轉譯出對應的英文 modify_table (如「users」)
+            const getEnglishTableNames = (kw: string) => {
+                return Object.entries(TABLE_NAME_MAP)
+                    .filter(([_, value]) => value.toLowerCase().includes(kw))
+                    .map(([key, _]) => key)
+            }
 
-        const { data } = await query.limit(500)
-        if (data) setLogs(data)
-        setCurrentPage(1); setSelected(new Set()); setLoading(false)
-    }
-
-    // 篩選資料 - 排除 System 使用者
-    const filteredLogs = logs.filter(log => {
-        // 排除 System (依據需求：系統執行記錄只存放 cron job，異動記錄存放使用者操作)
-        if (log.user_name === 'System' || log.user_account === 'System') return false;
-
-        if (!searchTerm.trim()) return true;
-
-        // 以空白分割多個關鍵字，並過濾掉空值
-        const keywords = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
-
-        // 取得動作類型的中文顯示名稱以便搜尋
-        let displayActionType = log.action_type
-        if (log.action_type === 'Insert') displayActionType = '新增'
-        else if (log.action_type === 'Update') displayActionType = '修改'
-        else if (log.action_type === 'Delete') displayActionType = '刪除'
-        else if (log.action_type === 'Logout') displayActionType = '登出'
-        else if (log.action_type === 'Login') {
-            try {
-                const newData = typeof log.new_data === 'string' ? JSON.parse(log.new_data) : log.new_data
-                if (newData?.status === 'Login Failed' || newData?.status?.includes('Account Locked')) {
-                    displayActionType = '密碼錯誤'
-                } else {
-                    displayActionType = '登入'
+            if (searchMode === 'and') {
+                keywords.forEach(kw => {
+                    const pattern = `%${kw}%`;
+                    const actionTypePattern = `%${getActionTypeForKeyword(kw)}%`;
+                    const engTables = getEnglishTableNames(kw);
+                    let tableConditions = `modify_table.ilike.${pattern}`;
+                    if (engTables.length > 0) {
+                        tableConditions += `,` + engTables.map(t => `modify_table.eq.${t}`).join(',');
+                    }
+                    query = query.or(
+                        `${tableConditions},` +
+                        `user_name.ilike.${pattern},` +
+                        `user_account.ilike.${pattern},` +
+                        `user_unit.ilike.${pattern},` +
+                        `action_type.ilike.${actionTypePattern}`
+                    );
+                });
+            } else {
+                const conditions = keywords.flatMap(kw => {
+                    const pattern = `%${kw}%`;
+                    const actionTypePattern = `%${getActionTypeForKeyword(kw)}%`;
+                    const engTables = getEnglishTableNames(kw);
+                    const conds = [
+                        `user_name.ilike.${pattern}`,
+                        `user_account.ilike.${pattern}`,
+                        `user_unit.ilike.${pattern}`,
+                        `modify_table.ilike.${pattern}`,
+                        `action_type.ilike.${actionTypePattern}`
+                    ];
+                    engTables.forEach(t => conds.push(`modify_table.eq.${t}`));
+                    return conds;
+                });
+                if (conditions.length > 0) {
+                    query = query.or(conditions.join(','));
                 }
-            } catch (e) {
-                displayActionType = '登入'
             }
         }
 
-        // 必須符合所有的關鍵字 (AND 邏輯)
-        return keywords.every(kw =>
-            log.user_name?.toLowerCase().includes(kw) ||
-            log.user_account?.toLowerCase().includes(kw) ||
-            log.user_unit?.toLowerCase().includes(kw) ||
-            getTranslatedTableName(log.modify_table)?.toLowerCase().includes(kw) ||
-            log.modify_table?.toLowerCase().includes(kw) ||
-            log.action_type?.toLowerCase().includes(kw) ||
-            displayActionType?.toLowerCase().includes(kw)
-        );
-    })
+        if (sort) {
+            query = query.order(sort.key, { ascending: sort.direction === 'asc' })
+        } else {
+            query = query.order('created_at', { ascending: false })
+        }
 
-    // 分頁
-    const totalPages = Math.ceil(filteredLogs.length / pageSize)
+        return query
+    }
+
+    // 重新載入資料
+    const fetchLogs = async () => {
+        setLoading(true)
+        try {
+            const query = buildQuery()
+            const from = (currentPage - 1) * pageSize
+            const to = from + pageSize - 1
+
+            const { data, count, error } = await query.range(from, to)
+            if (error) throw error
+
+            setLogs(data || [])
+            if (count !== null) setTotalCount(count)
+        } catch (err: any) {
+            console.error('Failed to fetch changelogs:', err)
+            toast({ title: '載入失敗', description: err.message, variant: 'destructive' })
+        } finally {
+            setSelected(new Set())
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchLogs()
+    }, [currentPage, pageSize, startDate, endDate, sort, searchMode, debouncedSearchTerm])
+
+    // 取得匯出用的全部資料 (不受分頁限制)
+    const getExportLogs = async () => {
+        try {
+            setLoading(true)
+            // 建立不包含 range 限制的完整 query
+            let query = supabase
+                .from('system_change_log')
+                .select('*')
+                .neq('user_name', 'System')
+                .neq('user_account', 'System')
+
+            if (startDate) query = query.gte('date', startDate)
+            if (endDate) query = query.lte('date', endDate)
+
+            if (searchTerm.trim()) {
+                const keywords = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                const getActionTypeForKeyword = (kw: string) => {
+                    if (kw === '新增') return 'Insert';
+                    if (kw === '修改' || kw === '更新') return 'Update';
+                    if (kw === '刪除') return 'Delete';
+                    if (kw === '登入') return 'Login';
+                    if (kw === '登出') return 'Logout';
+                    return kw;
+                };
+
+                // 反向對照表：輸入中文 (如「帳號管理」)，轉譯出對應的英文 modify_table (如「users」)
+                const getEnglishTableNames = (kw: string) => {
+                    return Object.entries(TABLE_NAME_MAP)
+                        .filter(([_, value]) => value.toLowerCase().includes(kw))
+                        .map(([key, _]) => key)
+                }
+
+                if (searchMode === 'and') {
+                    keywords.forEach(kw => {
+                        const pattern = `%${kw}%`;
+                        const actionTypePattern = `%${getActionTypeForKeyword(kw)}%`;
+                        const engTables = getEnglishTableNames(kw);
+                        let tableConditions = `modify_table.ilike.${pattern}`;
+                        if (engTables.length > 0) {
+                            tableConditions += `,` + engTables.map(t => `modify_table.eq.${t}`).join(',');
+                        }
+                        query = query.or(
+                            `${tableConditions},` +
+                            `user_name.ilike.${pattern},` +
+                            `user_account.ilike.${pattern},` +
+                            `user_unit.ilike.${pattern},` +
+                            `action_type.ilike.${actionTypePattern}`
+                        );
+                    });
+                } else {
+                    const conditions = keywords.flatMap(kw => {
+                        const pattern = `%${kw}%`;
+                        const actionTypePattern = `%${getActionTypeForKeyword(kw)}%`;
+                        const engTables = getEnglishTableNames(kw);
+                        const conds = [
+                            `user_name.ilike.${pattern}`,
+                            `user_account.ilike.${pattern}`,
+                            `user_unit.ilike.${pattern}`,
+                            `modify_table.ilike.${pattern}`,
+                            `action_type.ilike.${actionTypePattern}`
+                        ];
+                        engTables.forEach(t => conds.push(`modify_table.eq.${t}`));
+                        return conds;
+                    });
+                    if (conditions.length > 0) {
+                        query = query.or(conditions.join(','));
+                    }
+                }
+            }
+
+            if (sort) {
+                query = query.order(sort.key, { ascending: sort.direction === 'asc' })
+            } else {
+                query = query.order('created_at', { ascending: false })
+            }
+
+            const { data, error } = await query
+            if (error) throw error
+            return data || []
+        } catch (err: any) {
+            console.error('Failed to get export logs:', err)
+            toast({ title: '獲取匯出資料失敗', description: err.message, variant: 'destructive' })
+            return []
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const filteredLogs = logs
+    const paginatedLogs = logs
+    const totalPages = Math.ceil(totalCount / pageSize)
 
     // 排序狀態
-    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
     const handleSort = (key: string) => {
         setSort(prev => {
             if (prev?.key === key && prev.direction === 'asc') return { key, direction: 'desc' }
@@ -286,30 +480,13 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
         })
         setCurrentPage(1)
     }
-    const sortedLogs = useMemo(() => {
-        if (!sort) return filteredLogs
-        return [...filteredLogs].sort((a, b) => {
-            const valA = (a as any)[sort.key] ?? ''
-            const valB = (b as any)[sort.key] ?? ''
-
-            if (typeof valA === 'string' && typeof valB === 'string') {
-                return sort.direction === 'asc'
-                    ? valA.localeCompare(valB, 'zh-Hant')
-                    : valB.localeCompare(valA, 'zh-Hant')
-            }
-
-            if (valA < valB) return sort.direction === 'asc' ? -1 : 1
-            if (valA > valB) return sort.direction === 'asc' ? 1 : -1
-            return 0
-        })
-    }, [filteredLogs, sort])
-    const paginatedLogs = sortedLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
     const toggleSelectAll = () => { selected.size === paginatedLogs.length && paginatedLogs.length > 0 ? setSelected(new Set()) : setSelected(new Set(paginatedLogs.map(i => i.id))) }
 
     // 匯出 Excel
-    const exportToExcel = () => {
-        const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
+    const exportToExcel = async () => {
+        const allLogs = await getExportLogs()
+        const dataToExport = selected.size > 0 ? allLogs.filter(r => selected.has(r.id)) : allLogs
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
 
         const sheetData = dataToExport.map((r, i) => ({
@@ -334,7 +511,8 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
     // 匯出 PDF
     const exportToPdf = async () => {
-        const dataToExport = selected.size > 0 ? filteredLogs.filter(r => selected.has(r.id)) : filteredLogs
+        const allLogs = await getExportLogs()
+        const dataToExport = selected.size > 0 ? allLogs.filter(r => selected.has(r.id)) : allLogs
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
 
         const sheetData = dataToExport.map((r, i) => ({
@@ -553,9 +731,20 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
 
 
 
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="多關鍵字空白分割(AND)搜尋" className="pl-10 w-full md:w-80" />
+                            <div className="flex items-center gap-2">
+                                <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setCurrentPage(1); }}>
+                                    <SelectTrigger className="w-[140px] h-9 shrink-0">
+                                        <SelectValue placeholder="條件" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="and">全部符合 (AND)</SelectItem>
+                                        <SelectItem value="or">部分符合 (OR)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }} placeholder="多關鍵字空白分割搜尋" className="pl-10 w-full md:w-64" />
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -912,7 +1101,7 @@ export default function ChangeLogClient({ initialLogs }: ChangeLogClientProps) {
                         <DataTablePagination
                             currentPage={currentPage}
                             totalPages={totalPages || 1}
-                            totalItems={filteredLogs.length}
+                            totalItems={totalCount}
                             itemsPerPage={pageSize}
                             onPageChange={setCurrentPage}
                             onItemsPerPageChange={(size) => {

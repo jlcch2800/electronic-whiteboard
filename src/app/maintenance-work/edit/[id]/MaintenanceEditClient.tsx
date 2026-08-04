@@ -148,6 +148,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const [quickProjectOpen, setQuickProjectOpen] = useState(false)
     const [quickCategoryOpen, setQuickCategoryOpen] = useState(false)
     const [newProjectName, setNewProjectName] = useState('')
+    const [newProjectDesc, setNewProjectDesc] = useState('')
     const [newCategoryName, setNewCategoryName] = useState('')
 
     // 初始載入未結案專案
@@ -2137,27 +2138,35 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
 
             </main>
 
-            {/* 快速新增專案 Dialog */}
+            {/* 新增專案 Dialog */}
             <Dialog open={quickProjectOpen} onOpenChange={setQuickProjectOpen}>
-                <DialogContent className="sm:max-w-[400px]">
+                <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>快速新增專案</DialogTitle>
-                        <DialogDescription>建立新專案以歸類此張維修單。</DialogDescription>
+                        <DialogTitle>新增專案</DialogTitle>
+                        <DialogDescription>請填寫專案的基本資訊。</DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-3">
-                        <div className="grid gap-1.5">
-                            <Label htmlFor="projectName" className="font-semibold text-sm">專案名稱</Label>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <span className="text-[16px] font-semibold">專案名稱 <span className="text-destructive">*</span></span>
                             <Input
-                                id="projectName"
-                                placeholder="例如: 新建C棟工程"
+                                placeholder="如: 新建C棟工程"
                                 value={newProjectName}
                                 onChange={(e) => setNewProjectName(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <span className="text-[16px] font-semibold">描述/說明</span>
+                            <Textarea
+                                placeholder="請輸入專案說明 (非必填)"
+                                value={newProjectDesc}
+                                onChange={(e) => setNewProjectDesc(e.target.value)}
+                                rows={3}
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setQuickProjectOpen(false)}>取消</Button>
-                        <Button onClick={handleQuickAddProject} className="bg-primary text-white">建立</Button>
+                        <Button onClick={handleQuickAddProject}>儲存</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

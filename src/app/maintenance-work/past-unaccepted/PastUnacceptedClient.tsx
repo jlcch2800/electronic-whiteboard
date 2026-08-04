@@ -28,6 +28,7 @@ import { format } from 'date-fns'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 // EXPORT_LABELS: 完整的欄位中文對照表（供 Excel/PDF 匯出用）
 const EXPORT_LABELS: Record<string, string> = {
@@ -103,6 +104,17 @@ export default function PastUnacceptedClient() {
     const [loading, setLoading] = useState(true)
     // searchTerm: 搜尋框輸入的字串，用於過濾表格紀錄
     const [searchTerm, setSearchTerm] = useState('')
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+
+    // Debounce 搜尋關鍵字
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm)
+            setCurrentPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [searchTerm])
     // selected: 已勾選的維修單 ID 集合
     const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -147,14 +159,39 @@ export default function PastUnacceptedClient() {
                 .lt('request_date', startOfThisYear)
 
             // 如果有輸入關鍵字，對工單編號、內容、承辦人、印單人及狀態進行模糊搜尋
-            if (searchTerm) {
-                let orConditions = `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%`;
-                if (searchTerm === '合約' || searchTerm === '合約維修單') {
-                    orConditions += `,is_contract.eq.true`;
-                } else if (searchTerm === '非合約' || searchTerm === '非合約維修單') {
-                    orConditions += `,is_contract.eq.false,is_contract.is.null`;
+            if (debouncedSearchTerm.trim()) {
+                const keywords = debouncedSearchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                if (searchMode === 'and') {
+                    keywords.forEach(kw => {
+                        let orConditions = `work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,printer_name.ilike.%${kw}%,handler_name.ilike.%${kw}%,status.ilike.%${kw}%`;
+                        if (kw === '合約' || kw === '合約維修單') {
+                            orConditions += `,is_contract.eq.true`;
+                        } else if (kw === '非合約' || kw === '非合約維修單') {
+                            orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                        }
+                        query = query.or(orConditions);
+                    });
+                } else {
+                    const conditions: string[] = [];
+                    keywords.forEach(kw => {
+                        const fields = [
+                            `work_order_id.ilike.%${kw}%`,
+                            `maintain_content.ilike.%${kw}%`,
+                            `printer_name.ilike.%${kw}%`,
+                            `handler_name.ilike.%${kw}%`,
+                            `status.ilike.%${kw}%`
+                        ];
+                        if (kw === '合約' || kw === '合約維修單') {
+                            fields.push(`is_contract.eq.true`);
+                        } else if (kw === '非合約' || kw === '非合約維修單') {
+                            fields.push(`is_contract.eq.false`, `is_contract.is.null`);
+                        }
+                        conditions.push(...fields);
+                    });
+                    if (conditions.length > 0) {
+                        query = query.or(conditions.join(','));
+                    }
                 }
-                query = query.or(orConditions);
             }
 
             // 若有設定排序欄位，則套用對應的排序規則
@@ -183,7 +220,7 @@ export default function PastUnacceptedClient() {
     // 監聽分頁、排序及搜尋字串的變化，觸發資料重新查詢
     useEffect(() => {
         refreshData()
-    }, [currentPage, itemsPerPage, sort, searchTerm])
+    }, [currentPage, itemsPerPage, sort, debouncedSearchTerm, searchMode])
 
     // handleSort: 當使用者點選表頭欄位時切換排序方向或排序欄位
     const handleSort = (key: string) => {
@@ -225,14 +262,39 @@ export default function PastUnacceptedClient() {
                     .neq('status', '已驗收')
                     .lt('request_date', startOfThisYear)
 
-                if (searchTerm) {
-                    let orConditions = `work_order_id.ilike.%${searchTerm}%,maintain_content.ilike.%${searchTerm}%,printer_name.ilike.%${searchTerm}%,handler_name.ilike.%${searchTerm}%,status.ilike.%${searchTerm}%`;
-                    if (searchTerm === '合約' || searchTerm === '合約維修單') {
-                        orConditions += `,is_contract.eq.true`;
-                    } else if (searchTerm === '非合約' || searchTerm === '非合約維修單') {
-                        orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                if (searchTerm.trim()) {
+                    const keywords = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                    if (searchMode === 'and') {
+                        for (const kw of keywords) {
+                            let orConditions = `work_order_id.ilike.%${kw}%,maintain_content.ilike.%${kw}%,printer_name.ilike.%${kw}%,handler_name.ilike.%${kw}%,status.ilike.%${kw}%`;
+                            if (kw === '合約' || kw === '合約維修單') {
+                                orConditions += `,is_contract.eq.true`;
+                            } else if (kw === '非合約' || kw === '非合約維修單') {
+                                orConditions += `,is_contract.eq.false,is_contract.is.null`;
+                            }
+                            query = query.or(orConditions);
+                        }
+                    } else {
+                        const conditions: string[] = [];
+                        keywords.forEach(kw => {
+                            const fields = [
+                                `work_order_id.ilike.%${kw}%`,
+                                `maintain_content.ilike.%${kw}%`,
+                                `printer_name.ilike.%${kw}%`,
+                                `handler_name.ilike.%${kw}%`,
+                                `status.ilike.%${kw}%`
+                            ];
+                            if (kw === '合約' || kw === '合約維修單') {
+                                fields.push(`is_contract.eq.true`);
+                            } else if (kw === '非合約' || kw === '非合約維修單') {
+                                fields.push(`is_contract.eq.false`, `is_contract.is.null`);
+                            }
+                            conditions.push(...fields);
+                        });
+                        if (conditions.length > 0) {
+                            query = query.or(conditions.join(','));
+                        }
                     }
-                    query = query.or(orConditions);
                 }
 
                 if (sort) {
@@ -390,14 +452,25 @@ export default function PastUnacceptedClient() {
             {/* 主要內容區 */}
             <main className="flex-1 p-6 max-w-[1600px] mx-auto w-full">
                 <div className="mb-6 flex justify-between items-center">
-                    <div className="relative w-72">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                            placeholder="搜尋工單、維修內容、目前狀態..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-white dark:bg-slate-900"
-                        />
+                    <div className="flex items-center gap-2">
+                        <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setCurrentPage(1); }}>
+                            <SelectTrigger className="w-[140px] h-9 shrink-0 bg-white dark:bg-slate-900 border border-input">
+                                <SelectValue placeholder="條件" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="and">全部符合 (AND)</SelectItem>
+                                <SelectItem value="or">部分符合 (OR)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <div className="relative w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Input
+                                placeholder="搜尋工單、維修內容、目前狀態..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 bg-white dark:bg-slate-900 h-9"
+                            />
+                        </div>
                     </div>
                 </div>
 

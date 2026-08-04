@@ -45,11 +45,22 @@ export default function WorkFileClient() {
     const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'))
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [keyword, setKeyword] = useState('')
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
+    const [debouncedKeyword, setDebouncedKeyword] = useState('')
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
     const totalPages = Math.ceil(totalCount / pageSize)
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+    // Debounce search keyword
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedKeyword(keyword)
+            setPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [keyword])
 
     // Lightbox states
     const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -74,52 +85,74 @@ export default function WorkFileClient() {
             return { key, direction: 'asc' }
         })
     }
-    // 即時過濾資料
-    const filteredData = useMemo(() => {
-        if (!keyword.trim()) return data
-        const keywords = keyword.toLowerCase().split(/\s+/).filter(Boolean)
-
-        return data.filter(row => 
-            keywords.every(kw =>
-                row.vendor_name?.toLowerCase().includes(kw) ||
-                row.work_item?.toLowerCase().includes(kw) ||
-                row.uploader_name?.toLowerCase().includes(kw) ||
-                row.description?.toLowerCase().includes(kw) ||
-                row.note?.toLowerCase().includes(kw)
-            )
-        )
-    }, [data, keyword])
+    const filteredData = data
 
     const sortedData = useMemo(() => {
-        const source = filteredData
-        if (!sort) return source
-        return [...source].sort((a, b) => {
+        if (!sort) return data
+        return [...data].sort((a, b) => {
             const valA = (a as any)[sort.key] ?? ''
             const valB = (b as any)[sort.key] ?? ''
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1
             return 0
         })
-    }, [filteredData, sort])
+    }, [data, sort])
 
     const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
     const toggleSelectAll = () => { selected.size === data.length && data.length > 0 ? setSelected(new Set()) : setSelected(new Set(data.map(i => i.id))) }
 
+    const buildQuery = (isExport = false) => {
+        let q = supabase.from('work_file').select('*', isExport ? {} : { count: 'exact' })
+            .gte('date', startDate).lte('date', endDate)
+
+        if (debouncedKeyword.trim()) {
+            const keywords = debouncedKeyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+            if (searchMode === 'and') {
+                keywords.forEach(kw => {
+                    const pattern = `%${kw}%`
+                    q = q.or(`vendor_name.ilike.${pattern},work_item.ilike.${pattern},uploader_name.ilike.${pattern},description.ilike.${pattern},note.ilike.${pattern}`)
+                })
+            } else {
+                const conditions = keywords.flatMap(kw => {
+                    const pattern = `%${kw}%`
+                    return [
+                        `vendor_name.ilike.${pattern}`,
+                        `work_item.ilike.${pattern}`,
+                        `uploader_name.ilike.${pattern}`,
+                        `description.ilike.${pattern}`,
+                        `note.ilike.${pattern}`
+                    ]
+                })
+                if (conditions.length > 0) {
+                    q = q.or(conditions.join(','))
+                }
+            }
+        }
+
+        if (sort) {
+            q = q.order(sort.key, { ascending: sort.direction === 'asc' })
+        } else {
+            q = q.order('date', { ascending: false }).order('created_at', { ascending: false })
+        }
+
+        return q
+    }
+
     const fetchData = async () => {
         setLoading(true)
-        // 為了支援即時過濾，我們抓取該日期區間的所有資料 (或較大的數量)
-        // 注意：不帶關鍵字查詢，因為關鍵字過濾改在前端處理
-        let q = supabase.from('work_file').select('*', { count: 'exact' })
-            .gte('date', startDate).lte('date', endDate)
-            .order('date', { ascending: false }).order('created_at', { ascending: false })
-            // 如果資料量非常大，才需要分頁。這裡先配合即時化，若要搜尋全部則不設 range 或設大一點
-            // 但考量原本就有對齊分頁邏輯，這裡維持日期內的分頁或直接抓取分頁量
-            .range((page - 1) * pageSize, page * pageSize - 1)
+        try {
+            const q = buildQuery()
+            const { data: records, count, error } = await q.range((page - 1) * pageSize, page * pageSize - 1)
+            if (error) throw error
 
-        const { data: records, count, error } = await q
-        if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
-        else { setData(records || []); setTotalCount(count || 0) }
-        setSelected(new Set()); setLoading(false)
+            setData(records || [])
+            setTotalCount(count || 0)
+        } catch (err: any) {
+            toast({ title: '載入失敗', description: err.message, variant: 'destructive' })
+        } finally {
+            setSelected(new Set())
+            setLoading(false)
+        }
     }
 
     const handleDelete = async (id?: string) => {
@@ -202,7 +235,7 @@ export default function WorkFileClient() {
         setSelected(new Set())
     }
 
-    useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate])
+    useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate, sort, searchMode, debouncedKeyword])
 
     // 輔助函式：從網址提取檔名
     const getFileName = (url: string | null) => {
@@ -218,8 +251,7 @@ export default function WorkFileClient() {
         let dataToExport: WorkFileRecord[] = []
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
-            let q = supabase.from('work_file').select('*').gte('date', startDate).lte('date', endDate).order('date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            let q = buildQuery(true)
             const { data: allData } = await q; dataToExport = allData || []
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
@@ -233,8 +265,7 @@ export default function WorkFileClient() {
         let dataToExport: WorkFileRecord[] = []
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
-            let q = supabase.from('work_file').select('*').gte('date', startDate).lte('date', endDate).order('date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_item.ilike.%${keyword}%,uploader_name.ilike.%${keyword}%,description.ilike.%${keyword}%,note.ilike.%${keyword}%`)
+            let q = buildQuery(true)
             const { data: allData } = await q; dataToExport = allData || []
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
@@ -296,7 +327,19 @@ export default function WorkFileClient() {
                             <div className={`flex-col md:flex-row flex-wrap items-stretch md:items-end gap-4 w-full md:w-auto ${isFiltersOpen ? 'flex' : 'hidden md:flex'}`}>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="支援多關鍵字空白分割(AND)搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-80" /></div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">搜尋模式</Label>
+                                    <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setPage(1); }}>
+                                        <SelectTrigger className="w-full md:w-36 h-9 bg-background">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="and">全部符合 (AND)</SelectItem>
+                                            <SelectItem value="or">部分符合 (OR)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder={searchMode === 'and' ? "支援多關鍵字空白分割(AND)搜尋" : "支援多關鍵字空白分割(OR)搜尋"} value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-80" /></div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <DropdownMenu>

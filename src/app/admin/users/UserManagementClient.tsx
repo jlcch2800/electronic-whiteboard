@@ -1,7 +1,7 @@
 // Admin User Management Client Component
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { format } from 'date-fns'
@@ -44,25 +44,116 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     const [users, setUsers] = useState(initialUsers)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [showForm, setShowForm] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [editingUser, setEditingUser] = useState<any | null>(null)
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
+    const [totalCount, setTotalCount] = useState(0)
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+
+    // Debounce 搜尋關鍵字
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm)
+            setPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [searchTerm])
 
     const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<UserManagementFormValues>({
         resolver: zodResolver(userManagementSchema),
         defaultValues: { role: 'staff', is_active: true }
     })
 
+    // 建立後端查詢 query 的共用邏輯
+    const buildQuery = () => {
+        let query = supabase
+            .from('users')
+            .select('*', { count: 'exact' })
+
+        // 關鍵字搜尋
+        if (debouncedSearchTerm.trim()) {
+            const keywords = debouncedSearchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+            if (searchMode === 'and') {
+                keywords.forEach(kw => {
+                    const pattern = `%${kw}%`;
+                    let isActiveCondition = '';
+                    if (kw === '是' || kw === '啟用') {
+                        isActiveCondition = `,is_active.eq.true`;
+                    } else if (kw === '否' || kw === '停用') {
+                        isActiveCondition = `,is_active.eq.false`;
+                    }
+                    query = query.or(
+                        `user_name.ilike.${pattern},` +
+                        `email.ilike.${pattern},` +
+                        `unit.ilike.${pattern},` +
+                        `user_account.ilike.${pattern},` +
+                        `role.ilike.${pattern}` +
+                        isActiveCondition
+                    );
+                });
+            } else {
+                const conditions = keywords.flatMap(kw => {
+                    const pattern = `%${kw}%`;
+                    const conds = [
+                        `user_name.ilike.${pattern}`,
+                        `email.ilike.${pattern}`,
+                        `unit.ilike.${pattern}`,
+                        `user_account.ilike.${pattern}`,
+                        `role.ilike.${pattern}`
+                    ];
+                    if (kw === '是' || kw === '啟用') {
+                        conds.push(`is_active.eq.true`);
+                    } else if (kw === '否' || kw === '停用') {
+                        conds.push(`is_active.eq.false`);
+                    }
+                    return conds;
+                });
+                if (conditions.length > 0) {
+                    query = query.or(conditions.join(','));
+                }
+            }
+        }
+
+        if (sort) {
+            query = query.order(sort.key, { ascending: sort.direction === 'asc' })
+        } else {
+            query = query.order('created_at', { ascending: false })
+        }
+
+        return query;
+    }
+
     const fetchUsers = async () => {
         setLoading(true)
-        const { data } = await supabase.from('users').select('*').order('created_at', { ascending: false })
-        if (data) setUsers(data)
-        setLoading(false)
+        try {
+            const query = buildQuery()
+            const from = (page - 1) * pageSize
+            const to = from + pageSize - 1
+
+            const { data, count, error } = await query.range(from, to)
+            if (error) throw error
+
+            setUsers(data || [])
+            if (count !== null) setTotalCount(count)
+        } catch (err: any) {
+            console.error('Failed to fetch users:', err)
+            toast({ title: '載入失敗', description: err.message, variant: 'destructive' })
+        } finally {
+            setLoading(false)
+        }
     }
+
+    // 監聽依賴改變自動查詢
+    useEffect(() => {
+        fetchUsers()
+    }, [page, pageSize, sort, searchMode, debouncedSearchTerm])
 
     const handleCreate = () => {
         setEditingUser(null)
@@ -157,8 +248,70 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         }
     }
 
-    const exportToExcel = () => {
-        const dataToExport = selectedIds.length > 0 ? filteredUsers.filter(u => selectedIds.includes(u.id)) : filteredUsers
+    // 取得匯出用的全部資料 (不受分頁限制)
+    const getExportUsers = async () => {
+        try {
+            setLoading(true)
+            let query = supabase.from('users').select('*')
+            
+            if (debouncedSearchTerm.trim()) {
+                const keywords = debouncedSearchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+                if (searchMode === 'and') {
+                    keywords.forEach(kw => {
+                        const pattern = `%${kw}%`;
+                        let isActiveCondition = '';
+                        if (kw === '是' || kw === '啟用') isActiveCondition = `,is_active.eq.true`;
+                        else if (kw === '否' || kw === '停用') isActiveCondition = `,is_active.eq.false`;
+                        query = query.or(
+                            `user_name.ilike.${pattern},` +
+                            `email.ilike.${pattern},` +
+                            `unit.ilike.${pattern},` +
+                            `user_account.ilike.${pattern},` +
+                            `role.ilike.${pattern}` +
+                            isActiveCondition
+                        );
+                    });
+                } else {
+                    const conditions = keywords.flatMap(kw => {
+                        const pattern = `%${kw}%`;
+                        const conds = [
+                            `user_name.ilike.${pattern}`,
+                            `email.ilike.${pattern}`,
+                            `unit.ilike.${pattern}`,
+                            `user_account.ilike.${pattern}`,
+                            `role.ilike.${pattern}`
+                        ];
+                        if (kw === '是' || kw === '啟用') conds.push(`is_active.eq.true`);
+                        else if (kw === '否' || kw === '停用') conds.push(`is_active.eq.false`);
+                        return conds;
+                    });
+                    if (conditions.length > 0) {
+                        query = query.or(conditions.join(','));
+                    }
+                }
+            }
+
+            if (sort) {
+                query = query.order(sort.key, { ascending: sort.direction === 'asc' })
+            } else {
+                query = query.order('created_at', { ascending: false })
+            }
+
+            const { data, error } = await query
+            if (error) throw error
+            return data || []
+        } catch (err: any) {
+            console.error('Failed to get export users:', err)
+            toast({ title: '獲取匯出資料失敗', description: err.message, variant: 'destructive' })
+            return []
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const exportToExcel = async () => {
+        const allUsers = await getExportUsers()
+        const dataToExport = selectedIds.length > 0 ? allUsers.filter(u => selectedIds.includes(u.id)) : allUsers
         if (dataToExport.length === 0) {
             toast({ title: '無資料可匯出', variant: 'destructive' })
             return
@@ -184,7 +337,8 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
     }
 
     const exportToPdf = async () => {
-        const dataToExport = selectedIds.length > 0 ? filteredUsers.filter(u => selectedIds.includes(u.id)) : filteredUsers
+        const allUsers = await getExportUsers()
+        const dataToExport = selectedIds.length > 0 ? allUsers.filter(u => selectedIds.includes(u.id)) : allUsers
         if (dataToExport.length === 0) {
             toast({ title: '無資料可匯出', variant: 'destructive' })
             return
@@ -222,21 +376,10 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         }
     }
 
-    const filteredUsers = users.filter(user => {
-        const term = searchTerm.toLowerCase()
-        return user.user_name?.toLowerCase().includes(term) ||
-            user.email?.toLowerCase().includes(term) ||
-            user.unit?.toLowerCase().includes(term) ||
-            user.user_account?.toLowerCase().includes(term) ||
-            user.role?.toLowerCase().includes(term) ||
-            (term === '是' && user.is_active) ||
-            (term === '否' && !user.is_active)
-    })
-
-    const totalPages = Math.ceil(filteredUsers.length / pageSize)
+    const paginatedUsers = users
+    const totalPages = Math.ceil(totalCount / pageSize)
 
     // 排序狀態
-    const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
     const handleSort = (key: string) => {
         setSort(prev => {
             if (prev?.key === key && prev.direction === 'asc') return { key, direction: 'desc' }
@@ -245,24 +388,6 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
         })
         setPage(1) // 點擊排序時重設回第一頁，確保使用者能從最前面的排序結果開始看起
     }
-    const sortedUsers = useMemo(() => {
-        if (!sort) return filteredUsers
-        return [...filteredUsers].sort((a, b) => {
-            const valA = (a as any)[sort.key] ?? ''
-            const valB = (b as any)[sort.key] ?? ''
-
-            if (typeof valA === 'string' && typeof valB === 'string') {
-                return sort.direction === 'asc'
-                    ? valA.localeCompare(valB, 'zh-Hant')
-                    : valB.localeCompare(valA, 'zh-Hant')
-            }
-
-            if (valA < valB) return sort.direction === 'asc' ? -1 : 1
-            if (valA > valB) return sort.direction === 'asc' ? 1 : -1
-            return 0
-        })
-    }, [filteredUsers, sort])
-    const paginatedUsers = sortedUsers.slice((page - 1) * pageSize, page * pageSize)
 
     return (
         <div className="min-h-screen bg-muted">
@@ -296,14 +421,25 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                             </Button>
                         </div>
 
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="搜尋..."
-                                className="pl-9 w-full md:w-64"
-                            />
+                        <div className="flex items-center gap-2">
+                            <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setPage(1); }}>
+                                <SelectTrigger className="w-[140px] h-9 shrink-0">
+                                    <SelectValue placeholder="條件" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="and">全部符合 (AND)</SelectItem>
+                                    <SelectItem value="or">部分符合 (OR)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="搜尋..."
+                                    className="pl-9 w-full md:w-48"
+                                />
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-2 flex-wrap">
@@ -342,14 +478,25 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                 >
                     {/* 手機版搜尋與匯出列 */}
                     <div className="md:hidden p-4 bg-card border-b border-border/50 flex flex-col gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="搜尋姓名、單位、帳號、Email..."
-                                className="pl-9 w-full bg-muted/50 border-none h-9 text-xs"
-                            />
+                        <div className="flex items-center gap-2">
+                            <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setPage(1); }}>
+                                <SelectTrigger className="w-[140px] h-9 shrink-0 text-xs">
+                                    <SelectValue placeholder="條件" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="and" className="text-xs">全部符合 (AND)</SelectItem>
+                                    <SelectItem value="or" className="text-xs">部分符合 (OR)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="搜尋姓名、單位、帳號、Email..."
+                                    className="pl-9 w-full bg-muted/50 border-none h-9 text-xs"
+                                />
+                            </div>
                         </div>
                         <div className="flex items-center gap-2">
                             <DropdownMenu>
@@ -595,7 +742,7 @@ export default function UserManagementClient({ initialUsers }: UserManagementCli
                         <DataTablePagination
                             currentPage={page}
                             totalPages={totalPages || 1}
-                            totalItems={filteredUsers.length}
+                            totalItems={totalCount}
                             itemsPerPage={pageSize}
                             onPageChange={setPage}
                             onItemsPerPageChange={(size) => {

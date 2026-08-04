@@ -27,6 +27,7 @@ import { MobileTableCard } from '@/components/MobileTableCard'
 import { DataTablePagination } from '@/components/DataTablePagination'
 import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { EmptyState } from '@/components/EmptyState'
+import ProjectWorkRecordDialog from '@/components/projects/ProjectWorkRecordDialog'
 
 const EXPORT_LABELS: Record<string, string> = {
     'id': 'ID',
@@ -108,6 +109,18 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
     // 檢視明細對話框狀態
     const [viewDialogOpen, setViewDialogOpen] = useState(false)
     const [viewingItem, setViewingItem] = useState<any>(null)
+
+    // 專案工作紀錄 Dialog 狀態
+    const [workRecordDialog, setWorkRecordDialog] = useState<{
+        open: boolean
+        projectId?: string
+        projectCategoryId?: string
+        workOrderId?: string
+        projectOrderId?: string
+        maintainContent?: string
+    }>({
+        open: false
+    })
 
     const handleViewDetails = () => {
         if (selected.size !== 1) return
@@ -345,6 +358,23 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
         }
     }
 
+    const selectedId = Array.from(selected)[0]
+    const selectedItem = data.find(i => i.id === selectedId)
+    // 嚴格判定：必須同時具備專案 ID (maintenance_project_id) 與專案主項目 ID (maintenance_project_category_id)
+    const isSelectedProject = !!(selectedItem?.maintenance_project_id && selectedItem?.maintenance_project_category_id)
+
+    const handleOpenWorkRecord = (item: any) => {
+        if (!item) return
+        setWorkRecordDialog({
+            open: true,
+            projectId: item.maintenance_project_id || '',
+            projectCategoryId: item.maintenance_project_category_id || '',
+            workOrderId: item.work_order_id || '',
+            projectOrderId: item.project_order_id || '',
+            maintainContent: item.maintain_content || ''
+        })
+    }
+
     return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-slate-900/50 flex flex-col">
             <header className="glass border-b border-border/50 px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
@@ -364,11 +394,22 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                         size="sm"
                         onClick={handleViewDetails}
                         disabled={selected.size !== 1 || loading}
-                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50"
+                        className="px-2 sm:px-4 border-blue-600 text-blue-600 hover:bg-blue-50/50 disabled:opacity-50 h-9 flex-1 sm:flex-initial justify-center gap-1.5 font-bold"
                     >
-                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <Eye className="w-4 h-4 sm:mr-2 shrink-0" />
                         <span className="hidden sm:inline">檢視明細</span>
                     </Button>
+                    {isSelectedProject && selectedItem && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenWorkRecord(selectedItem)}
+                            className="px-2 sm:px-4 border-emerald-600 text-emerald-600 hover:bg-emerald-50/50 h-9 flex-1 sm:flex-initial justify-center gap-1.5 font-bold"
+                        >
+                            <History className="w-4 h-4 shrink-0" />
+                            <span>顯示所有紀錄</span>
+                        </Button>
+                    )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" disabled={loading} className="px-2 sm:px-4">
@@ -419,7 +460,6 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                             />
                                         </TableHead>
                                         <SortableTableHead sortKey="work_order_id" currentSort={sort} onSort={handleSort} label="工單編號" />
-                                        <SortableTableHead sortKey="status" currentSort={sort} onSort={handleSort} label="狀態" />
                                         <SortableTableHead sortKey="request_date" currentSort={sort} onSort={handleSort} label="開單日" />
                                         <SortableTableHead sortKey="cost_center" currentSort={sort} onSort={handleSort} label="成本中心" />
                                         <SortableTableHead sortKey="requester_name" currentSort={sort} onSort={handleSort} label="開單人" />
@@ -446,12 +486,19 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                                      {item.is_contract && (
                                                          <Badge className="bg-purple-100 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40 text-[10px] px-1.5 py-0 font-semibold">合約</Badge>
                                                      )}
+                                                     {Boolean(item.maintenance_project_id && item.maintenance_project_category_id) && (
+                                                         <Badge
+                                                             onClick={(e) => {
+                                                                 e.stopPropagation()
+                                                                 handleOpenWorkRecord(item)
+                                                             }}
+                                                             className="bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800/40 text-[10px] px-1.5 py-0 font-semibold cursor-pointer transition-colors"
+                                                             title="點擊查看此專案所有施工紀錄"
+                                                         >
+                                                             專案
+                                                         </Badge>
+                                                     )}
                                                  </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                                                    {item.status}
-                                                </Badge>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">{item.request_date}</TableCell>
                                             <TableCell>{item.cost_center}</TableCell>
@@ -503,11 +550,6 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                                     id={item.id}
                                     title={item.is_contract ? `${item.work_order_id} (合約)` : item.work_order_id}
                                     subtitle={item.cost_center}
-                                    status={{
-                                        label: item.status,
-                                        variant: "secondary",
-                                        className: "bg-green-100 text-green-700"
-                                    }}
                                     date={item.request_date}
                                     dateLabel="開單日"
                                     details={[
@@ -539,6 +581,24 @@ export default function MaintenanceWorkHistoryClient({ initialData }: Maintenanc
                 open={viewDialogOpen}
                 onOpenChange={setViewDialogOpen}
                 viewingItem={viewingItem}
+                onOpenWorkRecords={(projectId, projectCategoryId) => setWorkRecordDialog({
+                    open: true,
+                    projectId: projectId || viewingItem?.maintenance_project_id || '',
+                    projectCategoryId: projectCategoryId || viewingItem?.maintenance_project_category_id || '',
+                    workOrderId: viewingItem?.work_order_id || '',
+                    projectOrderId: viewingItem?.project_order_id || '',
+                    maintainContent: viewingItem?.maintain_content || ''
+                })}
+            />
+
+            <ProjectWorkRecordDialog
+                open={workRecordDialog.open}
+                onOpenChange={(open) => setWorkRecordDialog(prev => ({ ...prev, open }))}
+                projectId={workRecordDialog.projectId}
+                projectCategoryId={workRecordDialog.projectCategoryId}
+                workOrderId={workRecordDialog.workOrderId}
+                projectOrderId={workRecordDialog.projectOrderId}
+                maintainContent={workRecordDialog.maintainContent}
             />
         </div>
     )

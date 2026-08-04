@@ -91,14 +91,14 @@ function StatusCard({
 
     // 顏色對應表 (中飽和度漸層設計)
     const colorMap: Record<string, any> = {
+        '#F7D6D2': { bg: 'from-[#F7D6D2] via-[#F7D6D2]/30 to-white', iconBg: 'bg-[#F7D6D2]', iconColor: 'text-[#9e3a30]', border: 'border-[#F7D6D2]/70', topBar: 'bg-[#eb948b]' },
+        '#D4E7EE': { bg: 'from-[#D4E7EE] via-[#D4E7EE]/30 to-white', iconBg: 'bg-[#D4E7EE]', iconColor: 'text-[#2f6f85]', border: 'border-[#D4E7EE]/70', topBar: 'bg-[#8bb4c4]' },
+        '#F3E8C3': { bg: 'from-[#F3E8C3] via-[#F3E8C3]/30 to-white', iconBg: 'bg-[#F3E8C3]', iconColor: 'text-[#826a1d]', border: 'border-[#F3E8C3]/70', topBar: 'bg-[#d2bc7a]' },
+        '#DDE9CC': { bg: 'from-[#DDE9CC] via-[#DDE9CC]/30 to-white', iconBg: 'bg-[#DDE9CC]', iconColor: 'text-[#516e2d]', border: 'border-[#DDE9CC]/70', topBar: 'bg-[#b0cb8f]' },
+        'PASTEL Lavender': { bg: 'from-violet-100 via-violet-50/30 to-white', iconBg: 'bg-violet-100', iconColor: 'text-violet-700', border: 'border-violet-200/60', topBar: 'bg-violet-400' },
         'Pastel blue': { bg: 'from-sky-100 via-sky-50/30 to-white', iconBg: 'bg-sky-100', iconColor: 'text-sky-700', border: 'border-sky-200/60', topBar: 'bg-sky-400' },
-        'Dusty rose': { bg: 'from-rose-100/80 via-rose-50/20 to-white', iconBg: 'bg-rose-100', iconColor: 'text-rose-700', border: 'border-rose-200/60', topBar: 'bg-rose-400' },
-        'Dusty Lavender': { bg: 'from-violet-100 via-violet-50/30 to-white', iconBg: 'bg-violet-100', iconColor: 'text-violet-700', border: 'border-violet-200/60', topBar: 'bg-violet-400' },
-        'Pink': { bg: 'from-pink-100 via-pink-50/30 to-white', iconBg: 'bg-pink-100', iconColor: 'text-pink-700', border: 'border-pink-200/60', topBar: 'bg-pink-400' },
-        'blue': { bg: 'from-blue-100 via-blue-50/30 to-white', iconBg: 'bg-blue-100', iconColor: 'text-blue-700', border: 'border-blue-200/60', topBar: 'bg-blue-500' },
-        'cinnamon': { bg: 'from-amber-100 via-rose-50/20 to-white', iconBg: 'bg-amber-100', iconColor: 'text-amber-800', border: 'border-amber-200/50', topBar: 'bg-amber-700' },
+        '#F1CEAF': { bg: 'from-[#F1CEAF] via-[#F1CEAF]/30 to-white', iconBg: 'bg-[#F1CEAF]', iconColor: 'text-[#93521d]', border: 'border-[#F1CEAF]/70', topBar: 'bg-[#dda170]' },
         'yellow': { bg: 'from-yellow-100 via-yellow-50/30 to-white', iconBg: 'bg-yellow-100', iconColor: 'text-yellow-700', border: 'border-yellow-200/60', topBar: 'bg-yellow-400' },
-        'olive': { bg: 'from-lime-100/70 via-stone-100/20 to-white', iconBg: 'bg-lime-100', iconColor: 'text-lime-800', border: 'border-lime-200/60', topBar: 'bg-lime-600' },
         'Peach': { bg: 'from-orange-100 via-rose-50/20 to-white', iconBg: 'bg-orange-100/80', iconColor: 'text-orange-700', border: 'border-orange-200/60', topBar: 'bg-orange-400' },
         'Sage Green': { bg: 'from-emerald-100 via-emerald-50/30 to-white', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-700', border: 'border-emerald-200/60', topBar: 'bg-emerald-400' },
     }

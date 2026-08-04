@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { MapPin, Package, AlertTriangle } from 'lucide-react'
+import { MapPin, Package, AlertTriangle, FolderKanban } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 import { sendTelegramNotify, formatUpdateMessage, VENDOR_WORK_LABELS } from '@/lib/telegram-notify'
@@ -44,6 +44,9 @@ const FIELD_LABELS: Record<string, string> = {
     borrowed_items: '借出項目',
     receiver_name: '歸還人員',
     returned_items: '歸還項目',
+    is_maintenance_project: '此為專案工作',
+    maintenance_project_id: '所屬專案',
+    maintenance_project_category_id: '專案主項目',
 }
 
 export default function VendorEditClient({ initialData }: { initialData: any }) {
@@ -88,6 +91,10 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
     const [originalBorrowedItems, setOriginalBorrowedItems] = useState<string[] | null>(null)
     const [originalBorrowedOtherText, setOriginalBorrowedOtherText] = useState('')
 
+    // 專案相關狀態
+    const [projects, setProjects] = useState<any[]>([])
+    const [categories, setCategories] = useState<any[]>([])
+
     useEffect(() => {
         const fetchOriginalArrival = async () => {
             if (initialData?.entry_status === 'departure' && initialData?.ref_arrival_id) {
@@ -106,6 +113,21 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
         fetchOriginalArrival()
     }, [initialData, supabase])
 
+    // 載入專案列表
+    useEffect(() => {
+        const loadProjects = async () => {
+            let query = supabase.from('maintenance_project').select('*')
+            if (initialData?.maintenance_project_id) {
+                query = query.or(`is_closed.eq.false,id.eq.${initialData.maintenance_project_id}`)
+            } else {
+                query = query.eq('is_closed', false)
+            }
+            const { data } = await query.order('created_at', { ascending: false })
+            setProjects(data || [])
+        }
+        loadProjects()
+    }, [supabase, initialData])
+
     const toggleItem = (item: string, list: string[], setList: (v: string[]) => void) => {
         setList(list.includes(item) ? list.filter(i => i !== item) : [...list, item])
     }
@@ -115,7 +137,10 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
         borrowed_items: initialData?.borrowed_items?.items || [],
         borrowed_other_text: initialData?.borrowed_items?.other_text || '',
         returned_items: initialData?.returned_items?.items || [],
-        returned_other_text: initialData?.returned_items?.other_text || ''
+        returned_other_text: initialData?.returned_items?.other_text || '',
+        is_maintenance_project: initialData?.is_maintenance_project || false,
+        maintenance_project_id: initialData?.maintenance_project_id || '',
+        maintenance_project_category_id: initialData?.maintenance_project_category_id || '',
     }
 
     const { register, handleSubmit, watch, trigger, setValue, formState: { errors, isSubmitting } } = useForm<VendorWorkFormValues>({
@@ -123,6 +148,25 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
         mode: 'onBlur',
         defaultValues
     })
+
+    // 當專案 ID 改變時，載入對應項目
+    const watchProjectId = watch('maintenance_project_id')
+    useEffect(() => {
+        if (watchProjectId) {
+            const loadCategories = async () => {
+                const { data } = await supabase
+                    .from('maintenance_project_category')
+                    .select('*')
+                    .eq('maintenance_project_id', watchProjectId)
+                    .order('created_at', { ascending: true })
+                setCategories(data || [])
+            }
+            loadCategories()
+        } else {
+            setCategories([])
+            setValue('maintenance_project_category_id', '')
+        }
+    }, [watchProjectId, supabase, setValue])
 
     const entryStatus = watch('entry_status')
 
@@ -220,6 +264,9 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                 updatePayload = {
                     ...payload,
                     departure_time: null,
+                    is_maintenance_project: pendingData.is_maintenance_project || false,
+                    maintenance_project_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_id || null) : null,
+                    maintenance_project_category_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_category_id || null) : null,
                     borrow_action: borrowAction,
                     borrowed_items: borrowAction === 'borrow' ? { items: borrowedItems, other_text: borrowedOtherText } : null,
                     lender_name: borrowAction === 'borrow' ? lenderName : null,
@@ -343,6 +390,78 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* 專案工作資訊 - 僅到院 */}
+                        {entryStatus === 'arrival' && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                                <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20">
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                        <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                                            <FolderKanban className="w-4 h-4" />
+                                            專案工作資訊 (選填)
+                                        </CardTitle>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id="is_maintenance_project"
+                                                {...register('is_maintenance_project')}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked
+                                                    setValue('is_maintenance_project', checked)
+                                                    if (!checked) {
+                                                        setValue('maintenance_project_id', '')
+                                                        setValue('maintenance_project_category_id', '')
+                                                    }
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                            <label htmlFor="is_maintenance_project" className="text-sm font-semibold cursor-pointer">
+                                                此為專案工作
+                                            </label>
+                                        </div>
+                                    </CardHeader>
+                                    {watch('is_maintenance_project') && (
+                                        <CardContent className="space-y-4 pt-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormField label="所屬專案" required error={errors.maintenance_project_id?.message}>
+                                                    <select
+                                                        value={watch('maintenance_project_id') || ''}
+                                                        onChange={(e) => {
+                                                            setValue('maintenance_project_id', e.target.value)
+                                                            setValue('maintenance_project_category_id', '')
+                                                        }}
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
+                                                    >
+                                                        <option value="">請選擇專案</option>
+                                                        {projects.map(proj => (
+                                                            <option key={proj.id} value={proj.id}>
+                                                                {proj.maintenance_project_name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </FormField>
+
+                                                <FormField label="專案主項目" required error={errors.maintenance_project_category_id?.message}>
+                                                    <select
+                                                        value={watch('maintenance_project_category_id') || ''}
+                                                        onChange={(e) => setValue('maintenance_project_category_id', e.target.value)}
+                                                        disabled={!watchProjectId}
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                    >
+                                                        <option value="">請選擇專案主項目</option>
+                                                        {categories.map(cat => (
+                                                            <option key={cat.id} value={cat.id}>
+                                                                {cat.maintenance_category_name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </FormField>
+                                            </div>
+                                        </CardContent>
+                                    )}
+                                </Card>
+                            </motion.div>
+                        )}
 
                         {/* 施工位置 */}
                         {entryStatus === 'arrival' && (
@@ -506,6 +625,12 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                     borrow_action: pendingData.borrow_action === 'borrow' ? '已借物' : pendingData.borrow_action === 'return' ? '歸還' : pendingData.borrow_action === 'partial_return' ? '部分未歸還' : pendingData.borrow_action === 'none' ? '未借物' : pendingData.borrow_action,
                     borrowed_items: formatItemsDisplay(pendingData.borrowed_items, pendingData.borrowed_other_text),
                     returned_items: formatItemsDisplay(pendingData.returned_items, pendingData.returned_other_text),
+                    maintenance_project_id: pendingData.maintenance_project_id 
+                        ? projects.find(p => p.id === pendingData.maintenance_project_id)?.maintenance_project_name || pendingData.maintenance_project_id 
+                        : '',
+                    maintenance_project_category_id: pendingData.maintenance_project_category_id 
+                        ? categories.find(c => c.id === pendingData.maintenance_project_category_id)?.maintenance_category_name || pendingData.maintenance_project_category_id 
+                        : '',
                 } : {}}
                 fieldLabels={FIELD_LABELS}
             />

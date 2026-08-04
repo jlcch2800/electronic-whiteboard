@@ -48,14 +48,14 @@ export const DEAN_NAMES = ['田宇峯', '周偉倪', '林宏榮'].sort((a, b) =>
  * 狀態卡片顏色對應
  */
 export const STATUS_COLORS: Record<string, string> = {
-    '已轉維修單': 'Pastel blue',
-    '開單主管簽核完成': 'Dusty rose',
-    '工務部門報價，主管簽核中': 'Dusty Lavender',
-    '工務已發包': 'Pink',
-    '院長室簽核中': 'blue',
-    '採購發包簽核中': 'cinnamon',
-    '採購已發包': 'yellow',
-    '廠商施工中': 'olive',
+    '已轉維修單': '#F7D6D2',
+    '開單主管簽核完成': '#D4E7EE',
+    '工務部門報價，主管簽核中': '#F3E8C3',
+    '工務已發包': '#DDE9CC',
+    '院長室簽核中': 'PASTEL Lavender',
+    '採購發包簽核中': 'Pastel blue',
+    '採購已發包': '#F1CEAF',
+    '廠商施工中': 'yellow',
     '施工完成，開單單位驗收中': 'Peach',
     '維修部門驗收中': 'Sage Green',
     '已驗收': 'Sage Green'

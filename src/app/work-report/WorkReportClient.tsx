@@ -53,11 +53,22 @@ export default function WorkReportClient() {
     const [startDate, setStartDate] = useState(format(subDays(new Date(), 7), 'yyyy-MM-dd'))
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [keyword, setKeyword] = useState('')
+    const [searchMode, setSearchMode] = useState<'and' | 'or'>('and')
+    const [debouncedKeyword, setDebouncedKeyword] = useState('')
     const [statusFilter, setStatusFilter] = useState<string>('all')
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(10)
     const totalPages = Math.ceil(totalCount / pageSize)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+    // Debounce keyword search
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedKeyword(keyword)
+            setPage(1)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [keyword])
 
     // 排序狀態
     const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
@@ -68,52 +79,88 @@ export default function WorkReportClient() {
             return { key, direction: 'asc' }
         })
     }
-    // 即時過濾資料
-    const filteredData = useMemo(() => {
-        if (!keyword.trim()) return data
-        const keywords = keyword.toLowerCase().split(/\s+/).filter(Boolean)
-
-        return data.filter(row => 
-            keywords.every(kw =>
-                row.vendor_name?.toLowerCase().includes(kw) ||
-                row.work_content?.toLowerCase().includes(kw) ||
-                row.work_location?.toLowerCase().includes(kw) ||
-                row.engineering_contact?.toLowerCase().includes(kw) ||
-                row.note?.toLowerCase().includes(kw) ||
-                statusLabels[row.work_status]?.text.toLowerCase().includes(kw)
-            )
-        )
-    }, [data, keyword])
+    const filteredData = data
 
     const sortedData = useMemo(() => {
-        const source = filteredData
-        if (!sort) return source
-        return [...source].sort((a, b) => {
+        if (!sort) return data
+        return [...data].sort((a, b) => {
             const valA = (a as any)[sort.key] ?? ''
             const valB = (b as any)[sort.key] ?? ''
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1
             return 0
         })
-    }, [filteredData, sort])
+    }, [data, sort])
 
     const toggleSelect = (id: string) => { const s = new Set(selected); s.has(id) ? s.delete(id) : s.add(id); setSelected(s) }
     const toggleSelectAll = () => { selected.size === data.length && data.length > 0 ? setSelected(new Set()) : setSelected(new Set(data.map(i => i.id))) }
 
-    const fetchData = async () => {
-        setLoading(true)
-        let q = supabase.from('work_report').select('*', { count: 'exact' })
+    const buildQuery = (isExport = false) => {
+        let q = supabase.from('work_report').select('*', isExport ? {} : { count: 'exact' })
             .gte('report_date', startDate).lte('report_date', endDate)
-            .order('report_date', { ascending: false }).order('created_at', { ascending: false })
-            .range((page - 1) * pageSize, page * pageSize - 1)
 
-        // 關鍵字搜尋改在前端處理，這裡不帶 or 條件
         if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
 
-        const { data: records, count, error } = await q
-        if (error) { toast({ title: '載入失敗', description: error.message, variant: 'destructive' }) }
-        else { setData(records || []); setTotalCount(count || 0) }
-        setSelected(new Set()); setLoading(false)
+        if (debouncedKeyword.trim()) {
+            const keywords = debouncedKeyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+
+            // 中文狀態對應
+            const getStatusValue = (kw: string) => {
+                if (kw === '施工完成' || kw === '已完成') return 'completed'
+                if (kw === '未完成') return 'incomplete'
+                if (kw === '異常') return 'abnormal'
+                return kw
+            }
+
+            if (searchMode === 'and') {
+                keywords.forEach(kw => {
+                    const pattern = `%${kw}%`
+                    const statusVal = `%${getStatusValue(kw)}%`
+                    q = q.or(`vendor_name.ilike.${pattern},work_content.ilike.${pattern},work_location.ilike.${pattern},engineering_contact.ilike.${pattern},note.ilike.${pattern},work_status.ilike.${statusVal}`)
+                })
+            } else {
+                const conditions = keywords.flatMap(kw => {
+                    const pattern = `%${kw}%`
+                    const statusVal = `%${getStatusValue(kw)}%`
+                    return [
+                        `vendor_name.ilike.${pattern}`,
+                        `work_content.ilike.${pattern}`,
+                        `work_location.ilike.${pattern}`,
+                        `engineering_contact.ilike.${pattern}`,
+                        `note.ilike.${pattern}`,
+                        `work_status.ilike.${statusVal}`
+                    ]
+                })
+                if (conditions.length > 0) {
+                    q = q.or(conditions.join(','))
+                }
+            }
+        }
+
+        if (sort) {
+            q = q.order(sort.key, { ascending: sort.direction === 'asc' })
+        } else {
+            q = q.order('report_date', { ascending: false }).order('created_at', { ascending: false })
+        }
+
+        return q
+    }
+
+    const fetchData = async () => {
+        setLoading(true)
+        try {
+            const q = buildQuery()
+            const { data: records, count, error } = await q.range((page - 1) * pageSize, page * pageSize - 1)
+            if (error) throw error
+
+            setData(records || [])
+            setTotalCount(count || 0)
+        } catch (err: any) {
+            toast({ title: '載入失敗', description: err.message, variant: 'destructive' })
+        } finally {
+            setSelected(new Set())
+            setLoading(false)
+        }
     }
 
     const handleDelete = async (id?: string) => {
@@ -139,16 +186,15 @@ export default function WorkReportClient() {
         setDeleteDialogOpen(false)
     }
 
-    useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate, statusFilter])
+    useEffect(() => { fetchData() }, [page, pageSize, startDate, endDate, statusFilter, sort, searchMode, debouncedKeyword])
 
     const exportToExcel = async () => {
         let dataToExport: WorkReportRecord[] = []
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
-            let q = supabase.from('work_report').select('*').gte('report_date', startDate).lte('report_date', endDate).order('report_date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
-            if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
-            const { data: allData } = await q; dataToExport = allData || []
+            let q = buildQuery(true)
+            const { data: allData } = await q
+            dataToExport = allData || []
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
         const sheetData = dataToExport.map((r, i) => ({ '#': i + 1, 'ID': r.id, '建立時間': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm:ss') : '', '日期': r.report_date, '時間': r.report_time || '', '廠商': r.vendor_name, '地點': r.work_location, '負責人': r.engineering_contact, '狀態': statusLabels[r.work_status]?.text || r.work_status, '施工內容': r.work_content || '', '備註': r.note || '' }))
@@ -161,10 +207,9 @@ export default function WorkReportClient() {
         let dataToExport: WorkReportRecord[] = []
         if (selected.size > 0) { dataToExport = data.filter(r => selected.has(r.id)) }
         else {
-            let q = supabase.from('work_report').select('*').gte('report_date', startDate).lte('report_date', endDate).order('report_date', { ascending: false })
-            if (keyword.trim()) q = q.or(`vendor_name.ilike.%${keyword}%,work_content.ilike.%${keyword}%,work_location.ilike.%${keyword}%,engineering_contact.ilike.%${keyword}%,work_status.ilike.%${keyword}%,note.ilike.%${keyword}%`)
-            if (statusFilter !== 'all') q = q.eq('work_status', statusFilter)
-            const { data: allData } = await q; dataToExport = allData || []
+            let q = buildQuery(true)
+            const { data: allData } = await q
+            dataToExport = allData || []
         }
         if (dataToExport.length === 0) { toast({ title: '無資料可匯出', variant: 'destructive' }); return }
 
@@ -224,7 +269,21 @@ export default function WorkReportClient() {
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">開始日期</Label><Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">結束日期</Label><Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className="w-full md:w-40" /></div>
                                 <div className="space-y-1"><Label className="text-xs text-muted-foreground">狀態</Label><Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}><SelectTrigger className="w-full md:w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部</SelectItem><SelectItem value="completed">完成</SelectItem><SelectItem value="incomplete">未完成</SelectItem><SelectItem value="abnormal">異常</SelectItem></SelectContent></Select></div>
-                                <div className="space-y-1"><Label className="text-xs text-muted-foreground">關鍵字搜尋</Label><Input type="text" placeholder="支援多關鍵字空白分割(AND)搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-80" /></div>
+                                <div className="space-y-1 flex flex-col">
+                                    <Label className="text-xs text-muted-foreground mb-1">關鍵字搜尋</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Select value={searchMode} onValueChange={(val: 'and' | 'or') => { setSearchMode(val); setPage(1); }}>
+                                            <SelectTrigger className="w-[140px] h-9 shrink-0 bg-background border border-input">
+                                                <SelectValue placeholder="條件" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="and">全部符合</SelectItem>
+                                                <SelectItem value="or">部分符合</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Input type="text" placeholder="多關鍵字空白分割搜尋" value={keyword} onChange={(e) => { setKeyword(e.target.value); setPage(1); }} className="w-full md:w-64" />
+                                    </div>
+                                </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                                 <DropdownMenu>
