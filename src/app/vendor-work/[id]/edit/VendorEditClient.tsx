@@ -260,13 +260,17 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
             const payload: any = { ...pendingData }
             let updatePayload: any = {}
 
+            const projectPayload = {
+                is_maintenance_project: pendingData.is_maintenance_project || false,
+                maintenance_project_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_id || null) : null,
+                maintenance_project_category_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_category_id || null) : null,
+            }
+
             if (pendingData.entry_status === 'arrival') {
                 updatePayload = {
                     ...payload,
                     departure_time: null,
-                    is_maintenance_project: pendingData.is_maintenance_project || false,
-                    maintenance_project_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_id || null) : null,
-                    maintenance_project_category_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_category_id || null) : null,
+                    ...projectPayload,
                     borrow_action: borrowAction,
                     borrowed_items: borrowAction === 'borrow' ? { items: borrowedItems, other_text: borrowedOtherText } : null,
                     lender_name: borrowAction === 'borrow' ? lenderName : null,
@@ -285,7 +289,8 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                     borrow_action: returnActionVal,
                     returned_items: returnedItemsVal,
                     receiver_name: receiverNameVal,
-                    ref_arrival_id: pendingData.ref_arrival_id || initialData.ref_arrival_id || initialData.id
+                    ref_arrival_id: pendingData.ref_arrival_id || initialData.ref_arrival_id || initialData.id,
+                    ...projectPayload,
                 }
 
                 if (returnActionVal === 'partial_return' && originalBorrowedItems) {
@@ -310,6 +315,14 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
 
             const { error } = await supabase.from('vendor_today_work').update(updatePayload).eq('id', initialData.id)
             if (error) throw error
+
+            // 同步更新關聯之到院或離院紀錄專案資訊
+            const targetRefArrivalId = pendingData.ref_arrival_id || initialData.ref_arrival_id
+            if (targetRefArrivalId && targetRefArrivalId !== initialData.id) {
+                await supabase.from('vendor_today_work').update(projectPayload).eq('id', targetRefArrivalId)
+            } else if (initialData.entry_status === 'arrival') {
+                await supabase.from('vendor_today_work').update(projectPayload).eq('ref_arrival_id', initialData.id)
+            }
 
             sendTelegramNotify(formatUpdateMessage('廠商今日工作項目', initialData, updatePayload, VENDOR_WORK_LABELS))
             logChangeRecord({ actionType: 'Update', modifyTable: 'vendor_today_work', modifyRecordId: initialData.id, oldData: initialData, newData: updatePayload })
@@ -391,77 +404,75 @@ export default function VendorEditClient({ initialData }: { initialData: any }) 
                             </CardContent>
                         </Card>
 
-                        {/* 專案工作資訊 - 僅到院 */}
-                        {entryStatus === 'arrival' && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                                <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20">
-                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                        <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
-                                            <FolderKanban className="w-4 h-4" />
-                                            專案工作資訊 (選填)
-                                        </CardTitle>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                id="is_maintenance_project"
-                                                {...register('is_maintenance_project')}
-                                                onChange={(e) => {
-                                                    const checked = e.target.checked
-                                                    setValue('is_maintenance_project', checked)
-                                                    if (!checked) {
-                                                        setValue('maintenance_project_id', '')
+                        {/* 專案工作資訊 */}
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20">
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                                        <FolderKanban className="w-4 h-4" />
+                                        專案工作資訊 (選填)
+                                    </CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="is_maintenance_project"
+                                            {...register('is_maintenance_project')}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked
+                                                setValue('is_maintenance_project', checked)
+                                                if (!checked) {
+                                                    setValue('maintenance_project_id', '')
+                                                    setValue('maintenance_project_category_id', '')
+                                                }
+                                            }}
+                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                        />
+                                        <label htmlFor="is_maintenance_project" className="text-sm font-semibold cursor-pointer">
+                                            此為專案工作
+                                        </label>
+                                    </div>
+                                </CardHeader>
+                                {watch('is_maintenance_project') && (
+                                    <CardContent className="space-y-4 pt-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormField label="所屬專案" required error={errors.maintenance_project_id?.message}>
+                                                <select
+                                                    value={watch('maintenance_project_id') || ''}
+                                                    onChange={(e) => {
+                                                        setValue('maintenance_project_id', e.target.value)
                                                         setValue('maintenance_project_category_id', '')
-                                                    }
-                                                }}
-                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                            />
-                                            <label htmlFor="is_maintenance_project" className="text-sm font-semibold cursor-pointer">
-                                                此為專案工作
-                                            </label>
-                                        </div>
-                                    </CardHeader>
-                                    {watch('is_maintenance_project') && (
-                                        <CardContent className="space-y-4 pt-2">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormField label="所屬專案" required error={errors.maintenance_project_id?.message}>
-                                                    <select
-                                                        value={watch('maintenance_project_id') || ''}
-                                                        onChange={(e) => {
-                                                            setValue('maintenance_project_id', e.target.value)
-                                                            setValue('maintenance_project_category_id', '')
-                                                        }}
-                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
-                                                    >
-                                                        <option value="">請選擇專案</option>
-                                                        {projects.map(proj => (
-                                                            <option key={proj.id} value={proj.id}>
-                                                                {proj.maintenance_project_name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </FormField>
+                                                    }}
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
+                                                >
+                                                    <option value="">請選擇專案</option>
+                                                    {projects.map(proj => (
+                                                        <option key={proj.id} value={proj.id}>
+                                                            {proj.maintenance_project_name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </FormField>
 
-                                                <FormField label="專案主項目" required error={errors.maintenance_project_category_id?.message}>
-                                                    <select
-                                                        value={watch('maintenance_project_category_id') || ''}
-                                                        onChange={(e) => setValue('maintenance_project_category_id', e.target.value)}
-                                                        disabled={!watchProjectId}
-                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
-                                                    >
-                                                        <option value="">請選擇專案主項目</option>
-                                                        {categories.map(cat => (
-                                                            <option key={cat.id} value={cat.id}>
-                                                                {cat.maintenance_category_name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </FormField>
-                                            </div>
-                                        </CardContent>
-                                    )}
-                                </Card>
-                            </motion.div>
-                        )}
+                                            <FormField label="專案主項目" required error={errors.maintenance_project_category_id?.message}>
+                                                <select
+                                                    value={watch('maintenance_project_category_id') || ''}
+                                                    onChange={(e) => setValue('maintenance_project_category_id', e.target.value)}
+                                                    disabled={!watchProjectId}
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                >
+                                                    <option value="">請選擇專案主項目</option>
+                                                    {categories.map(cat => (
+                                                        <option key={cat.id} value={cat.id}>
+                                                            {cat.maintenance_category_name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </FormField>
+                                        </div>
+                                    </CardContent>
+                                )}
+                            </Card>
+                        </motion.div>
 
                         {/* 施工位置 */}
                         {entryStatus === 'arrival' && (

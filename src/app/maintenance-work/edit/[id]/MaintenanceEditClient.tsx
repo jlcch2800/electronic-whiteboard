@@ -782,6 +782,18 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             return;
         }
 
+        // 專案維修單防呆驗證
+        if (formData.is_maintenance_project) {
+            if (!formData.maintenance_project_id) {
+                toast({ title: '驗證失敗', description: '勾選「此為專案維修單」時，請選擇所屬專案', variant: 'destructive' })
+                return
+            }
+            if (!formData.maintenance_project_category_id) {
+                toast({ title: '驗證失敗', description: '勾選「此為專案維修單」時，請選擇專案主項目', variant: 'destructive' })
+                return
+            }
+        }
+
         // 狀態推進時必須驗證當前區塊必填欄位
         if (nextStatus) {
             const error = validateCurrentSection(nextStatus)
@@ -1157,7 +1169,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                         maintenance_project_category_id: checked === true ? prev.maintenance_project_category_id : ''
                                                     }))
                                                 }}
-                                                disabled={!isSectionEditable(0)}
+                                                disabled={!isSectionEditable(0) && !isAdmin}
                                             />
                                             <Label htmlFor="is_maintenance_project" className="text-sm font-semibold cursor-pointer">
                                                 此為專案維修單
@@ -1178,7 +1190,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                                     maintenance_project_category_id: ''
                                                                 }))
                                                             }}
-                                                            disabled={!isSectionEditable(0)}
+                                                            disabled={!isSectionEditable(0) && !isAdmin}
                                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
                                                         >
                                                             <option value="">請選擇專案</option>
@@ -1193,7 +1205,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                             variant="outline"
                                                             size="icon"
                                                             onClick={() => setQuickProjectOpen(true)}
-                                                            disabled={!isSectionEditable(0)}
+                                                            disabled={!isSectionEditable(0) && !isAdmin}
                                                             title="快速建立專案"
                                                             className="border-slate-200 dark:border-slate-800 shrink-0"
                                                         >
@@ -1213,7 +1225,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                                     maintenance_project_category_id: e.target.value
                                                                 }))
                                                             }}
-                                                            disabled={!isSectionEditable(0) || !selectedProjectId}
+                                                            disabled={(!isSectionEditable(0) && !isAdmin) || !selectedProjectId}
                                                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
                                                         >
                                                             <option value="">請選擇專案主項目</option>
@@ -1228,7 +1240,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                                             variant="outline"
                                                             size="icon"
                                                             onClick={() => setQuickCategoryOpen(true)}
-                                                            disabled={!isSectionEditable(0) || !selectedProjectId}
+                                                            disabled={(!isSectionEditable(0) && !isAdmin) || !selectedProjectId}
                                                             title="快速建立主項目"
                                                             className="border-slate-200 dark:border-slate-800 shrink-0 disabled:opacity-50"
                                                         >
@@ -1240,7 +1252,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         )}
                                     </div>
 
-                                    {isSectionEditable(0) && (
+                                    {(isSectionEditable(0) || isAdmin) && (
                                         <div className="col-span-full pt-4 flex flex-col sm:flex-row gap-3">
                                             {formData.status === '已轉維修單' && (
                                                 <Button className="flex-1" onClick={() => handleSave('開單主管簽核完成')}>確認基本資料並送審</Button>
