@@ -260,7 +260,7 @@ export const MAINT_MGR_OPTIONS = ['李建賢', '黃永男'] as const
 export const DIRECTOR_DEFAULT = '楊竣欽'
 
 /** 副院長選項 */
-export const VICE_DEAN_OPTIONS = ['邵詩媛', '王哲川'] as const
+export const VICE_DEAN_OPTIONS = ['邵詩媛', '廖光明'] as const
 
 /** 院長選項 */
 export const DEAN_OPTIONS = ['田宇峯', '周偉倪', '林宏榮'] as const
