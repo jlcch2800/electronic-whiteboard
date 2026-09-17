@@ -97,7 +97,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     const { profile } = useAppStore()
     const supabase = createClient()
     const isAdmin = profile?.role === 'admin'
-    const isLiChiaChing = profile?.role === 'admin' && profile?.user_name === '李佳靜'
+    const isSpecialAdmin = profile?.role === 'admin' && (profile?.user_name === '李佳靜' || profile?.user_name === '曾毓珍')
 
     const [formData, setFormData] = useState<any>(() => ({
         ...initialData,
@@ -1364,11 +1364,11 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>廠商 <span className="text-red-500">*</span></Label>
-                                        <Input name="vendor_name" value={formData.vendor_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(3) && !isLiChiaChing} />
+                                        <Input name="vendor_name" value={formData.vendor_name || ''} onChange={handleInputChange} disabled={!isSectionEditable(3) && !isSpecialAdmin} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-orange-600 font-bold">金額 (≤ 2萬 走簡易流程) <span className="text-red-500">*</span></Label>
-                                        <Input name="amount" type="number" value={formData.amount || ''} onChange={handleInputChange} disabled={!isSectionEditable(3) && !isLiChiaChing} className="border-orange-200 focus:border-orange-500" />
+                                        <Input name="amount" type="number" value={formData.amount || ''} onChange={handleInputChange} disabled={!isSectionEditable(3) && !isSpecialAdmin} className="border-orange-200 focus:border-orange-500" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>發包單位主管 <span className="text-red-500">*</span></Label>
@@ -1423,7 +1423,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                             </Button>
                                         </div>
                                     ) : (
-                                        isLiChiaChing && (
+                                        isSpecialAdmin && (
                                             <div className="col-span-full pt-4">
                                                 <Button variant="outline" className="w-full border-slate-300 dark:border-slate-700" onClick={() => handleSave()} disabled={loading}>
                                                     <Save className="w-4 h-4 mr-2 shrink-0" />僅儲存不變更狀態
