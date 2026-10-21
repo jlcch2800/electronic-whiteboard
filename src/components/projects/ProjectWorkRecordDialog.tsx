@@ -116,11 +116,13 @@ interface ProjectWorkRecordDialogProps {
     onOpenChange: (open: boolean) => void
     projectId?: string
     projectCategoryId?: string
+    projectSubCategoryId?: string
     workOrderId?: string
     projectOrderId?: string
     maintainContent?: string
     projectName?: string
     categoryName?: string
+    subCategoryName?: string
 }
 
 export default function ProjectWorkRecordDialog({
@@ -128,11 +130,13 @@ export default function ProjectWorkRecordDialog({
     onOpenChange,
     projectId,
     projectCategoryId,
+    projectSubCategoryId,
     workOrderId,
     projectOrderId,
     maintainContent,
     projectName,
-    categoryName
+    categoryName,
+    subCategoryName
 }: ProjectWorkRecordDialogProps) {
     const supabase = createClient()
     const { toast } = useToast()
@@ -140,14 +144,16 @@ export default function ProjectWorkRecordDialog({
     const [loading, setLoading] = useState(false)
     const [currentUser, setCurrentUser] = useState<any>(null)
 
-    // 專案與主項目中文顯示名稱
+    // 專案、主項目與次項目中文顯示名稱
     const [displayProjectName, setDisplayProjectName] = useState(projectName || '')
     const [displayCategoryName, setDisplayCategoryName] = useState(categoryName || '')
+    const [displaySubCategoryName, setDisplaySubCategoryName] = useState(subCategoryName || '')
 
     useEffect(() => {
         if (projectName) setDisplayProjectName(projectName)
         if (categoryName) setDisplayCategoryName(categoryName)
-    }, [projectName, categoryName])
+        if (subCategoryName) setDisplaySubCategoryName(subCategoryName)
+    }, [projectName, categoryName, subCategoryName])
 
     // 資料列表
     const [workOrders, setWorkOrders] = useState<any[]>([])
@@ -241,18 +247,31 @@ export default function ProjectWorkRecordDialog({
                         if (cat) setDisplayCategoryName(cat.maintenance_category_name)
                     }
 
+                    if (projectSubCategoryId) {
+                        const { data: subCat } = await supabase
+                            .from('maintenance_project_sub_category')
+                            .select('maintenance_sub_category_name')
+                            .eq('id', projectSubCategoryId)
+                            .maybeSingle()
+                        if (subCat) setDisplaySubCategoryName(subCat.maintenance_sub_category_name)
+                    }
+
                     if (proj) setDisplayProjectName(proj.maintenance_project_name)
                 }
             } else {
                 setDisplayProjectName(projectName || maintainContent || projectOrderId || workOrderId || '專案維修單')
                 setDisplayCategoryName(categoryName || '工程施工紀錄')
+                if (subCategoryName) setDisplaySubCategoryName(subCategoryName)
             }
 
             // 1. 讀取維修單 (進行中與歷史)
             let ordersQuery = supabase.from('maintenance_work_orders').select('*')
             let histOrdersQuery = supabase.from('maintenance_work_orders_history').select('*')
 
-            if (targetProjectId && targetCategoryId) {
+            if (targetProjectId && targetCategoryId && projectSubCategoryId) {
+                ordersQuery = ordersQuery.eq('maintenance_project_id', targetProjectId).eq('maintenance_project_category_id', targetCategoryId).eq('maintenance_project_sub_category_id', projectSubCategoryId)
+                histOrdersQuery = histOrdersQuery.eq('maintenance_project_id', targetProjectId).eq('maintenance_project_category_id', targetCategoryId).eq('maintenance_project_sub_category_id', projectSubCategoryId)
+            } else if (targetProjectId && targetCategoryId) {
                 ordersQuery = ordersQuery.eq('maintenance_project_id', targetProjectId).eq('maintenance_project_category_id', targetCategoryId)
                 histOrdersQuery = histOrdersQuery.eq('maintenance_project_id', targetProjectId).eq('maintenance_project_category_id', targetCategoryId)
             } else if (targetProjectId) {
@@ -277,7 +296,10 @@ export default function ProjectWorkRecordDialog({
             let vendorsQuery = supabase.from('vendor_today_work').select('*')
             let historyVendorsQuery = supabase.from('vendor_today_work_history').select('*')
 
-            if (targetProjectId && targetCategoryId) {
+            if (targetProjectId && targetCategoryId && projectSubCategoryId) {
+                vendorsQuery = vendorsQuery.eq('maintenance_project_id', targetProjectId).eq('maintenance_project_category_id', targetCategoryId).eq('maintenance_project_sub_category_id', projectSubCategoryId)
+                historyVendorsQuery = historyVendorsQuery.eq('maintenance_project_id', targetProjectId).eq('maintenance_project_category_id', targetCategoryId).eq('maintenance_project_sub_category_id', projectSubCategoryId)
+            } else if (targetProjectId && targetCategoryId) {
                 vendorsQuery = vendorsQuery.eq('maintenance_project_id', targetProjectId).eq('maintenance_project_category_id', targetCategoryId)
                 historyVendorsQuery = historyVendorsQuery.eq('maintenance_project_id', targetProjectId).eq('maintenance_project_category_id', targetCategoryId)
             } else if (targetProjectId) {
@@ -316,7 +338,7 @@ export default function ProjectWorkRecordDialog({
         } finally {
             setLoading(false)
         }
-    }, [projectId, projectCategoryId, workOrderId, projectOrderId, maintainContent, supabase, toast, projectName, categoryName])
+    }, [projectId, projectCategoryId, projectSubCategoryId, workOrderId, projectOrderId, maintainContent, supabase, toast, projectName, categoryName, subCategoryName])
 
     useEffect(() => {
         if (open) {
@@ -352,7 +374,7 @@ export default function ProjectWorkRecordDialog({
         if (files.length === 0) return
 
         if (files.length > 5) {
-            toast({ title: '超過數量限制', description: '一次最多只能選擇 5 個檔案上傳', variant: 'warning' })
+            toast({ title: '超過數量限制', description: '一次最多只能選擇 5 個檔案上傳', variant: 'destructive' })
             files.splice(5)
         }
 
@@ -526,7 +548,8 @@ export default function ProjectWorkRecordDialog({
             const wsVendors = XLSX.utils.json_to_sheet(vendorData)
             XLSX.utils.book_append_sheet(wb, wsVendors, '廠商施工日誌')
 
-            XLSX.writeFile(wb, `專案工作紀錄_${displayProjectName}_${displayCategoryName}.xlsx`)
+            const suffixName = displaySubCategoryName ? `${displayCategoryName}_${displaySubCategoryName}` : displayCategoryName
+            XLSX.writeFile(wb, `專案工作紀錄_${displayProjectName}_${suffixName}.xlsx`)
             toast({ title: '匯出成功', description: 'Excel 檔案已下載' })
         } catch (error: any) {
             toast({ title: '匯出失敗', description: error.message, variant: 'destructive' })
@@ -546,11 +569,12 @@ export default function ProjectWorkRecordDialog({
                 ? vendorWorks.filter(v => selectedEvents.has(v.id))
                 : vendorWorks;
 
-            const orderHead = [['工單編號', '日期', '主項目', '故障內容/維修原因', '處理狀態', '維修金額', '備註']]
+            const subItemTitle = displaySubCategoryName ? `${displayCategoryName} / ${displaySubCategoryName}` : displayCategoryName
+            const orderHead = [['工單編號', '日期', '專案項目', '故障內容/維修原因', '處理狀態', '維修金額', '備註']]
             const orderBody = filteredWorkOrders.map(o => [
                 o.work_order_id || o.order_id || '',
                 o.work_order_date || o.sent_date || '',
-                displayCategoryName,
+                subItemTitle,
                 o.maintain_content || o.cause || '',
                 o.status || '',
                 `NT$ ${(o.price || 0).toLocaleString()}`,
@@ -569,9 +593,10 @@ export default function ProjectWorkRecordDialog({
                 v.note || ''
             ])
 
+            const pdfSuffix = displaySubCategoryName ? `${displayCategoryName} - ${displaySubCategoryName}` : displayCategoryName
             await exportToPdfFile({
-                title: `專案工作紀錄報告 — ${displayProjectName} (${displayCategoryName})`,
-                filenamePrefix: `專案工作紀錄_${displayProjectName}_${displayCategoryName}`,
+                title: `專案工作紀錄報告 — ${displayProjectName} (${pdfSuffix})`,
+                filenamePrefix: `專案工作紀錄_${displayProjectName}_${pdfSuffix.replace(/[/\\?%*:|"<>]/g, '_')}`,
                 orientation: 'landscape',
                 themeColor: [2, 132, 199],
                 head: orderHead,
@@ -789,12 +814,13 @@ export default function ProjectWorkRecordDialog({
             // 3. 關鍵字搜尋
             if (searchKeyword.trim()) {
                 const kw = searchKeyword.trim().toLowerCase()
+                const meta = ev.meta as any
                 const matchTitle = (ev.title || '').toLowerCase().includes(kw)
                 const matchContent = (ev.content || '').toLowerCase().includes(kw)
                 const matchVendor = (ev.vendorName || '').toLowerCase().includes(kw)
-                const matchLocation = (ev.meta.location || '').toLowerCase().includes(kw)
-                const matchContact = (ev.meta.contact || '').toLowerCase().includes(kw)
-                const matchNote = (ev.meta.note || '').toLowerCase().includes(kw)
+                const matchLocation = (meta.location || '').toLowerCase().includes(kw)
+                const matchContact = (meta.contact || '').toLowerCase().includes(kw)
+                const matchNote = (meta.note || '').toLowerCase().includes(kw)
                 if (!matchTitle && !matchContent && !matchVendor && !matchLocation && !matchContact && !matchNote) {
                     return false
                 }
@@ -937,6 +963,9 @@ export default function ProjectWorkRecordDialog({
                         <span className="text-[13px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">專案維修單管理</span>
                         <DialogTitle className="text-xl font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2 mt-0.5">
                             {displayProjectName} — <span className="text-slate-500 dark:text-slate-400 font-semibold">{displayCategoryName}</span>
+                            {displaySubCategoryName && (
+                                <span className="text-blue-600 dark:text-blue-400 font-semibold"> / {displaySubCategoryName}</span>
+                            )}
                         </DialogTitle>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1266,22 +1295,27 @@ export default function ProjectWorkRecordDialog({
                                                                                             <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 whitespace-pre-wrap leading-relaxed">{event.content}</p>
                                                                                         </div>
 
-                                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs bg-white dark:bg-slate-950 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800">
-                                                                                            {isWorkOrder ? (
-                                                                                                <>
-                                                                                                    <div><strong className="text-slate-400">維修金額：</strong>NT$ {(event.meta.price || 0).toLocaleString()} 元</div>
-                                                                                                    <div><strong className="text-slate-400">工單備註：</strong>{event.meta.note || '無'}</div>
-                                                                                                </>
-                                                                                            ) : (
-                                                                                                <>
-                                                                                                    <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-slate-400" /> <strong className="text-slate-400">負責人：</strong>{event.meta.contact} ({event.meta.headCount} 人)</div>
-                                                                                                    <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400" /> <strong className="text-slate-400">在院時間：</strong>{event.meta.timeRange}</div>
-                                                                                                    <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /> <strong className="text-slate-400">施工地點：</strong>{event.meta.location}</div>
-                                                                                                    <div><strong className="text-slate-400">工作證號：</strong>{event.meta.badgeId || '無'}</div>
-                                                                                                    {event.meta.note && <div className="col-span-2"><strong className="text-slate-400">廠商備註：</strong>{event.meta.note}</div>}
-                                                                                                </>
-                                                                                            )}
-                                                                                        </div>
+                                                                                        {(() => {
+                                                                                            const meta = event.meta as any
+                                                                                            return (
+                                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs bg-white dark:bg-slate-950 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800">
+                                                                                                    {isWorkOrder ? (
+                                                                                                        <>
+                                                                                                            <div><strong className="text-slate-400">維修金額：</strong>NT$ {(meta.price || 0).toLocaleString()} 元</div>
+                                                                                                            <div><strong className="text-slate-400">工單備註：</strong>{meta.note || '無'}</div>
+                                                                                                        </>
+                                                                                                    ) : (
+                                                                                                        <>
+                                                                                                            <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-slate-400" /> <strong className="text-slate-400">負責人：</strong>{meta.contact} ({meta.headCount} 人)</div>
+                                                                                                            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400" /> <strong className="text-slate-400">在院時間：</strong>{meta.timeRange}</div>
+                                                                                                            <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /> <strong className="text-slate-400">施工地點：</strong>{meta.location}</div>
+                                                                                                            <div><strong className="text-slate-400">工作證號：</strong>{meta.badgeId || '無'}</div>
+                                                                                                            {meta.note && <div className="col-span-2"><strong className="text-slate-400">廠商備註：</strong>{meta.note}</div>}
+                                                                                                        </>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            )
+                                                                                        })()}
 
                                                                                         {!isWorkOrder && (
                                                                                             <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800">

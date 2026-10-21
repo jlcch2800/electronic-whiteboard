@@ -112,6 +112,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         is_maintenance_project: initialData.is_maintenance_project !== undefined && initialData.is_maintenance_project !== null ? initialData.is_maintenance_project : false,
         maintenance_project_id: initialData.maintenance_project_id || '',
         maintenance_project_category_id: initialData.maintenance_project_category_id || '',
+        maintenance_project_sub_category_id: initialData.maintenance_project_sub_category_id || '',
     }))
     const [lastSavedData, setLastSavedData] = useState<any>(() => ({
         ...initialData,
@@ -126,6 +127,7 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
         is_maintenance_project: initialData.is_maintenance_project !== undefined && initialData.is_maintenance_project !== null ? initialData.is_maintenance_project : false,
         maintenance_project_id: initialData.maintenance_project_id || '',
         maintenance_project_category_id: initialData.maintenance_project_category_id || '',
+        maintenance_project_sub_category_id: initialData.maintenance_project_sub_category_id || '',
     }))
     const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>({})
 
@@ -143,13 +145,16 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
     // 專案相關狀態
     const [projects, setProjects] = useState<any[]>([])
     const [categories, setCategories] = useState<any[]>([])
+    const [subCategories, setSubCategories] = useState<any[]>([])
     
     // 快速新增 Dialog 狀態
     const [quickProjectOpen, setQuickProjectOpen] = useState(false)
     const [quickCategoryOpen, setQuickCategoryOpen] = useState(false)
+    const [quickSubCategoryOpen, setQuickSubCategoryOpen] = useState(false)
     const [newProjectName, setNewProjectName] = useState('')
     const [newProjectDesc, setNewProjectDesc] = useState('')
     const [newCategoryName, setNewCategoryName] = useState('')
+    const [newSubCategoryName, setNewSubCategoryName] = useState('')
 
     // 初始載入未結案專案
     useEffect(() => {
@@ -181,6 +186,32 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             setCategories([])
         }
     }, [selectedProjectId, supabase])
+
+    // 當專案主項目改變時載入對應次項目
+    const selectedCategoryId = formData.maintenance_project_category_id
+    useEffect(() => {
+        if (selectedCategoryId) {
+            const loadSubCategories = async () => {
+                try {
+                    const { data, error } = await supabase
+                        .from('maintenance_project_sub_category')
+                        .select('*')
+                        .eq('maintenance_project_category_id', selectedCategoryId)
+                        .order('created_at', { ascending: true })
+                    if (!error && data) {
+                        setSubCategories(data)
+                    } else {
+                        setSubCategories([])
+                    }
+                } catch {
+                    setSubCategories([])
+                }
+            }
+            loadSubCategories()
+        } else {
+            setSubCategories([])
+        }
+    }, [selectedCategoryId, supabase])
 
     // 快速新增專案處理
     const handleQuickAddProject = async () => {
@@ -262,6 +293,48 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
             toast({
                 title: '快速建立主項目失敗',
                 description: err.message,
+                variant: 'destructive'
+            })
+        }
+    }
+
+    // 快速新增次項目處理
+    const handleQuickAddSubCategory = async () => {
+        if (!newSubCategoryName.trim() || !selectedProjectId || !selectedCategoryId) return
+        try {
+            const payload = {
+                maintenance_project_id: selectedProjectId,
+                maintenance_project_category_id: selectedCategoryId,
+                maintenance_sub_category_name: newSubCategoryName.trim()
+            }
+            const { data, error } = await supabase
+                .from('maintenance_project_sub_category')
+                .insert(payload)
+                .select('id, maintenance_sub_category_name')
+                .single()
+
+            if (error) throw error
+
+            logChangeRecord({
+                actionType: 'Insert',
+                modifyTable: 'maintenance_project_sub_category',
+                modifyRecordId: data.id,
+                newData: payload
+            })
+
+            // 更新選單並預設選取新建立的次項目
+            setSubCategories(prev => [...prev, data])
+            setFormData((prev: any) => ({
+                ...prev,
+                maintenance_project_sub_category_id: data.id
+            }))
+            setNewSubCategoryName('')
+            setQuickSubCategoryOpen(false)
+            toast({ title: '次項目建立成功', description: `次項目「${data.maintenance_sub_category_name}」已建立並選取` })
+        } catch (err: any) {
+            toast({
+                title: '快速建立次項目失敗',
+                description: err.message || '請確認是否已在 Supabase 執行建立次項目資料表之 SQL',
                 variant: 'destructive'
             })
         }
@@ -1177,75 +1250,123 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                                         </div>
 
                                         {formData.is_maintenance_project && (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label>所屬專案 <span className="text-red-500">*</span></Label>
-                                                    <div className="flex gap-2">
-                                                        <select
-                                                            value={formData.maintenance_project_id || ''}
-                                                            onChange={(e) => {
-                                                                setFormData((prev: any) => ({
-                                                                    ...prev,
-                                                                    maintenance_project_id: e.target.value,
-                                                                    maintenance_project_category_id: ''
-                                                                }))
-                                                            }}
-                                                            disabled={!isSectionEditable(0) && !isAdmin}
-                                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
-                                                        >
-                                                            <option value="">請選擇專案</option>
-                                                            {projects.map(proj => (
-                                                                <option key={proj.id} value={proj.id}>
-                                                                    {proj.maintenance_project_name}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="icon"
-                                                            onClick={() => setQuickProjectOpen(true)}
-                                                            disabled={!isSectionEditable(0) && !isAdmin}
-                                                            title="快速建立專案"
-                                                            className="border-slate-200 dark:border-slate-800 shrink-0"
-                                                        >
-                                                            <Plus className="w-4 h-4" />
-                                                        </Button>
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label>所屬專案 <span className="text-red-500">*</span></Label>
+                                                        <div className="flex gap-2">
+                                                            <select
+                                                                value={formData.maintenance_project_id || ''}
+                                                                onChange={(e) => {
+                                                                    setFormData((prev: any) => ({
+                                                                        ...prev,
+                                                                        maintenance_project_id: e.target.value,
+                                                                        maintenance_project_category_id: '',
+                                                                        maintenance_project_sub_category_id: ''
+                                                                    }))
+                                                                }}
+                                                                disabled={!isSectionEditable(0) && !isAdmin}
+                                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
+                                                            >
+                                                                <option value="">請選擇專案</option>
+                                                                {projects.map(proj => (
+                                                                    <option key={proj.id} value={proj.id}>
+                                                                        {proj.maintenance_project_name}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="icon"
+                                                                onClick={() => setQuickProjectOpen(true)}
+                                                                disabled={!isSectionEditable(0) && !isAdmin}
+                                                                title="快速建立專案"
+                                                                className="border-slate-200 dark:border-slate-800 shrink-0"
+                                                            >
+                                                                <Plus className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label>專案主項目 <span className="text-red-500">*</span></Label>
+                                                        <div className="flex gap-2">
+                                                            <select
+                                                                value={formData.maintenance_project_category_id || ''}
+                                                                onChange={(e) => {
+                                                                    setFormData((prev: any) => ({
+                                                                        ...prev,
+                                                                        maintenance_project_category_id: e.target.value,
+                                                                        maintenance_project_sub_category_id: ''
+                                                                    }))
+                                                                }}
+                                                                disabled={(!isSectionEditable(0) && !isAdmin) || !selectedProjectId}
+                                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                            >
+                                                                <option value="">請選擇專案主項目</option>
+                                                                {categories.map(cat => (
+                                                                    <option key={cat.id} value={cat.id}>
+                                                                        {cat.maintenance_category_name}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="icon"
+                                                                onClick={() => setQuickCategoryOpen(true)}
+                                                                disabled={(!isSectionEditable(0) && !isAdmin) || !selectedProjectId}
+                                                                title="快速建立主項目"
+                                                                className="border-slate-200 dark:border-slate-800 shrink-0 disabled:opacity-50"
+                                                            >
+                                                                <FolderPlus className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-2">
-                                                    <Label>專案主項目 <span className="text-red-500">*</span></Label>
-                                                    <div className="flex gap-2">
-                                                        <select
-                                                            value={formData.maintenance_project_category_id || ''}
-                                                            onChange={(e) => {
-                                                                setFormData((prev: any) => ({
-                                                                    ...prev,
-                                                                    maintenance_project_category_id: e.target.value
-                                                                }))
-                                                            }}
-                                                            disabled={(!isSectionEditable(0) && !isAdmin) || !selectedProjectId}
-                                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
-                                                        >
-                                                            <option value="">請選擇專案主項目</option>
-                                                            {categories.map(cat => (
-                                                                <option key={cat.id} value={cat.id}>
-                                                                    {cat.maintenance_category_name}
+                                                {/* 專案次項目下拉選單（當主項目被選取後顯示對應次項目，或透過「+」快速新增） */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label>專案次項目</Label>
+                                                        <div className="flex gap-2">
+                                                            <select
+                                                                value={formData.maintenance_project_sub_category_id || ''}
+                                                                onChange={(e) => {
+                                                                    setFormData((prev: any) => ({
+                                                                        ...prev,
+                                                                        maintenance_project_sub_category_id: e.target.value
+                                                                    }))
+                                                                }}
+                                                                disabled={(!isSectionEditable(0) && !isAdmin) || !formData.maintenance_project_category_id}
+                                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                            >
+                                                                <option value="">
+                                                                    {!formData.maintenance_project_category_id 
+                                                                        ? '請先選擇專案主項目' 
+                                                                        : subCategories.length === 0 
+                                                                            ? '尚無次項目 (可點擊右側 + 新增)' 
+                                                                            : '請選擇專案次項目'}
                                                                 </option>
-                                                            ))}
-                                                        </select>
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="icon"
-                                                            onClick={() => setQuickCategoryOpen(true)}
-                                                            disabled={(!isSectionEditable(0) && !isAdmin) || !selectedProjectId}
-                                                            title="快速建立主項目"
-                                                            className="border-slate-200 dark:border-slate-800 shrink-0 disabled:opacity-50"
-                                                        >
-                                                            <FolderPlus className="w-4 h-4" />
-                                                        </Button>
+                                                                {subCategories.map(sub => (
+                                                                    <option key={sub.id} value={sub.id}>
+                                                                        {sub.maintenance_sub_category_name}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="icon"
+                                                                onClick={() => setQuickSubCategoryOpen(true)}
+                                                                disabled={(!isSectionEditable(0) && !isAdmin) || !formData.maintenance_project_category_id}
+                                                                title="快速建立專案次項目"
+                                                                className="border-slate-200 dark:border-slate-800 shrink-0 disabled:opacity-50"
+                                                            >
+                                                                <Plus className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2204,6 +2325,40 @@ export default function MaintenanceEditClient({ id, initialData }: MaintenanceEd
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setQuickCategoryOpen(false)}>取消</Button>
                         <Button onClick={handleQuickAddCategory} className="bg-primary text-white">建立</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 快速新增專案次項目 Dialog */}
+            <Dialog open={quickSubCategoryOpen} onOpenChange={setQuickSubCategoryOpen}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>快速新增專案次項目</DialogTitle>
+                        <DialogDescription>
+                            在主項目「{categories.find(c => c.id === formData.maintenance_project_category_id)?.maintenance_category_name || ''}」下新增次項目。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-3">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="subCategoryName" className="font-semibold text-sm">次項目名稱 <span className="text-red-500">*</span></Label>
+                            <Input
+                                id="subCategoryName"
+                                placeholder="例如: 管線配置、水電配線"
+                                value={newSubCategoryName}
+                                onChange={(e) => setNewSubCategoryName(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        handleQuickAddSubCategory()
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setQuickSubCategoryOpen(false)}>取消</Button>
+                        <Button onClick={handleQuickAddSubCategory} className="bg-primary text-white">建立</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

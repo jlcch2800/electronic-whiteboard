@@ -2,13 +2,22 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
+import {
+    format, addDays, differenceInCalendarDays, eachDayOfInterval,
+    eachMonthOfInterval, eachWeekOfInterval, endOfMonth, endOfWeek,
+    min as minDate, max as maxDate, parseISO, startOfDay, startOfMonth, startOfWeek
+} from 'date-fns'
 import {
     FolderKanban, Plus, Edit2, Trash2, ChevronDown, ChevronRight,
-    FolderPlus, Wrench, Loader2, RefreshCw, AlertTriangle, FileText, CheckCircle, History, Eye, Download
+    FolderPlus, Wrench, Loader2, RefreshCw, AlertTriangle, FileText, CheckCircle, History, Eye, Download,
+    List, ChartGantt, Maximize2, Image as ImageIcon
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
-import { exportToPdfFile } from '@/lib/export-utils'
+import ExcelJS from 'exceljs'
+import { toPng } from 'html-to-image'
+import { saveAs } from 'file-saver'
+import { jsPDF } from 'jspdf'
+import { exportToPdfFile, exportAoaToExcelFile } from '@/lib/export-utils'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
@@ -35,6 +44,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
 import ProjectWorkRecordDialog from '@/components/projects/ProjectWorkRecordDialog'
+import ProjectGanttChart, { GanttScale } from '@/components/projects/ProjectGanttChart'
 
 interface Project {
     id: string
@@ -52,6 +62,14 @@ interface ProjectCategory {
     maintenance_category_name: string
 }
 
+interface ProjectSubCategory {
+    id: string
+    created_at: string
+    maintenance_project_id: string
+    maintenance_project_category_id: string
+    maintenance_sub_category_name: string
+}
+
 interface MaintenanceOrder {
     id: string
     work_order_id: string
@@ -63,6 +81,12 @@ interface MaintenanceOrder {
     maintain_content?: string
     vendor_name?: string | null
     maintenance_project_category_id?: string | null
+    maintenance_project_sub_category_id?: string | null
+    // 甘特圖所需日期欄位
+    request_date?: string | null
+    plan_start_date?: string | null
+    plan_end_date?: string | null
+    construct_end_date?: string | null
 }
 
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string }> = {
@@ -114,8 +138,9 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
     // 展開的專案 ID Set
     const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
 
-    // 展開專案的詳細資料：類別、關聯維修單
+    // 展開專案的詳細資料：類別、次項目、關聯維修單
     const [projectCategories, setProjectCategories] = useState<Record<string, ProjectCategory[]>>({})
+    const [projectSubCategories, setProjectSubCategories] = useState<Record<string, ProjectSubCategory[]>>({})
     const [projectOrders, setProjectOrders] = useState<Record<string, MaintenanceOrder[]>>({})
     const [detailLoading, setDetailLoading] = useState<Record<string, boolean>>({})
 
@@ -140,19 +165,41 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
     const [deleteCategoryAlertOpen, setDeleteCategoryAlertOpen] = useState(false)
     const [deletingCategory, setDeletingCategory] = useState<ProjectCategory | null>(null)
 
+    // 次項目 Dialog 狀態
+    const [subCategoryDialogOpen, setSubCategoryDialogOpen] = useState(false)
+    const [targetProjectForSubCategory, setTargetProjectForSubCategory] = useState<Project | null>(null)
+    const [targetCategoryForSubCategory, setTargetCategoryForSubCategory] = useState<ProjectCategory | null>(null)
+    const [editingSubCategory, setEditingSubCategory] = useState<ProjectSubCategory | null>(null)
+    const [subCategoryNameInput, setSubCategoryNameInput] = useState('')
+    const [subCategorySaving, setSubCategorySaving] = useState(false)
+
+    // 刪除次項目確認 Dialog 狀態
+    const [deleteSubCategoryAlertOpen, setDeleteSubCategoryAlertOpen] = useState(false)
+    const [deletingSubCategory, setDeletingSubCategory] = useState<ProjectSubCategory | null>(null)
+    const [targetProjectForDeleteSub, setTargetProjectForDeleteSub] = useState<Project | null>(null)
+
+    // 甘特圖All 全寬彈窗狀態
+    const [ganttAllDialogOpen, setGanttAllDialogOpen] = useState(false)
+    const [ganttAllProject, setGanttAllProject] = useState<Project | null>(null)
+    const [ganttAllScale, setGanttAllScale] = useState<GanttScale>('week')
+
     // 專案工作紀錄 Dialog 狀態
     const [workRecordDialog, setWorkRecordDialog] = useState<{
         open: boolean
         projectId: string
         projectCategoryId: string
+        projectSubCategoryId?: string
         projectName: string
         categoryName: string
+        subCategoryName?: string
     }>({
         open: false,
         projectId: '',
         projectCategoryId: '',
+        projectSubCategoryId: '',
         projectName: '',
-        categoryName: ''
+        categoryName: '',
+        subCategoryName: ''
     })
 
     // 取得所有專案
@@ -177,7 +224,7 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
         }
     }, [supabase, toast])
 
-    // 取得指定專案的子資料（主項目、關聯維修單）
+    // 取得指定專案的子資料（主項目、次項目、關聯維修單）
     const fetchProjectDetails = useCallback(async (projectId: string) => {
         setDetailLoading(prev => ({ ...prev, [projectId]: true }))
         try {
@@ -190,16 +237,24 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
 
             if (catError) throw catError
 
+            // 查詢次項目
+            const { data: subCategories } = await supabase
+                .from('maintenance_project_sub_category')
+                .select('*')
+                .eq('maintenance_project_id', projectId)
+                .order('created_at', { ascending: true })
+
             // 查詢關聯維修單
             const { data: orders, error: orderError } = await supabase
                 .from('maintenance_work_orders')
-                .select('id, work_order_id, status, requester_name, handler_name, work_order_date, cost_center, maintain_content, vendor_name, maintenance_project_category_id')
+                .select('id, work_order_id, status, requester_name, handler_name, work_order_date, cost_center, maintain_content, vendor_name, maintenance_project_category_id, maintenance_project_sub_category_id, request_date, plan_start_date, plan_end_date, construct_end_date, rev_dean_date, rev_vice_dean_date, material_date')
                 .eq('maintenance_project_id', projectId)
                 .order('work_order_date', { ascending: false })
 
             if (orderError) throw orderError
 
             setProjectCategories(prev => ({ ...prev, [projectId]: categories || [] }))
+            setProjectSubCategories(prev => ({ ...prev, [projectId]: subCategories || [] }))
             setProjectOrders(prev => ({ ...prev, [projectId]: orders || [] }))
         } catch (err: any) {
             toast({
@@ -528,6 +583,182 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
         }
     }
 
+    // 開啟新增專案次項目 Dialog
+    const handleOpenAddSubCategory = (project: Project, category: ProjectCategory) => {
+        setTargetProjectForSubCategory(project)
+        setTargetCategoryForSubCategory(category)
+        setEditingSubCategory(null)
+        setSubCategoryNameInput('')
+        setSubCategoryDialogOpen(true)
+    }
+
+    // 開啟編輯專案次項目 Dialog
+    const handleOpenEditSubCategory = (project: Project, category: ProjectCategory, sub: ProjectSubCategory) => {
+        setTargetProjectForSubCategory(project)
+        setTargetCategoryForSubCategory(category)
+        setEditingSubCategory(sub)
+        setSubCategoryNameInput(sub.maintenance_sub_category_name)
+        setSubCategoryDialogOpen(true)
+    }
+
+    // 儲存專案次項目（新增或編輯）
+    const handleSaveSubCategory = async () => {
+        if (!subCategoryNameInput.trim()) {
+            toast({
+                title: '欄位錯誤',
+                description: '請輸入次項目名稱',
+                variant: 'destructive'
+            })
+            return
+        }
+
+        if (!targetProjectForSubCategory || !targetCategoryForSubCategory) return
+
+        setSubCategorySaving(true)
+        try {
+            if (editingSubCategory) {
+                // 編輯次項目名稱
+                const payload = {
+                    maintenance_sub_category_name: subCategoryNameInput.trim()
+                }
+
+                const { error } = await supabase
+                    .from('maintenance_project_sub_category')
+                    .update(payload)
+                    .eq('id', editingSubCategory.id)
+
+                if (error) throw error
+
+                logChangeRecord({
+                    actionType: 'Update',
+                    modifyTable: 'maintenance_project_sub_category',
+                    modifyRecordId: editingSubCategory.id,
+                    oldData: editingSubCategory,
+                    newData: payload
+                })
+
+                toast({
+                    title: '修改成功',
+                    description: `專案次項目已更新為「${subCategoryNameInput.trim()}」`
+                })
+            } else {
+                // 新增次項目
+                const payload = {
+                    maintenance_project_id: targetProjectForSubCategory.id,
+                    maintenance_project_category_id: targetCategoryForSubCategory.id,
+                    maintenance_sub_category_name: subCategoryNameInput.trim()
+                }
+
+                const { data, error } = await supabase
+                    .from('maintenance_project_sub_category')
+                    .insert(payload)
+                    .select('id')
+                    .single()
+
+                if (error) throw error
+
+                logChangeRecord({
+                    actionType: 'Insert',
+                    modifyTable: 'maintenance_project_sub_category',
+                    modifyRecordId: data?.id || '',
+                    newData: payload
+                })
+
+                toast({
+                    title: '建立成功',
+                    description: `專案次項目「${subCategoryNameInput.trim()}」已新增`
+                })
+            }
+
+            setSubCategoryDialogOpen(false)
+            fetchProjectDetails(targetProjectForSubCategory.id)
+        } catch (err: any) {
+            toast({
+                title: '儲存失敗',
+                description: err.message || '請確認是否已在 Supabase 執行建立 maintenance_project_sub_category 資料表之 SQL',
+                variant: 'destructive'
+            })
+        } finally {
+            setSubCategorySaving(false)
+        }
+    }
+
+    // 開啟次項目刪除確認
+    const handleConfirmDeleteSubCategory = (project: Project, sub: ProjectSubCategory) => {
+        setTargetProjectForDeleteSub(project)
+        setDeletingSubCategory(sub)
+        setDeleteSubCategoryAlertOpen(true)
+    }
+
+    // 刪除次項目
+    const handleDeleteSubCategory = async () => {
+        if (!deletingSubCategory) return
+        try {
+            // 檢查此次項目底下是否有維修單關聯
+            const { count, error: countError } = await supabase
+                .from('maintenance_work_orders')
+                .select('*', { count: 'exact', head: true })
+                .eq('maintenance_project_sub_category_id', deletingSubCategory.id)
+
+            if (countError) throw countError
+
+            if (count && count > 0) {
+                toast({
+                    title: '無法刪除次項目',
+                    description: `此次項目目前有關聯的 ${count} 筆維修單，請先更換工單的專案次項目。`,
+                    variant: 'destructive'
+                })
+                setDeleteSubCategoryAlertOpen(false)
+                return
+            }
+
+            // 檢查此次項目底下是否有廠商今日工作紀錄關聯
+            const { count: vCount, error: vCountError } = await supabase
+                .from('vendor_work_records')
+                .select('*', { count: 'exact', head: true })
+                .eq('maintenance_project_sub_category_id', deletingSubCategory.id)
+
+            if (!vCountError && vCount && vCount > 0) {
+                toast({
+                    title: '無法刪除次項目',
+                    description: `此次項目目前有關聯的 ${vCount} 筆廠商施工紀錄，請先更換或清除該紀錄之次項目關聯。`,
+                    variant: 'destructive'
+                })
+                setDeleteSubCategoryAlertOpen(false)
+                return
+            }
+
+            const { error } = await supabase
+                .from('maintenance_project_sub_category')
+                .delete()
+                .eq('id', deletingSubCategory.id)
+
+            if (error) throw error
+
+            logChangeRecord({
+                actionType: 'Delete',
+                modifyTable: 'maintenance_project_sub_category',
+                modifyRecordId: deletingSubCategory.id,
+                oldData: deletingSubCategory
+            })
+
+            toast({ title: '刪除成功', description: '專案次項目已刪除' })
+            if (targetProjectForDeleteSub) {
+                fetchProjectDetails(targetProjectForDeleteSub.id)
+            }
+        } catch (err: any) {
+            toast({
+                title: '刪除失敗',
+                description: err.message,
+                variant: 'destructive'
+            })
+        } finally {
+            setDeleteSubCategoryAlertOpen(false)
+            setDeletingSubCategory(null)
+            setTargetProjectForDeleteSub(null)
+        }
+    }
+
     // 匯出特定專案主項目之工作紀錄 (Excel 或 PDF)
     const handleExportCategoryRecords = async (
         project: Project,
@@ -577,7 +808,7 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
             if (exportType === 'excel') {
                 const wb = XLSX.utils.book_new()
 
-                const orderData = workOrdersList.map(o => ({
+                const orderData = workOrdersList.map((o: any) => ({
                     '工單編號': o.work_order_id || o.order_id || '',
                     '日期': o.work_order_date || o.sent_date || '',
                     '主項目': cat.maintenance_category_name,
@@ -591,9 +822,9 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
                 const wsOrders = XLSX.utils.json_to_sheet(orderData)
                 XLSX.utils.book_append_sheet(wb, wsOrders, '工務維修單')
 
-                const vendorData = vendorWorksList.map(v => {
-                    const rowFiles = attachmentsList.filter(a => a.vendor_work_id === v.id)
-                    const urls = rowFiles.map(a => a.image_url || a.video_url || a.file_url).join(' \n')
+                const vendorData = vendorWorksList.map((v: any) => {
+                    const rowFiles = attachmentsList.filter((a: any) => a.vendor_work_id === v.id)
+                    const urls = rowFiles.map((a: any) => a.image_url || a.video_url || a.file_url).join(' \n')
                     return {
                         '施工日期': v.work_date || '',
                         '廠商名稱': v.vendor_name || '',
@@ -615,7 +846,7 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
                 toast({ title: '匯出成功', description: 'Excel 檔案已下載' })
             } else {
                 const orderHead = [['工單編號', '日期', '主項目', '維修內容', '處理狀態', '開單人', '承辦人', '廠商']]
-                const orderBody = workOrdersList.map(o => [
+                const orderBody = workOrdersList.map((o: any) => [
                     o.work_order_id || o.order_id || '',
                     o.work_order_date || o.sent_date || '',
                     cat.maintenance_category_name,
@@ -656,6 +887,514 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
             }
         } catch (error: any) {
             toast({ title: '匯出失敗', description: error.message, variant: 'destructive' })
+        }
+    }
+
+    // 匯出特定專案次項目之工作紀錄 (Excel 或 PDF)
+    const handleExportSubCategoryRecords = async (
+        project: Project,
+        cat: ProjectCategory,
+        sub: ProjectSubCategory,
+        exportType: 'excel' | 'pdf'
+    ) => {
+        try {
+            toast({ title: '正在準備資料...', description: '即將匯出次項目檔案，請稍候' })
+
+            // 1. 讀取維修單 (進行中與歷史)
+            const [ordersRes, histOrdersRes] = await Promise.all([
+                supabase
+                    .from('maintenance_work_orders')
+                    .select('*')
+                    .eq('maintenance_project_id', project.id)
+                    .eq('maintenance_project_category_id', cat.id)
+                    .eq('maintenance_project_sub_category_id', sub.id)
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('maintenance_work_orders_history')
+                    .select('*')
+                    .eq('maintenance_project_id', project.id)
+                    .eq('maintenance_project_category_id', cat.id)
+                    .eq('maintenance_project_sub_category_id', sub.id)
+                    .order('created_at', { ascending: false })
+            ])
+
+            const workOrdersList = [...(ordersRes.data || []), ...(histOrdersRes.data || [])]
+
+            // 2. 讀取廠商工作紀錄 (今日與歷史歸檔)
+            const [vendorsRes, historyRes] = await Promise.all([
+                supabase
+                    .from('vendor_today_work')
+                    .select('*')
+                    .eq('maintenance_project_id', project.id)
+                    .eq('maintenance_project_category_id', cat.id)
+                    .eq('maintenance_project_sub_category_id', sub.id),
+                supabase
+                    .from('vendor_today_work_history')
+                    .select('*')
+                    .eq('maintenance_project_id', project.id)
+                    .eq('maintenance_project_category_id', cat.id)
+                    .eq('maintenance_project_sub_category_id', sub.id)
+            ])
+
+            const activeVendors = vendorsRes.data || []
+            const historyVendors = historyRes.data || []
+            const vendorWorksList = [...activeVendors, ...historyVendors].sort((a, b) => (b.work_date || '').localeCompare(a.work_date || ''))
+
+            // 3. 讀取所有附件
+            const { data: files } = await supabase
+                .from('maintenance_project_work_file')
+                .select('*')
+                .eq('maintenance_project_id', project.id)
+                .order('created_at', { ascending: false })
+
+            const attachmentsList = files || []
+
+            if (exportType === 'excel') {
+                const wb = XLSX.utils.book_new()
+
+                const orderData = workOrdersList.map((o: any) => ({
+                    '工單編號': o.work_order_id || o.order_id || '',
+                    '日期': o.work_order_date || o.sent_date || '',
+                    '主項目': cat.maintenance_category_name,
+                    '次項目': sub.maintenance_sub_category_name,
+                    '維修內容': o.maintain_content || o.cause || '',
+                    '處理狀態': o.status || '',
+                    '成本中心': o.cost_center || '',
+                    '開單人': o.requester_name || '',
+                    '承辦人': o.handler_name || '',
+                    '廠商': o.vendor_name || ''
+                }))
+                const wsOrders = XLSX.utils.json_to_sheet(orderData)
+                XLSX.utils.book_append_sheet(wb, wsOrders, '工務維修單')
+
+                const vendorData = vendorWorksList.map((v: any) => {
+                    const rowFiles = attachmentsList.filter((a: any) => a.vendor_work_id === v.id)
+                    const urls = rowFiles.map((a: any) => a.image_url || a.video_url || a.file_url).join(' \n')
+                    return {
+                        '施工日期': v.work_date || '',
+                        '廠商名稱': v.vendor_name || '',
+                        '負責人員': v.vendor_contact || '',
+                        '到院時間': v.arrival_time || '',
+                        '離院時間': v.departure_time || '',
+                        '施工地點': v.location || '',
+                        '工作證號': v.vendor_badge_id || '',
+                        '施工人數': v.head_count || 1,
+                        '工作/施工內容': v.work_content || '',
+                        '備註': v.note || '',
+                        '附件連結': urls
+                    }
+                })
+                const wsVendors = XLSX.utils.json_to_sheet(vendorData)
+                XLSX.utils.book_append_sheet(wb, wsVendors, '廠商施工日誌')
+
+                XLSX.writeFile(wb, `專案次項目工作紀錄_${project.maintenance_project_name}_${cat.maintenance_category_name}_${sub.maintenance_sub_category_name}.xlsx`)
+                toast({ title: '匯出成功', description: 'Excel 檔案已下載' })
+            } else {
+                const orderHead = [['工單編號', '日期', '主項目', '次項目', '維修內容', '處理狀態', '開單人', '承辦人', '廠商']]
+                const orderBody = workOrdersList.map((o: any) => [
+                    o.work_order_id || o.order_id || '',
+                    o.work_order_date || o.sent_date || '',
+                    cat.maintenance_category_name,
+                    sub.maintenance_sub_category_name,
+                    o.maintain_content || o.cause || '',
+                    o.status || '',
+                    o.requester_name || '',
+                    o.handler_name || '',
+                    o.vendor_name || ''
+                ])
+
+                const vendorHead = [['施工日期', '廠商名稱', '負責人員', '到離院時間', '人數', '施工地點', '施工內容', '備註']]
+                const vendorBody = vendorWorksList.map(v => [
+                    v.work_date || '',
+                    v.vendor_name || '',
+                    v.vendor_contact || '',
+                    `${v.arrival_time || '--:--'} ~ ${v.departure_time || '--:--'}`,
+                    `${v.head_count || 1} 人`,
+                    v.location || '',
+                    v.work_content || '',
+                    v.note || ''
+                ])
+
+                await exportToPdfFile({
+                    title: `專案次項目工作紀錄報告 — ${project.maintenance_project_name} (${cat.maintenance_category_name} - ${sub.maintenance_sub_category_name})`,
+                    filenamePrefix: `專案次項目工作紀錄_${project.maintenance_project_name}_${cat.maintenance_category_name}_${sub.maintenance_sub_category_name}`,
+                    orientation: 'landscape',
+                    themeColor: [2, 132, 199],
+                    head: orderHead,
+                    body: orderBody,
+                    secondTable: {
+                        title: '廠商施工日誌',
+                        head: vendorHead,
+                        body: vendorBody
+                    }
+                })
+
+                toast({ title: 'PDF 匯出成功', description: 'PDF 檔案已下載' })
+            }
+        } catch (error: any) {
+            toast({ title: '匯出失敗', description: error.message, variant: 'destructive' })
+        }
+    }
+
+    // 匯出視覺化甘特圖 (圖片 PNG 或 視覺化 PDF) - 100% 完整全時間軸全景，不被外層視窗裁切
+    const handleExportVisualGantt = async (
+        project: Project,
+        formatType: 'image' | 'pdf',
+        activeScale: GanttScale
+    ) => {
+        const scaleLabel = activeScale === 'day' ? '日' : activeScale === 'week' ? '週' : '月'
+        // 直接鎖定真正全寬度展開之甘特圖內部容器 (width: LEFT_W + timelineW)
+        const targetEl = document.getElementById('gantt-chart-full-inner')
+        if (!targetEl) {
+            toast({ title: '找不到甘特圖畫面', description: '請確保甘特圖視窗已開啟', variant: 'destructive' })
+            return
+        }
+
+        try {
+            toast({
+                title: '正在擷取甘特圖完整全景...',
+                description: `正在以高解析度生成「${scaleLabel}」維度全時間軸甘特圖，請稍候`
+            })
+
+            // 確保捲軸歸零，避免表頭 sticky 元素產生偏移
+            const scrollContainer = targetEl.closest('.overflow-auto') as HTMLElement | null
+            const prevScrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0
+            const prevScrollTop = scrollContainer ? scrollContainer.scrollTop : 0
+            if (scrollContainer) {
+                scrollContainer.scrollLeft = 0
+                scrollContainer.scrollTop = 0
+            }
+
+            // 短暫延遲讓瀏覽器重新定位 sticky 元素
+            await new Promise(r => setTimeout(r, 120))
+
+            const fullWidth = targetEl.offsetWidth || targetEl.scrollWidth
+            const fullHeight = targetEl.offsetHeight || targetEl.scrollHeight
+
+            const dataUrl = await toPng(targetEl, {
+                width: fullWidth,
+                height: fullHeight,
+                pixelRatio: 2,
+                backgroundColor: '#ffffff',
+                cacheBust: true
+            })
+
+            // 還原捲軸位置
+            if (scrollContainer) {
+                scrollContainer.scrollLeft = prevScrollLeft
+                scrollContainer.scrollTop = prevScrollTop
+            }
+
+            const timestamp = format(new Date(), 'yyyyMMdd_HHmmss')
+            const filenameBase = `專案甘特圖_${project.maintenance_project_name}_${scaleLabel}_${timestamp}`
+
+            if (formatType === 'image') {
+                saveAs(dataUrl, `${filenameBase}.png`)
+                toast({ title: '甘特圖全景圖片匯出成功', description: '完整時間軸 PNG 圖片已下載完成' })
+            } else {
+                // 轉為包含圖片的橫向 PDF
+                const img = new Image()
+                img.src = dataUrl
+                await new Promise((resolve) => {
+                    img.onload = resolve
+                })
+
+                const imgW = img.width
+                const imgH = img.height
+
+                // 建立自適應尺寸之 PDF (留邊 40px)
+                const pdf = new jsPDF({
+                    orientation: imgW > imgH ? 'landscape' : 'portrait',
+                    unit: 'px',
+                    format: [imgW + 40, imgH + 80]
+                })
+
+                pdf.setFontSize(22)
+                pdf.setTextColor(30, 41, 59)
+                pdf.text(`專案甘特圖時程全覽 — ${project.maintenance_project_name} (刻度: ${scaleLabel})`, 25, 45)
+                pdf.addImage(dataUrl, 'PNG', 20, 60, imgW, imgH)
+                pdf.save(`${filenameBase}.pdf`)
+
+                toast({ title: '視覺化甘特圖 PDF 匯出成功', description: '包含完整全時間軸彩色甘特圖的 PDF 已下載完成' })
+            }
+        } catch (err: any) {
+            toast({
+                title: '匯出甘特圖影像失敗',
+                description: err.message || '無法擷取甘特圖畫面',
+                variant: 'destructive'
+            })
+        }
+    }
+
+    // 匯出 Excel (包含頂部實際甘特圖高清圖片 + 下方實體彩色甘特圖進度條色塊)
+    const handleExportGanttChart = async (
+        project: Project,
+        activeScale: GanttScale = 'week'
+    ) => {
+        try {
+            const scaleLabel = activeScale === 'day' ? '日' : activeScale === 'week' ? '週' : '月'
+            toast({ title: '正在產生 Excel 實體甘特圖...', description: `包含實際彩色時程色塊與全景圖表，請稍候` })
+
+            const cats = projectCategories[project.id] || []
+            const subCats = projectSubCategories[project.id] || []
+            const orders = projectOrders[project.id] || []
+
+            if (orders.length === 0) {
+                toast({ title: '無工單資料', description: '此專案目前尚無關聯工單可匯出', variant: 'destructive' })
+                return
+            }
+
+            // 1. 嘗試擷取目前畫面的全景甘特圖 PNG
+            let ganttDataUrl: string | null = null
+            let imgW = 0
+            let imgH = 0
+            const targetEl = document.getElementById('gantt-chart-full-inner')
+            if (targetEl) {
+                try {
+                    const scrollContainer = targetEl.closest('.overflow-auto') as HTMLElement | null
+                    const prevScrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0
+                    if (scrollContainer) scrollContainer.scrollLeft = 0
+                    await new Promise(r => setTimeout(r, 100))
+
+                    const fullW = targetEl.offsetWidth || targetEl.scrollWidth
+                    const fullH = targetEl.offsetHeight || targetEl.scrollHeight
+                    ganttDataUrl = await toPng(targetEl, {
+                        width: fullW,
+                        height: fullH,
+                        pixelRatio: 1.5,
+                        backgroundColor: '#ffffff'
+                    })
+                    if (scrollContainer) scrollContainer.scrollLeft = prevScrollLeft
+
+                    const probe = new Image()
+                    probe.src = ganttDataUrl
+                    await new Promise(res => { probe.onload = res })
+                    imgW = probe.width
+                    imgH = probe.height
+                } catch (e) {
+                    console.warn('Excel 圖片快照失敗，將以純彩色儲存格匯出', e)
+                }
+            }
+
+            // 2. 計算時間刻度欄位
+            const allDates: Date[] = []
+            const today = startOfDay(new Date())
+            orders.forEach(o => {
+                if (o.plan_start_date) allDates.push(parseISO(o.plan_start_date))
+                if (o.plan_end_date) allDates.push(parseISO(o.plan_end_date))
+                if (o.request_date) allDates.push(parseISO(o.request_date))
+                if (o.work_order_date) allDates.push(parseISO(o.work_order_date))
+            })
+            if (allDates.length === 0) allDates.push(today)
+
+            const rawStart = addDays(minDate(allDates), -1)
+            const rawEnd = addDays(maxDate(allDates), 2)
+            let rangeStart = rawStart
+            let rangeEnd = rawEnd
+            if (activeScale === 'month') {
+                rangeStart = startOfMonth(rawStart)
+                rangeEnd = endOfMonth(rawEnd)
+            } else if (activeScale === 'week') {
+                rangeStart = startOfWeek(rawStart, { weekStartsOn: 1 })
+                rangeEnd = endOfWeek(rawEnd, { weekStartsOn: 1 })
+            }
+
+            let timeCols: { label: string; start: Date; end: Date }[] = []
+            const interval = { start: rangeStart, end: rangeEnd }
+            if (activeScale === 'day') {
+                timeCols = eachDayOfInterval(interval).map(d => ({
+                    label: format(d, 'MM/dd'),
+                    start: startOfDay(d),
+                    end: startOfDay(d)
+                }))
+            } else if (activeScale === 'week') {
+                timeCols = eachWeekOfInterval(interval, { weekStartsOn: 1 }).map(d => ({
+                    label: `${format(d, 'MM/dd')}~${format(endOfWeek(d, { weekStartsOn: 1 }), 'MM/dd')}`,
+                    start: startOfDay(d),
+                    end: startOfDay(endOfWeek(d, { weekStartsOn: 1 }))
+                }))
+            } else {
+                timeCols = eachMonthOfInterval(interval).map(d => ({
+                    label: format(d, 'yyyy/MM'),
+                    start: startOfMonth(d),
+                    end: endOfMonth(d)
+                }))
+            }
+
+            // 限制最多 150 欄時間軸
+            if (timeCols.length > 150) {
+                timeCols = timeCols.slice(0, 150)
+            }
+
+            // 3. 使用 ExcelJS 構建彩色甘特圖活頁簿
+            const workbook = new ExcelJS.Workbook()
+            workbook.creator = '工務維修單管理系統'
+            const worksheet = workbook.addWorksheet(`甘特圖(${scaleLabel})`, {
+                views: [{ showGridLines: true }]
+            })
+
+            // 如果成功抓取到甘特圖截圖，置於最上方
+            let startRowIndex = 2
+            if (ganttDataUrl && imgW > 0 && imgH > 0) {
+                const imageId = workbook.addImage({
+                    base64: ganttDataUrl,
+                    extension: 'png'
+                })
+                const displayW = Math.min(imgW * 0.7, 1300)
+                const displayH = Math.min(imgH * 0.7, 420)
+                worksheet.addImage(imageId, {
+                    tl: { col: 0.5, row: 1 },
+                    ext: { width: displayW, height: displayH }
+                })
+                // 計算下方表格起始列
+                startRowIndex = Math.ceil(displayH / 20) + 4
+            }
+
+            // 表格標題說明
+            const titleRow = worksheet.getRow(startRowIndex)
+            titleRow.getCell(1).value = `【${project.maintenance_project_name}】專案時程甘特圖明細 (${scaleLabel})`
+            titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: 'FF1E293B' } }
+            startRowIndex += 2
+
+            // 表頭設定
+            const baseHeaders = ['專案主項目', '專案次項目', '工單編號', '維修內容', '廠商', '承辦人', '維修狀態', '預計開工', '預計完工', '工期(天)']
+            const headerRow = worksheet.getRow(startRowIndex)
+            baseHeaders.forEach((h, idx) => {
+                const cell = headerRow.getCell(idx + 1)
+                cell.value = h
+                cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }
+                cell.alignment = { vertical: 'middle', horizontal: 'center' }
+            })
+            timeCols.forEach((col, idx) => {
+                const cell = headerRow.getCell(baseHeaders.length + idx + 1)
+                cell.value = col.label
+                cell.font = { bold: true, size: 10, color: { argb: 'FF1E293B' } }
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }
+                cell.alignment = { vertical: 'middle', horizontal: 'center' }
+            })
+            headerRow.height = 26
+
+            // 設定固定欄寬
+            worksheet.getColumn(1).width = 16
+            worksheet.getColumn(2).width = 16
+            worksheet.getColumn(3).width = 14
+            worksheet.getColumn(4).width = 24
+            worksheet.getColumn(5).width = 12
+            worksheet.getColumn(6).width = 10
+            worksheet.getColumn(7).width = 12
+            worksheet.getColumn(8).width = 12
+            worksheet.getColumn(9).width = 12
+            worksheet.getColumn(10).width = 10
+            timeCols.forEach((_, idx) => {
+                worksheet.getColumn(baseHeaders.length + idx + 1).width = 8
+            })
+
+            let currentRowIdx = startRowIndex + 1
+
+            // 逐主項目、次項目、工單填入
+            cats.forEach(cat => {
+                const catSubs = subCats.filter(s => s.maintenance_project_category_id === cat.id)
+                const catOrders = orders.filter(o => o.maintenance_project_category_id === cat.id)
+
+                // 主項目列（灰色跨度）
+                const catRow = worksheet.getRow(currentRowIdx)
+                catRow.getCell(1).value = `▌ ${cat.maintenance_category_name}`
+                catRow.getCell(1).font = { bold: true, color: { argb: 'FF0F172A' } }
+                catRow.height = 22
+
+                // 計算主項目總時間跨度
+                let catMinDate: Date | null = null
+                let catMaxDate: Date | null = null
+                catOrders.forEach(o => {
+                    if (o.plan_start_date) {
+                        const d = parseISO(o.plan_start_date)
+                        if (!catMinDate || d < catMinDate) catMinDate = d
+                    }
+                    if (o.plan_end_date) {
+                        const d = parseISO(o.plan_end_date)
+                        if (!catMaxDate || d > catMaxDate) catMaxDate = d
+                    }
+                })
+
+                // 在時間軸畫出主項目灰色跨度
+                if (catMinDate && catMaxDate) {
+                    timeCols.forEach((col, idx) => {
+                        if (catMinDate! <= col.end && catMaxDate! >= col.start) {
+                            const cell = catRow.getCell(baseHeaders.length + idx + 1)
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCBD5E1' } }
+                            cell.value = ' '
+                        }
+                    })
+                }
+                currentRowIdx++
+
+                // 填入工單列
+                catOrders.forEach(ord => {
+                    const sub = catSubs.find(s => s.id === ord.maintenance_project_sub_category_id)
+                    const pStart = ord.plan_start_date ? parseISO(ord.plan_start_date) : null
+                    const pEnd = ord.plan_end_date ? parseISO(ord.plan_end_date) : null
+                    const duration = (pStart && pEnd) ? differenceInCalendarDays(pEnd, pStart) + 1 : '-'
+
+                    // 判斷工單色彩
+                    let barColor = 'FF3B82F6' // 預設藍 (尚未開始)
+                    if (['工務已發包', '採購已發包', '廠商施工中'].includes(ord.status)) {
+                        barColor = 'FFEF4444' // 紅 (進行中)
+                    } else if (['施工完成，開單單位驗收中', '維修部門驗收中', '已驗收'].includes(ord.status)) {
+                        barColor = 'FF10B981' // 綠 (完成)
+                    }
+
+                    const ordRow = worksheet.getRow(currentRowIdx)
+                    ordRow.height = 20
+                    ordRow.getCell(1).value = cat.maintenance_category_name
+                    ordRow.getCell(2).value = sub?.maintenance_sub_category_name || '(未指定)'
+                    ordRow.getCell(3).value = ord.work_order_id
+                    ordRow.getCell(4).value = ord.maintain_content || ''
+                    ordRow.getCell(5).value = ord.vendor_name || ''
+                    ordRow.getCell(6).value = ord.handler_name || ''
+                    ordRow.getCell(7).value = ord.status
+                    ordRow.getCell(8).value = ord.plan_start_date || '-'
+                    ordRow.getCell(9).value = ord.plan_end_date || '-'
+                    ordRow.getCell(10).value = duration
+
+                    for (let c = 1; c <= 10; c++) {
+                        ordRow.getCell(c).alignment = { vertical: 'middle', horizontal: c === 4 ? 'left' : 'center' }
+                    }
+
+                    // 右側時間軸：以真實彩色背景填滿甘特圖進度條！
+                    timeCols.forEach((col, idx) => {
+                        const cell = ordRow.getCell(baseHeaders.length + idx + 1)
+                        if (pStart && pEnd) {
+                            if (pStart <= col.end && pEnd >= col.start) {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: barColor } }
+                                cell.value = '■'
+                                cell.font = { color: { argb: 'FFFFFFFF' }, size: 9, bold: true }
+                                cell.alignment = { vertical: 'middle', horizontal: 'center' }
+                            }
+                        } else {
+                            const anchor = ord.request_date ? parseISO(ord.request_date) : (ord.work_order_date ? parseISO(ord.work_order_date) : null)
+                            if (anchor && anchor >= col.start && anchor <= col.end) {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF60A5FA' } }
+                                cell.value = '●'
+                                cell.font = { color: { argb: 'FFFFFFFF' }, size: 9, bold: true }
+                                cell.alignment = { vertical: 'middle', horizontal: 'center' }
+                            }
+                        }
+                    })
+                    currentRowIdx++
+                })
+            })
+
+            // 輸出 Excel
+            const buffer = await workbook.xlsx.writeBuffer()
+            const timestamp = format(new Date(), 'yyyyMMdd_HHmmss')
+            saveAs(
+                new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+                `專案甘特圖_${project.maintenance_project_name}_${scaleLabel}_${timestamp}.xlsx`
+            )
+            toast({ title: 'Excel 實體甘特圖匯出成功', description: '包含全景甘特圖與彩色時程色塊之 Excel 檔案已下載完成' })
+        } catch (err: any) {
+            toast({ title: '匯出 Excel 失敗', description: err.message, variant: 'destructive' })
         }
     }
 
@@ -842,15 +1581,34 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
                                                                         <FolderPlus className="w-4 h-4 text-primary" />
                                                                         專案主項目分類與關聯維修單 (主項目: {cats.length} / 總工單: {orders.length})
                                                                     </h3>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="outline"
-                                                                        onClick={() => handleOpenAddCategory(project.id)}
-                                                                        className="h-8 text-[14px] font-semibold gap-1.5 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-primary transition-all rounded-lg"
-                                                                    >
-                                                                        <Plus className="w-3.5 h-3.5" />
-                                                                        新增主項目
-                                                                    </Button>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {/* 甘特圖 彈窗檢視按鈕 */}
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => {
+                                                                                setGanttAllProject(project)
+                                                                                setGanttAllDialogOpen(true)
+                                                                            }}
+                                                                            className="h-8 text-[13px] font-bold gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/40 rounded-lg transition-all"
+                                                                            title="開啟甘特圖全覽視窗"
+                                                                        >
+                                                                            <Maximize2 className="w-3.5 h-3.5" />
+                                                                            甘特圖
+                                                                        </Button>
+
+                                                                        {/* 新增主項目按鈕 */}
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => handleOpenAddCategory(project.id)}
+                                                                            className="h-8 text-[14px] font-semibold gap-1.5 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-primary transition-all rounded-lg"
+                                                                        >
+                                                                            <Plus className="w-3.5 h-3.5" />
+                                                                            新增主項目
+                                                                        </Button>
+                                                                    </div>
                                                                 </div>
 
                                                                 {cats.length === 0 ? (
@@ -932,77 +1690,219 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
                                                                                                 <Trash2 className="w-4 h-4" />
                                                                                             </Button>
                                                                                         </div>
+
+                                                                                        {/* 最右邊：+新增專案次項目 按鈕 */}
+                                                                                        <Button
+                                                                                            size="sm"
+                                                                                            variant="outline"
+                                                                                            onClick={() => handleOpenAddSubCategory(project, cat)}
+                                                                                            className="h-8 ml-auto text-[13px] font-bold gap-1.5 border-rose-500 text-rose-600 hover:bg-rose-50 dark:border-rose-400 dark:text-rose-400 dark:hover:bg-rose-950/30 rounded-lg transition-all"
+                                                                                        >
+                                                                                            <Plus className="w-3.5 h-3.5" />
+                                                                                            新增專案次項目
+                                                                                        </Button>
                                                                                     </div>
 
-                                                                                    {/* 屬於該專案主項目的維修單 (顯示在同一列) */}
-                                                                                    {catOrders.length === 0 ? (
-                                                                                        <div className="text-[14px] text-slate-400 pl-3 py-1">
-                                                                                            目前無工務維修單關聯至此主項目
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <div className="space-y-2">
-                                                                                            {catOrders.map((ord) => (
-                                                                                                <div
-                                                                                                    key={ord.id}
-                                                                                                    onClick={() => router.push(`/maintenance-work/edit/${ord.id}`)}
-                                                                                                    className="bg-slate-50/70 dark:bg-slate-800/40 hover:bg-blue-50/50 dark:hover:bg-slate-800/80 p-3 rounded-lg border border-slate-100 dark:border-slate-800/60 cursor-pointer flex flex-wrap items-center gap-x-3 gap-y-2 text-[14px] transition-colors group/order"
-                                                                                                >
-                                                                                                    {/* 欄位順序: 工單編號、接單日期、成本中心、開單人名稱、承辦人名稱、廠商、維修內容、維修狀態 */}
-                                                                                                    {/* 1. 工單編號 */}
-                                                                                                    <span className="text-[15px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100/60 dark:bg-blue-950/60 px-2 py-0.5 rounded font-mono shrink-0">
-                                                                                                        {ord.work_order_id}
-                                                                                                    </span>
-
-                                                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-
-                                                                                                    {/* 2. 接單日期 */}
-                                                                                                    <span className="text-slate-600 dark:text-slate-400 shrink-0">
-                                                                                                        接單日期: <span className="font-mono text-slate-800 dark:text-slate-200">{ord.work_order_date || '-'}</span>
-                                                                                                    </span>
-
-                                                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-
-                                                                                                    {/* 3. 成本中心 */}
-                                                                                                    <span className="text-slate-600 dark:text-slate-400 shrink-0">
-                                                                                                        成本中心: <span className="text-slate-800 dark:text-slate-200">{ord.cost_center || '-'}</span>
-                                                                                                    </span>
-
-                                                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-
-                                                                                                    {/* 4. 開單人 */}
-                                                                                                    <span className="text-slate-600 dark:text-slate-400 shrink-0">
-                                                                                                        開單人: <span className="text-slate-800 dark:text-slate-200">{ord.requester_name || '-'}</span>
-                                                                                                    </span>
-
-                                                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-
-                                                                                                    {/* 5. 承辦人 */}
-                                                                                                    <span className="text-slate-600 dark:text-slate-400 shrink-0">
-                                                                                                        承辦人: <span className="text-slate-800 dark:text-slate-200">{ord.handler_name || '-'}</span>
-                                                                                                    </span>
-
-                                                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-
-                                                                                                    {/* 6. 廠商 */}
-                                                                                                    <span className="text-slate-600 dark:text-slate-400 shrink-0">
-                                                                                                        廠商: <span className="text-slate-800 dark:text-slate-200">{ord.vendor_name || '-'}</span>
-                                                                                                    </span>
-
-                                                                                                    <span className="text-slate-300 dark:text-slate-700">|</span>
-
-                                                                                                    {/* 7. 維修內容 */}
-                                                                                                    <span className="text-slate-800 dark:text-slate-200 font-medium truncate max-w-[260px] shrink-0" title={ord.maintain_content}>
-                                                                                                        維修內容: {ord.maintain_content || '-'}
-                                                                                                    </span>
-
-                                                                                                    {/* 8. 維修狀態 */}
-                                                                                                    <Badge variant="outline" className={`text-[12px] px-2 py-0.5 rounded-lg font-semibold border ml-auto shrink-0 ${getStatusColor(ord.status)}`}>
-                                                                                                        {ord.status}
-                                                                                                    </Badge>
+                                                                                    {/* 屬於該專案主項目的維修單與專案次項目（次項目為再次發包工程，顯示於主項目下方） */}
+                                                                                    {(() => {
+                                                                                        const subCats = (projectSubCategories[project.id] || []).filter(s => s.maintenance_project_category_id === cat.id)
+                                                                                        const catOrders = (projectOrders[project.id] || []).filter(o => o.maintenance_project_category_id === cat.id)
+                                                                                        // 專案主項目直屬維修單（未指定專案次項目）
+                                                                                        const directOrders = catOrders.filter(o => !o.maintenance_project_sub_category_id)
+                                                                                    
+                                                                                        // 渲染工單列卡片
+                                                                                        const renderOrderCard = (ord: typeof catOrders[0], subCatName?: string) => (
+                                                                                            <div
+                                                                                                key={ord.id}
+                                                                                                onClick={() => router.push(`/maintenance-work/edit/${ord.id}`)}
+                                                                                                className="bg-slate-50/70 dark:bg-slate-800/40 hover:bg-blue-50/50 dark:hover:bg-slate-800/80 p-3 rounded-lg border border-slate-100 dark:border-slate-800/60 cursor-pointer flex flex-wrap items-center gap-x-3 gap-y-2 text-[14px] transition-colors group/order"
+                                                                                            >
+                                                                                                {/* 1. 工單編號 */}
+                                                                                                <span className="text-[15px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100/60 dark:bg-blue-950/60 px-2 py-0.5 rounded font-mono shrink-0">
+                                                                                                    {ord.work_order_id}
+                                                                                                </span>
+                                                                                    
+                                                                                                {/* 次項目標籤（若隸屬次項目） */}
+                                                                                                {subCatName && (
+                                                                                                    <>
+                                                                                                        <span className="text-slate-300 dark:text-slate-700">|</span>
+                                                                                                        <span className="text-purple-700 dark:text-purple-300 font-semibold shrink-0 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800/50 text-[12px]">
+                                                                                                            次項目: {subCatName}
+                                                                                                        </span>
+                                                                                                    </>
+                                                                                                )}
+                                                                                    
+                                                                                                <span className="text-slate-300 dark:text-slate-700">|</span>
+                                                                                    
+                                                                                                {/* 2. 接單日期 */}
+                                                                                                <span className="text-slate-600 dark:text-slate-400 shrink-0">
+                                                                                                    接單日期: <span className="font-mono text-slate-800 dark:text-slate-200">{ord.work_order_date || '-'}</span>
+                                                                                                </span>
+                                                                                    
+                                                                                                <span className="text-slate-300 dark:text-slate-700">|</span>
+                                                                                    
+                                                                                                {/* 3. 成本中心 */}
+                                                                                                <span className="text-slate-600 dark:text-slate-400 shrink-0">
+                                                                                                    成本中心: <span className="text-slate-800 dark:text-slate-200">{ord.cost_center || '-'}</span>
+                                                                                                </span>
+                                                                                    
+                                                                                                <span className="text-slate-300 dark:text-slate-700">|</span>
+                                                                                    
+                                                                                                {/* 4. 開單人 */}
+                                                                                                <span className="text-slate-600 dark:text-slate-400 shrink-0">
+                                                                                                    開單人: <span className="text-slate-800 dark:text-slate-200">{ord.requester_name || '-'}</span>
+                                                                                                </span>
+                                                                                    
+                                                                                                <span className="text-slate-300 dark:text-slate-700">|</span>
+                                                                                    
+                                                                                                {/* 5. 承辦人 */}
+                                                                                                <span className="text-slate-600 dark:text-slate-400 shrink-0">
+                                                                                                    承辦人: <span className="text-slate-800 dark:text-slate-200">{ord.handler_name || '-'}</span>
+                                                                                                </span>
+                                                                                    
+                                                                                                <span className="text-slate-300 dark:text-slate-700">|</span>
+                                                                                    
+                                                                                                {/* 6. 廠商 */}
+                                                                                                <span className="text-slate-600 dark:text-slate-400 shrink-0">
+                                                                                                    廠商: <span className="text-slate-800 dark:text-slate-200">{ord.vendor_name || '-'}</span>
+                                                                                                </span>
+                                                                                    
+                                                                                                <span className="text-slate-300 dark:text-slate-700">|</span>
+                                                                                    
+                                                                                                {/* 7. 維修內容 */}
+                                                                                                <span className="text-slate-800 dark:text-slate-200 font-medium truncate max-w-[260px] shrink-0" title={ord.maintain_content}>
+                                                                                                    維修內容: {ord.maintain_content || '-'}
+                                                                                                </span>
+                                                                                    
+                                                                                                {/* 8. 維修狀態 */}
+                                                                                                <Badge variant="outline" className={`text-[12px] px-2 py-0.5 rounded-lg font-semibold border ml-auto shrink-0 ${getStatusColor(ord.status)}`}>
+                                                                                                    {ord.status}
+                                                                                                </Badge>
+                                                                                            </div>
+                                                                                        )
+                                                                                    
+                                                                                        if (catOrders.length === 0 && subCats.length === 0) {
+                                                                                            return (
+                                                                                                <div className="text-[14px] text-slate-400 pl-3 py-1">
+                                                                                                    目前無工務維修單關聯至此主項目
                                                                                                 </div>
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    )}
+                                                                                            )
+                                                                                        }
+                                                                                    
+                                                                                        return (
+                                                                                            <div className="space-y-3">
+                                                                                                {/* 1. 先顯示：專案主項目直屬維修單（直接顯示於主項目下方） */}
+                                                                                                {directOrders.length > 0 && (
+                                                                                                    <div className="space-y-2">
+                                                                                                        {directOrders.map((ord) => renderOrderCard(ord))}
+                                                                                                    </div>
+                                                                                                )}
+                                                                                    
+                                                                                                {/* 2. 顯示於主項目直屬工單下方：專案次項目（再次發包的工程項目區塊） */}
+                                                                                                {subCats.length > 0 && (
+                                                                                                    <div className="space-y-2.5 pt-1">
+                                                                                                        {subCats.map((sub) => {
+                                                                                                            const subOrders = catOrders.filter(o => o.maintenance_project_sub_category_id === sub.id)
+                                                                                                            return (
+                                                                                                                <div
+                                                                                                                    key={sub.id}
+                                                                                                                    className="bg-purple-50/25 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-800/60 rounded-xl p-3 space-y-2.5 shadow-2xs"
+                                                                                                                >
+                                                                                                                    {/* 專案次項目標題列 */}
+                                                                                                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-100 dark:border-purple-900/50 pb-2">
+                                                                                                                        <div className="flex items-center gap-2">
+                                                                                                                            <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/60 px-2 py-0.5 rounded">
+                                                                                                                                專案次項目
+                                                                                                                            </span>
+                                                                                                                            <span className="text-[14px] font-bold text-slate-800 dark:text-slate-100">
+                                                                                                                                {sub.maintenance_sub_category_name}
+                                                                                                                            </span>
+                                                                                                                            <span className="text-[12px] font-mono font-medium text-purple-700 dark:text-purple-300 bg-purple-100/60 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200/80 dark:border-purple-800/80">
+                                                                                                                                {subOrders.length} 筆工單
+                                                                                                                            </span>
+                                                                                                                        </div>
+                                                                                    
+                                                                                                                        {/* 次項目操作按鈕 */}
+                                                                                                                        <div className="flex items-center gap-1.5">
+                                                                                                                            <Button
+                                                                                                                                variant="ghost"
+                                                                                                                                size="sm"
+                                                                                                                                onClick={() => setWorkRecordDialog({
+                                                                                                                                    open: true,
+                                                                                                                                    projectId: project.id,
+                                                                                                                                    projectCategoryId: cat.id,
+                                                                                                                                    projectSubCategoryId: sub.id,
+                                                                                                                                    projectName: project.maintenance_project_name,
+                                                                                                                                    categoryName: cat.maintenance_category_name,
+                                                                                                                                    subCategoryName: sub.maintenance_sub_category_name
+                                                                                                                                })}
+                                                                                                                                className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-[12px] gap-1 font-bold rounded-md"
+                                                                                                                                title="檢視次項目工作紀錄"
+                                                                                                                            >
+                                                                                                                                <Eye className="w-3.5 h-3.5" />
+                                                                                                                                紀錄
+                                                                                                                            </Button>
+                                                                                                                            <DropdownMenu>
+                                                                                                                                <DropdownMenuTrigger asChild>
+                                                                                                                                    <Button
+                                                                                                                                        variant="ghost"
+                                                                                                                                        size="sm"
+                                                                                                                                        className="h-7 px-2 text-slate-600 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-[12px] gap-1 font-medium rounded-md"
+                                                                                                                                        title="匯出次項目工作紀錄 (PDF/Excel)"
+                                                                                                                                    >
+                                                                                                                                        <Download className="w-3.5 h-3.5" />
+                                                                                                                                        匯出
+                                                                                                                                    </Button>
+                                                                                                                                </DropdownMenuTrigger>
+                                                                                                                                <DropdownMenuContent align="end">
+                                                                                                                                    <DropdownMenuItem onClick={() => handleExportSubCategoryRecords(project, cat, sub, 'excel')}>
+                                                                                                                                        匯出 Excel (廠商日誌/工單)
+                                                                                                                                    </DropdownMenuItem>
+                                                                                                                                    <DropdownMenuItem onClick={() => handleExportSubCategoryRecords(project, cat, sub, 'pdf')}>
+                                                                                                                                        匯出 PDF (廠商日誌/工單)
+                                                                                                                                    </DropdownMenuItem>
+                                                                                                                                </DropdownMenuContent>
+                                                                                                                            </DropdownMenu>
+                                                                                    
+                                                                                                                            <Button
+                                                                                                                                variant="ghost"
+                                                                                                                                size="icon"
+                                                                                                                                onClick={() => handleOpenEditSubCategory(project, cat, sub)}
+                                                                                                                                className="w-7 h-7 hover:text-primary rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                                                                                                title="編輯次項目名稱"
+                                                                                                                            >
+                                                                                                                                <Edit2 className="w-3.5 h-3.5" />
+                                                                                                                            </Button>
+                                                                                                                            <Button
+                                                                                                                                variant="ghost"
+                                                                                                                                size="icon"
+                                                                                                                                onClick={() => handleConfirmDeleteSubCategory(project, sub)}
+                                                                                                                                className="w-7 h-7 hover:text-destructive rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                                                                                                title="刪除次項目"
+                                                                                                                            >
+                                                                                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                                                                            </Button>
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                    
+                                                                                                                    {/* 屬於該次項目的工單清單 */}
+                                                                                                                    {subOrders.length === 0 ? (
+                                                                                                                        <div className="text-[13px] text-slate-400 pl-2 py-1 italic">
+                                                                                                                            此專案次項目尚無關聯維修單
+                                                                                                                        </div>
+                                                                                                                    ) : (
+                                                                                                                        <div className="space-y-2">
+                                                                                                                            {subOrders.map((ord) => renderOrderCard(ord, sub.maintenance_sub_category_name))}
+                                                                                                                        </div>
+                                                                                                                    )}
+                                                                                                                </div>
+                                                                                                            )
+                                                                                                        })}
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        )
+                                                                                    })()}
                                                                                 </div>
                                                                             )
                                                                         })}
@@ -1022,7 +1922,9 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
                                                                                         </span>
                                                                                     </div>
                                                                                     <div className="space-y-2">
-                                                                                        {uncategorizedOrders.map((ord) => (
+                                                                                        {uncategorizedOrders.map((ord) => {
+                                                                                            const subCat = (projectSubCategories[project.id] || []).find(s => s.id === ord.maintenance_project_sub_category_id)
+                                                                                            return (
                                                                                             <div
                                                                                                 key={ord.id}
                                                                                                 onClick={() => router.push(`/maintenance-work/edit/${ord.id}`)}
@@ -1032,6 +1934,16 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
                                                                                                 <span className="text-[15px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100/60 dark:bg-blue-950/60 px-2 py-0.5 rounded font-mono shrink-0">
                                                                                                     {ord.work_order_id}
                                                                                                 </span>
+
+                                                                                                {/* 次項目標籤 */}
+                                                                                                {subCat && (
+                                                                                                    <>
+                                                                                                        <span className="text-slate-300 dark:text-slate-700">|</span>
+                                                                                                        <span className="text-purple-700 dark:text-purple-300 font-semibold shrink-0 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800/50 text-[12px]">
+                                                                                                            次項目: {subCat.maintenance_sub_category_name}
+                                                                                                        </span>
+                                                                                                    </>
+                                                                                                )}
 
                                                                                                 <span className="text-slate-300 dark:text-slate-700">|</span>
 
@@ -1080,7 +1992,8 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
                                                                                                     {ord.status}
                                                                                                 </Badge>
                                                                                             </div>
-                                                                                        ))}
+                                                                                        )
+                                                                                    })}
                                                                                     </div>
                                                                                 </div>
                                                                             )
@@ -1222,14 +2135,162 @@ export default function ProjectManagementClient({ initialProjects }: ProjectMana
                 </AlertDialogContent>
             </AlertDialog>
 
+            {/* 新增/編輯專案次項目 Dialog */}
+            <Dialog open={subCategoryDialogOpen} onOpenChange={setSubCategoryDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>{editingSubCategory ? '編輯專案次項目' : '新增專案次項目'}</DialogTitle>
+                        <DialogDescription>
+                            {editingSubCategory ? '修改此專案次項目的名稱。' : '為此主項目新增細部工程次項目。'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-[85px_1fr] items-center gap-2 text-[14px] bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200/60 dark:border-slate-800">
+                            <span className="text-slate-500 font-semibold">所屬專案：</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{targetProjectForSubCategory?.maintenance_project_name}</span>
+                            <span className="text-slate-500 font-semibold">所屬主項目：</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400 truncate">{targetCategoryForSubCategory?.maintenance_category_name}</span>
+                        </div>
+                        <div className="grid gap-2">
+                            <span className="text-[16px] font-semibold">
+                                次項目名稱 <span className="text-destructive">*</span>
+                            </span>
+                            <Input
+                                placeholder="如: 管線配置、水電配線、冷媒銅管"
+                                value={subCategoryNameInput}
+                                onChange={(e) => setSubCategoryNameInput(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        handleSaveSubCategory()
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSubCategoryDialogOpen(false)}>取消</Button>
+                        <Button onClick={handleSaveSubCategory} disabled={subCategorySaving}>
+                            {subCategorySaving && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+                            儲存
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 刪除專案次項目警示 */}
+            <AlertDialog open={deleteSubCategoryAlertOpen} onOpenChange={setDeleteSubCategoryAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="w-5 h-5" />
+                            確認刪除專案次項目？
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            此操作將會永久刪除此專案次項目：
+                            <span className="font-bold text-slate-800 dark:text-slate-100 block my-1">
+                                {deletingSubCategory?.maintenance_sub_category_name}
+                            </span>
+                            刪除後將無法還原，請確認無關聯工單或工作紀錄。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setDeleteSubCategoryAlertOpen(false)}>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteSubCategory} className="bg-destructive hover:bg-destructive/95 text-white">
+                            確認刪除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <ProjectWorkRecordDialog
                 open={workRecordDialog.open}
                 onOpenChange={(open) => setWorkRecordDialog(prev => ({ ...prev, open }))}
                 projectId={workRecordDialog.projectId}
                 projectCategoryId={workRecordDialog.projectCategoryId}
+                projectSubCategoryId={workRecordDialog.projectSubCategoryId}
                 projectName={workRecordDialog.projectName}
                 categoryName={workRecordDialog.categoryName}
+                subCategoryName={workRecordDialog.subCategoryName}
             />
+
+            {/* 甘特圖All 全寬彈出視窗 (左右貼近邊界，大幅減少水平捲動) */}
+            <Dialog open={ganttAllDialogOpen} onOpenChange={setGanttAllDialogOpen}>
+                <DialogContent className="max-w-[98vw] w-[98vw] sm:max-w-[98vw] h-[94vh] max-h-[94vh] p-4 flex flex-col gap-3">
+                    <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 pr-8">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                                <ChartGantt className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-[18px] font-bold text-slate-800 dark:text-slate-100">
+                                    {ganttAllProject?.maintenance_project_name}
+                                </DialogTitle>
+                            </div>
+                        </div>
+
+                        {/* 右側：匯出甘特圖按鈕 (含真實圖片 / 視覺化 PDF / Excel 選項) */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-3.5 gap-2 border-primary text-primary hover:bg-primary/10 font-bold rounded-lg shadow-sm"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    匯出甘特圖
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-auto min-w-fit p-1">
+                                <DropdownMenuItem
+                                    onClick={() => ganttAllProject && handleExportVisualGantt(ganttAllProject, 'image', ganttAllScale)}
+                                    className="cursor-pointer gap-2 py-1.5 px-2.5 text-xs font-medium"
+                                >
+                                    <ImageIcon className="w-3.5 h-3.5 text-purple-600" />
+                                    <span className="text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                        匯出圖片(PNG)
+                                    </span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => ganttAllProject && handleExportVisualGantt(ganttAllProject, 'pdf', ganttAllScale)}
+                                    className="cursor-pointer gap-2 py-1.5 px-2.5 text-xs font-medium"
+                                >
+                                    <FileText className="w-3.5 h-3.5 text-rose-600" />
+                                    <span className="text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                        匯出PDF
+                                    </span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => ganttAllProject && handleExportGanttChart(ganttAllProject, ganttAllScale)}
+                                    className="cursor-pointer gap-2 py-1.5 px-2.5 text-xs font-medium"
+                                >
+                                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span className="text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                        匯出Excel
+                                    </span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </DialogHeader>
+
+                    {/* 甘特圖本體 (滿版高度，包含gantt-all-dialog-content ID供影像擷取) */}
+                    <div id="gantt-all-dialog-content" className="flex-1 min-h-0 flex flex-col bg-white dark:bg-slate-950 p-1 rounded-lg">
+                        {ganttAllProject && (
+                            <ProjectGanttChart
+                                categories={projectCategories[ganttAllProject.id] || []}
+                                subCategories={projectSubCategories[ganttAllProject.id] || []}
+                                orders={projectOrders[ganttAllProject.id] || []}
+                                onOrderClick={(id) => router.push(`/maintenance-work/edit/${id}`)}
+                                scale={ganttAllScale}
+                                onScaleChange={setGanttAllScale}
+                                fillHeight={true}
+                            />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

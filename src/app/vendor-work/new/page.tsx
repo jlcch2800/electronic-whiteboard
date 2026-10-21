@@ -51,6 +51,7 @@ const FIELD_LABELS: Record<string, string> = {
     is_maintenance_project: '此為專案工作',
     maintenance_project_id: '所屬專案',
     maintenance_project_category_id: '專案主項目',
+    maintenance_project_sub_category_id: '專案次項目',
 }
 
 export default function VendorWorkNewPage() {
@@ -70,6 +71,7 @@ export default function VendorWorkNewPage() {
     // 專案相關狀態
     const [projects, setProjects] = useState<any[]>([])
     const [categories, setCategories] = useState<any[]>([])
+    const [subCategories, setSubCategories] = useState<any[]>([])
 
     // 表單狀態
     const [isSuccess, setIsSuccess] = useState(false)
@@ -96,6 +98,7 @@ export default function VendorWorkNewPage() {
             is_maintenance_project: false,
             maintenance_project_id: '',
             maintenance_project_category_id: '',
+            maintenance_project_sub_category_id: '',
         }
     })
 
@@ -112,7 +115,7 @@ export default function VendorWorkNewPage() {
         loadProjects()
     }, [supabase])
 
-    // 當專案 ID 改變時，載入項目
+    // 當專案 ID 改變時，載入主項目
     const watchProjectId = watch('maintenance_project_id')
     useEffect(() => {
         if (watchProjectId) {
@@ -128,8 +131,29 @@ export default function VendorWorkNewPage() {
         } else {
             setCategories([])
             setValue('maintenance_project_category_id', '')
+            setSubCategories([])
+            setValue('maintenance_project_sub_category_id', '')
         }
     }, [watchProjectId, supabase, setValue])
+
+    // 當專案主項目改變時，自動載入對應之次項目
+    const watchCategoryId = watch('maintenance_project_category_id')
+    useEffect(() => {
+        if (watchCategoryId) {
+            const loadSubCategories = async () => {
+                const { data } = await supabase
+                    .from('maintenance_project_sub_category')
+                    .select('*')
+                    .eq('maintenance_project_category_id', watchCategoryId)
+                    .order('created_at', { ascending: true })
+                setSubCategories(data || [])
+            }
+            loadSubCategories()
+        } else {
+            setSubCategories([])
+            setValue('maintenance_project_sub_category_id', '')
+        }
+    }, [watchCategoryId, supabase, setValue])
 
     const entryStatus = watch('entry_status')
     const vendorName = watch('vendor_name')
@@ -298,6 +322,7 @@ export default function VendorWorkNewPage() {
                 payload.is_maintenance_project = pendingData.is_maintenance_project || false
                 payload.maintenance_project_id = pendingData.is_maintenance_project ? (pendingData.maintenance_project_id || null) : null
                 payload.maintenance_project_category_id = pendingData.is_maintenance_project ? (pendingData.maintenance_project_category_id || null) : null
+                payload.maintenance_project_sub_category_id = pendingData.is_maintenance_project ? (pendingData.maintenance_project_sub_category_id || null) : null
 
                 // 借物資料
                 payload.borrow_action = borrowAction
@@ -534,6 +559,7 @@ export default function VendorWorkNewPage() {
                                                     if (!checked) {
                                                         setValue('maintenance_project_id', '')
                                                         setValue('maintenance_project_category_id', '')
+                                                        setValue('maintenance_project_sub_category_id', '')
                                                     }
                                                 }}
                                                 className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -545,13 +571,14 @@ export default function VendorWorkNewPage() {
                                     </CardHeader>
                                     {watch('is_maintenance_project') && (
                                         <CardContent className="space-y-4 pt-2">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <FormField label="所屬專案" required error={errors.maintenance_project_id?.message}>
                                                     <select
                                                         value={watch('maintenance_project_id') || ''}
                                                         onChange={(e) => {
                                                             setValue('maintenance_project_id', e.target.value)
                                                             setValue('maintenance_project_category_id', '')
+                                                            setValue('maintenance_project_sub_category_id', '')
                                                         }}
                                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
                                                     >
@@ -567,7 +594,10 @@ export default function VendorWorkNewPage() {
                                                 <FormField label="專案主項目" required error={errors.maintenance_project_category_id?.message}>
                                                     <select
                                                         value={watch('maintenance_project_category_id') || ''}
-                                                        onChange={(e) => setValue('maintenance_project_category_id', e.target.value)}
+                                                        onChange={(e) => {
+                                                            setValue('maintenance_project_category_id', e.target.value)
+                                                            setValue('maintenance_project_sub_category_id', '')
+                                                        }}
                                                         disabled={!watchProjectId}
                                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
                                                     >
@@ -575,6 +605,22 @@ export default function VendorWorkNewPage() {
                                                         {categories.map(cat => (
                                                             <option key={cat.id} value={cat.id}>
                                                                 {cat.maintenance_category_name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </FormField>
+
+                                                <FormField label="專案次項目" error={errors.maintenance_project_sub_category_id?.message}>
+                                                    <select
+                                                        value={watch('maintenance_project_sub_category_id') || ''}
+                                                        onChange={(e) => setValue('maintenance_project_sub_category_id', e.target.value)}
+                                                        disabled={!watchCategoryId}
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                    >
+                                                        <option value="">請選擇專案次項目 (選填)</option>
+                                                        {subCategories.map(sub => (
+                                                            <option key={sub.id} value={sub.id}>
+                                                                {sub.maintenance_sub_category_name}
                                                             </option>
                                                         ))}
                                                     </select>
@@ -768,6 +814,9 @@ export default function VendorWorkNewPage() {
                         : '',
                     maintenance_project_category_id: pendingData.maintenance_project_category_id 
                         ? categories.find(c => c.id === pendingData.maintenance_project_category_id)?.maintenance_category_name || pendingData.maintenance_project_category_id 
+                        : '',
+                    maintenance_project_sub_category_id: pendingData.maintenance_project_sub_category_id 
+                        ? subCategories.find(s => s.id === pendingData.maintenance_project_sub_category_id)?.maintenance_sub_category_name || pendingData.maintenance_project_sub_category_id 
                         : '',
                 } : {}}
                 fieldLabels={FIELD_LABELS}

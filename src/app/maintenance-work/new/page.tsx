@@ -53,13 +53,16 @@ export default function MaintenanceWorkNewPage() {
     // 專案相關狀態
     const [projects, setProjects] = useState<any[]>([])
     const [categories, setCategories] = useState<any[]>([])
+    const [subCategories, setSubCategories] = useState<any[]>([])
     
     // 快速新增 Dialog 狀態
     const [quickProjectOpen, setQuickProjectOpen] = useState(false)
     const [quickCategoryOpen, setQuickCategoryOpen] = useState(false)
+    const [quickSubCategoryOpen, setQuickSubCategoryOpen] = useState(false)
     const [newProjectName, setNewProjectName] = useState('')
     const [newProjectDesc, setNewProjectDesc] = useState('')
     const [newCategoryName, setNewCategoryName] = useState('')
+    const [newSubCategoryName, setNewSubCategoryName] = useState('')
 
     // 追蹤各欄位 touched 狀態（失焦驗證用）
     const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
@@ -86,6 +89,7 @@ export default function MaintenanceWorkNewPage() {
             is_maintenance_project: false,
             maintenance_project_id: '',
             maintenance_project_category_id: '',
+            maintenance_project_sub_category_id: '',
         }
     })
 
@@ -118,8 +122,28 @@ export default function MaintenanceWorkNewPage() {
         } else {
             setCategories([])
             setValue('maintenance_project_category_id', '')
+            setValue('maintenance_project_sub_category_id', '')
         }
     }, [selectedProjectId, supabase, setValue])
+
+    // 當專案主項目改變時，動態讀取次項目
+    const watchCategoryId = watch('maintenance_project_category_id')
+    useEffect(() => {
+        if (watchCategoryId) {
+            const loadSubCategories = async () => {
+                const { data } = await supabase
+                    .from('maintenance_project_sub_category')
+                    .select('*')
+                    .eq('maintenance_project_category_id', watchCategoryId)
+                    .order('created_at', { ascending: true })
+                setSubCategories(data || [])
+            }
+            loadSubCategories()
+        } else {
+            setSubCategories([])
+            setValue('maintenance_project_sub_category_id', '')
+        }
+    }, [watchCategoryId, supabase, setValue])
 
     // 快速新增專案處理
     const handleQuickAddProject = async () => {
@@ -196,6 +220,45 @@ export default function MaintenanceWorkNewPage() {
             toast({
                 title: '快速建立主項目失敗',
                 description: err.message,
+                variant: 'destructive'
+            })
+        }
+    }
+
+    // 快速新增次項目處理
+    const handleQuickAddSubCategory = async () => {
+        if (!newSubCategoryName.trim() || !selectedProjectId || !watchCategoryId) return
+        try {
+            const payload = {
+                maintenance_project_id: selectedProjectId,
+                maintenance_project_category_id: watchCategoryId,
+                maintenance_sub_category_name: newSubCategoryName.trim()
+            }
+            const { data, error } = await supabase
+                .from('maintenance_project_sub_category')
+                .insert(payload)
+                .select('id, maintenance_sub_category_name')
+                .single()
+
+            if (error) throw error
+
+            logChangeRecord({
+                actionType: 'Insert',
+                modifyTable: 'maintenance_project_sub_category',
+                modifyRecordId: data.id,
+                newData: payload
+            })
+
+            // 更新次項目下拉選單並自動選取
+            setSubCategories(prev => [...prev, data])
+            setValue('maintenance_project_sub_category_id', data.id)
+            setNewSubCategoryName('')
+            setQuickSubCategoryOpen(false)
+            toast({ title: '次項目建立成功', description: `次項目「${data.maintenance_sub_category_name}」已建立並選取` })
+        } catch (err: any) {
+            toast({
+                title: '快速建立次項目失敗',
+                description: err.message || '請確認是否已在 Supabase 執行建立次項目資料表之 SQL',
                 variant: 'destructive'
             })
         }
@@ -442,6 +505,7 @@ export default function MaintenanceWorkNewPage() {
                 is_maintenance_project: pendingData.is_maintenance_project || false,
                 maintenance_project_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_id || null) : null,
                 maintenance_project_category_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_category_id || null) : null,
+                maintenance_project_sub_category_id: pendingData.is_maintenance_project ? (pendingData.maintenance_project_sub_category_id || null) : null,
             }
 
             const { data: inserted, error } = await supabase
@@ -475,12 +539,14 @@ export default function MaintenanceWorkNewPage() {
         if (!pendingData) return {}
         const projName = projects.find(p => p.id === pendingData.maintenance_project_id)?.maintenance_project_name || pendingData.maintenance_project_id
         const catName = categories.find(c => c.id === pendingData.maintenance_project_category_id)?.maintenance_category_name || pendingData.maintenance_project_category_id
+        const subCatName = subCategories.find(s => s.id === pendingData.maintenance_project_sub_category_id)?.maintenance_sub_category_name || pendingData.maintenance_project_sub_category_id
         return {
             ...pendingData,
             maintenance_project_id: projName,
-            maintenance_project_category_id: catName
+            maintenance_project_category_id: catName,
+            maintenance_project_sub_category_id: subCatName
         }
-    }, [pendingData, projects, categories])
+    }, [pendingData, projects, categories, subCategories])
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#fff1ed] to-slate-100 dark:from-slate-900 dark:to-slate-950">
@@ -662,6 +728,7 @@ export default function MaintenanceWorkNewPage() {
                                             if (checked !== true) {
                                                 setValue('maintenance_project_id', '')
                                                 setValue('maintenance_project_category_id', '')
+                                                setValue('maintenance_project_sub_category_id', '')
                                             }
                                         }}
                                     />
@@ -680,6 +747,7 @@ export default function MaintenanceWorkNewPage() {
                                                     onChange={(e) => {
                                                         setValue('maintenance_project_id', e.target.value)
                                                         setValue('maintenance_project_category_id', '')
+                                                        setValue('maintenance_project_sub_category_id', '')
                                                     }}
                                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1"
                                                 >
@@ -707,7 +775,10 @@ export default function MaintenanceWorkNewPage() {
                                             <div className="flex gap-2">
                                                 <select
                                                     value={watch('maintenance_project_category_id') || ''}
-                                                    onChange={(e) => setValue('maintenance_project_category_id', e.target.value)}
+                                                    onChange={(e) => {
+                                                        setValue('maintenance_project_category_id', e.target.value)
+                                                        setValue('maintenance_project_sub_category_id', '')
+                                                    }}
                                                     disabled={!selectedProjectId}
                                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
                                                 >
@@ -728,6 +799,44 @@ export default function MaintenanceWorkNewPage() {
                                                     className="border-slate-200 dark:border-slate-800 shrink-0 disabled:opacity-50"
                                                 >
                                                     <FolderPlus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </FormField>
+                                    </div>
+
+                                    {/* 專案次項目下拉選單（當主項目被選取後顯示對應次項目，或透過「+」快速新增） */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField label="專案次項目">
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={watch('maintenance_project_sub_category_id') || ''}
+                                                    onChange={(e) => setValue('maintenance_project_sub_category_id', e.target.value)}
+                                                    disabled={!watchCategoryId}
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-1 disabled:opacity-50"
+                                                >
+                                                    <option value="">
+                                                        {!watchCategoryId 
+                                                            ? '請先選擇專案主項目' 
+                                                            : subCategories.length === 0 
+                                                                ? '尚無次項目 (可點擊右側 + 新增)' 
+                                                                : '請選擇專案次項目'}
+                                                    </option>
+                                                    {subCategories.map(sub => (
+                                                        <option key={sub.id} value={sub.id}>
+                                                            {sub.maintenance_sub_category_name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => setQuickSubCategoryOpen(true)}
+                                                    disabled={!watchCategoryId}
+                                                    title="快速建立專案次項目"
+                                                    className="border-slate-200 dark:border-slate-800 shrink-0 disabled:opacity-50"
+                                                >
+                                                    <Plus className="w-4 h-4" />
                                                 </Button>
                                             </div>
                                         </FormField>
@@ -868,6 +977,40 @@ export default function MaintenanceWorkNewPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setQuickCategoryOpen(false)}>取消</Button>
                         <Button onClick={handleQuickAddCategory} className="bg-primary text-white">建立</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 快速新增專案次項目 Dialog */}
+            <Dialog open={quickSubCategoryOpen} onOpenChange={setQuickSubCategoryOpen}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>快速新增專案次項目</DialogTitle>
+                        <DialogDescription>
+                            在主項目「{categories.find(c => c.id === watchCategoryId)?.maintenance_category_name || ''}」下新增次項目。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-3">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="subCategoryName" className="font-semibold text-sm">次項目名稱 <span className="text-red-500">*</span></Label>
+                            <Input
+                                id="subCategoryName"
+                                placeholder="例如: 管線配置、水電配線"
+                                value={newSubCategoryName}
+                                onChange={(e) => setNewSubCategoryName(e.target.value)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        handleQuickAddSubCategory()
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setQuickSubCategoryOpen(false)}>取消</Button>
+                        <Button onClick={handleQuickAddSubCategory} className="bg-primary text-white">建立</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

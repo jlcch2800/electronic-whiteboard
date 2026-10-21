@@ -86,6 +86,7 @@ export const vendorWorkSchema = z.object({
     is_maintenance_project: z.boolean().nullable().optional(),
     maintenance_project_id: z.string().nullable().optional(),
     maintenance_project_category_id: z.string().nullable().optional(),
+    maintenance_project_sub_category_id: z.string().nullable().optional(),
 }).superRefine((data, ctx) => {
     // 專案維修單驗證：若勾選則專案與主項目必填
     if (data.is_maintenance_project === true) {
@@ -300,6 +301,7 @@ export const MAINTENANCE_FIELD_LABELS: Record<string, string> = {
     is_maintenance_project: '是否為專案維修單',
     maintenance_project_id: '關聯專案',
     maintenance_project_category_id: '關聯專案主項目',
+    maintenance_project_sub_category_id: '關聯專案次項目',
 }
 
 /** 新增維修單表單 Schema（步驟 1：已轉維修單） */
@@ -318,5 +320,6 @@ export const maintenanceWorkOrderSchema = z.object({
     is_maintenance_project: z.boolean().nullable().optional(),
     maintenance_project_id: z.string().nullable().optional(),
     maintenance_project_category_id: z.string().nullable().optional(),
+    maintenance_project_sub_category_id: z.string().nullable().optional(),
 })
 export type MaintenanceWorkOrderFormValues = z.infer<typeof maintenanceWorkOrderSchema>

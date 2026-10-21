@@ -59,6 +59,7 @@ export interface Database {
           is_maintenance_project: boolean | null
           maintenance_project_id: string | null
           maintenance_project_category_id: string | null
+          maintenance_project_sub_category_id: string | null
         }
         Insert: {
           id?: string
@@ -85,6 +86,7 @@ export interface Database {
           is_maintenance_project?: boolean | null
           maintenance_project_id?: string | null
           maintenance_project_category_id?: string | null
+          maintenance_project_sub_category_id?: string | null
         }
         Update: {
           id?: string
@@ -111,6 +113,7 @@ export interface Database {
           is_maintenance_project?: boolean | null
           maintenance_project_id?: string | null
           maintenance_project_category_id?: string | null
+          maintenance_project_sub_category_id?: string | null
         }
       }
       vendor_today_work_history: {
@@ -139,6 +142,7 @@ export interface Database {
           is_maintenance_project: boolean | null
           maintenance_project_id: string | null
           maintenance_project_category_id: string | null
+          maintenance_project_sub_category_id: string | null
         }
         Insert: {
           id?: string
@@ -165,6 +169,7 @@ export interface Database {
           is_maintenance_project?: boolean | null
           maintenance_project_id?: string | null
           maintenance_project_category_id?: string | null
+          maintenance_project_sub_category_id?: string | null
         }
         Update: {
           id?: string
@@ -191,6 +196,7 @@ export interface Database {
           is_maintenance_project?: boolean | null
           maintenance_project_id?: string | null
           maintenance_project_category_id?: string | null
+          maintenance_project_sub_category_id?: string | null
         }
       }
       engineering_today_work: {
@@ -653,6 +659,7 @@ export interface Database {
           is_maintenance_project: boolean | null
           maintenance_project_id: string | null
           maintenance_project_category_id: string | null
+          maintenance_project_sub_category_id: string | null
         }
         Insert: {
           id?: string
@@ -711,6 +718,7 @@ export interface Database {
           is_maintenance_project?: boolean | null
           maintenance_project_id?: string | null
           maintenance_project_category_id?: string | null
+          maintenance_project_sub_category_id?: string | null
         }
         Update: {
           id?: string
@@ -769,6 +777,7 @@ export interface Database {
           is_maintenance_project?: boolean | null
           maintenance_project_id?: string | null
           maintenance_project_category_id?: string | null
+          maintenance_project_sub_category_id?: string | null
         }
       }
       maintenance_work_orders_history: {
@@ -829,6 +838,7 @@ export interface Database {
           is_maintenance_project: boolean | null
           maintenance_project_id: string | null
           maintenance_project_category_id: string | null
+          maintenance_project_sub_category_id: string | null
         }
         Insert: {
           id?: string
@@ -887,6 +897,7 @@ export interface Database {
           is_maintenance_project?: boolean | null
           maintenance_project_id?: string | null
           maintenance_project_category_id?: string | null
+          maintenance_project_sub_category_id?: string | null
         }
         Update: {
           id?: string
@@ -945,6 +956,7 @@ export interface Database {
           is_maintenance_project?: boolean | null
           maintenance_project_id?: string | null
           maintenance_project_category_id?: string | null
+          maintenance_project_sub_category_id?: string | null
         }
       }
       // ========== 專案維修單相關表 ==========
@@ -992,6 +1004,29 @@ export interface Database {
           created_at?: string
           maintenance_project_id?: string
           maintenance_category_name?: string
+        }
+      }
+      maintenance_project_sub_category: {
+        Row: {
+          id: string
+          created_at: string
+          maintenance_project_id: string
+          maintenance_project_category_id: string
+          maintenance_sub_category_name: string
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          maintenance_project_id: string
+          maintenance_project_category_id: string
+          maintenance_sub_category_name: string
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          maintenance_project_id?: string
+          maintenance_project_category_id?: string
+          maintenance_sub_category_name?: string
         }
       }
       maintenance_project_work_file: {
