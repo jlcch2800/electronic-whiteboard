@@ -143,6 +143,25 @@ function safeParse(value?: string | null): Date | null {
     return isValid(d) ? startOfDay(d) : null
 }
 
+/** 尚未開始階段資料（開單日、審查日期名稱、審查日期、天數） */
+export interface NotStartedPhaseData {
+    orderDate: Date | null
+    reviewDate: Date | null
+    reviewLabel: string // '審查-院長日期' | '審查-副院長日期' | '資材室日期' | '無審查日期'
+    days: number | null
+    startDate: Date
+    endDate: Date | null
+    hasRange: boolean
+}
+
+/** 進行中 / 施工階段資料 */
+export interface InProgressPhaseData {
+    startDate: Date
+    endDate: Date
+    durationDays: number
+    isCompleted: boolean
+}
+
 /** 計算後的甘特任務項目 */
 interface GanttTask {
     order: GanttOrder
@@ -159,15 +178,18 @@ interface GanttTask {
     progress: GanttProgress
     /** 是否逾期：未完成且預計結束日早於今天 */
     overdue: boolean
+    /** 尚未開始階段 (開單日 ~ 審查完成日) */
+    notStartedPhase: NotStartedPhaseData | null
+    /** 進行中/施工階段 (施工預計開始日 ~ 施工預計結束日) */
+    inProgressPhase: InProgressPhaseData | null
 }
 
 /**
  * 將維修單轉為甘特任務
- * - 尚未開始 (not_started)：
- *   進度條最左邊內側顯示開單日，最右邊內側顯示審查-院長日期 (若無則副院長日期，若無則資材室日期)；
- *   若三者皆無，則顯示維修單狀態 (開單日+維修單狀態)
- * - 進行中 (in_progress) / 完成 (completed)：
- *   進度條最左邊內側顯示施工預計開始日期、最右邊內側顯示施工預計結束日期
+ * - 尚未開始階段 (notStartedPhase)：
+ *   開單日 ~ 審查日期 (依順序：院長 > 副院長 > 資材室)；無審查日期則為單點/膠囊
+ * - 進行中/施工階段 (inProgressPhase)：
+ *   施工預計開始日期 ~ 施工預計結束日期 (或實際施工完成日)
  * @param order 維修單資料
  * @param today 今日日期
  */
@@ -178,78 +200,83 @@ function toTask(order: GanttOrder, today: Date): GanttTask | null {
     const overdue = progress !== 'completed' && !!planEnd && planEnd < today
     const workOrderDate = safeParse(order.work_order_date) ?? safeParse(order.request_date)
 
-    // 1、尚未開始
-    if (progress === 'not_started') {
-        // 審查日期順序：院長 -> 副院長 -> 資材室
-        const reviewEnd = safeParse(order.rev_dean_date)
-            ?? safeParse(order.rev_vice_dean_date)
-            ?? safeParse(order.material_date)
+    // 1、解析尚未開始階段資訊 (開單日、審查日期名稱、審查日期、天數)
+    const deanDate = safeParse(order.rev_dean_date)
+    const viceDeanDate = safeParse(order.rev_vice_dean_date)
+    const materialDate = safeParse(order.material_date)
 
-        // 若有審查日期且有開單日，建立時程任務（最左開單日，最右審查日）
-        if (reviewEnd && workOrderDate) {
-            let end = reviewEnd
+    let reviewDate: Date | null = null
+    let reviewLabel = '無審查日期'
+
+    if (deanDate) {
+        reviewDate = deanDate
+        reviewLabel = '審查-院長日期'
+    } else if (viceDeanDate) {
+        reviewDate = viceDeanDate
+        reviewLabel = '審查-副院長日期'
+    } else if (materialDate) {
+        reviewDate = materialDate
+        reviewLabel = '資材室日期'
+    }
+
+    let notStartedPhase: NotStartedPhaseData | null = null
+    if (workOrderDate) {
+        if (reviewDate) {
+            let end = reviewDate
             if (end < workOrderDate) end = workOrderDate
             const days = differenceInCalendarDays(end, workOrderDate) + 1
-
-            return {
-                order,
-                hasPlanStart: true,
-                anchorDate: workOrderDate,
+            notStartedPhase = {
+                orderDate: workOrderDate,
+                reviewDate,
+                reviewLabel,
+                days,
                 startDate: workOrderDate,
                 endDate: end,
-                durationDays: days,
-                progress,
-                overdue
+                hasRange: true
             }
-        }
-
-        // 若這三個日期都沒有：顯示維修單狀態就好 (開單日+維修單狀態)
-        const anchor = workOrderDate ?? planStart
-        if (!anchor) return null
-
-        return {
-            order,
-            hasPlanStart: false,
-            anchorDate: anchor,
-            startDate: null,
-            endDate: null,
-            durationDays: null,
-            progress,
-            overdue
+        } else {
+            notStartedPhase = {
+                orderDate: workOrderDate,
+                reviewDate: null,
+                reviewLabel: '無審查日期',
+                days: null,
+                startDate: workOrderDate,
+                endDate: null,
+                hasRange: false
+            }
         }
     }
 
-    // 2、進行中 (或完成)
+    // 2、解析進行中 / 施工階段資訊
+    let inProgressPhase: InProgressPhaseData | null = null
     if (planStart) {
-        // 有施工預計開始日期：最左邊施工預計開始日，最右邊施工預計結束日 (或實際施工完成日)
         const realEnd = safeParse(order.construct_end_date) ?? planEnd
         let end = realEnd ?? planStart
         if (end < planStart) end = planStart
         const days = differenceInCalendarDays(end, planStart) + 1
-
-        return {
-            order,
-            hasPlanStart: true,
-            anchorDate: planStart,
+        inProgressPhase = {
             startDate: planStart,
             endDate: end,
             durationDays: days,
-            progress,
-            overdue
+            isCompleted: progress === 'completed'
         }
     }
 
-    // 無預計施工開始日期：退回狀態膠囊標示
-    const fallbackAnchor = workOrderDate ?? today
+    // 若既無開單日又無施工開始日，退回 null
+    const anchor = inProgressPhase?.startDate ?? notStartedPhase?.startDate ?? workOrderDate ?? planStart
+    if (!anchor) return null
+
     return {
         order,
-        hasPlanStart: false,
-        anchorDate: fallbackAnchor,
-        startDate: null,
-        endDate: null,
-        durationDays: null,
+        hasPlanStart: !!planStart,
+        anchorDate: anchor,
+        startDate: inProgressPhase?.startDate ?? notStartedPhase?.startDate ?? null,
+        endDate: inProgressPhase?.endDate ?? notStartedPhase?.endDate ?? null,
+        durationDays: inProgressPhase?.durationDays ?? notStartedPhase?.days ?? null,
         progress,
-        overdue
+        overdue,
+        notStartedPhase,
+        inProgressPhase
     }
 }
 
@@ -306,7 +333,12 @@ export default function ProjectGanttChart({
         onScaleChange?.(s)
     }
     const [hover, setHover] = useState<{
-        type: 'task'
+        type: 'task_not_started'
+        task: GanttTask
+        x: number
+        y: number
+    } | {
+        type: 'task_in_progress'
         task: GanttTask
         x: number
         y: number
@@ -461,7 +493,10 @@ export default function ProjectGanttChart({
         const allDates: Date[] = []
         tasks.forEach((t) => {
             allDates.push(t.anchorDate)
-            if (t.endDate) allDates.push(t.endDate)
+            if (t.notStartedPhase?.startDate) allDates.push(t.notStartedPhase.startDate)
+            if (t.notStartedPhase?.endDate) allDates.push(t.notStartedPhase.endDate)
+            if (t.inProgressPhase?.startDate) allDates.push(t.inProgressPhase.startDate)
+            if (t.inProgressPhase?.endDate) allDates.push(t.inProgressPhase.endDate)
         })
         const padDays = scale === 'month' ? 35 : scale === 'week' ? 14 : 1
         const rawStart = addDays(minDate(allDates), -padDays)
@@ -536,17 +571,36 @@ export default function ProjectGanttChart({
         scrollToToday()
     }, [scrollToToday])
 
-    // 計算內容區總高度 (主項目 + 次項目列 + 各任務列)
+    /** 判斷單一維修單的尚未開始進度條與進行中進度條在時間軸上是否交疊 */
+    const isTaskOverlap = (t: GanttTask): boolean => {
+        if (!t.notStartedPhase || !t.inProgressPhase || !range) return false
+        const nsLeft = differenceInCalendarDays(t.notStartedPhase.startDate, range.start) * px
+        const nsWidth = t.notStartedPhase.hasRange && t.notStartedPhase.endDate
+            ? Math.max((differenceInCalendarDays(t.notStartedPhase.endDate, t.notStartedPhase.startDate) + 1) * px, 150)
+            : 110
+        const ipLeft = differenceInCalendarDays(t.inProgressPhase.startDate, range.start) * px
+        const ipWidth = Math.max((differenceInCalendarDays(t.inProgressPhase.endDate, t.inProgressPhase.startDate) + 1) * px, 150)
+        return (nsLeft < (ipLeft + ipWidth) && (nsLeft + nsWidth) > ipLeft)
+    }
+
+    // 計算內容區總高度 (主項目 + 次項目列 + 各任務列，自適應重疊高度)
     const bodyH = groups.reduce((sum, g) => {
         let h = GROUP_H
         g.subGroups.forEach((sub) => {
             h += SUB_GROUP_H
-            h += sub.tasks.length * ROW_H
+            sub.tasks.forEach((t) => {
+                h += isTaskOverlap(t) ? 52 : ROW_H
+            })
         })
         if (g.subGroups.length === 0) {
-            h += g.directTasks.length * ROW_H
+            g.directTasks.forEach((t) => {
+                h += isTaskOverlap(t) ? 52 : ROW_H
+            })
         } else if (g.directTasks.length > 0) {
-            h += SUB_GROUP_H + g.directTasks.length * ROW_H
+            h += SUB_GROUP_H
+            g.directTasks.forEach((t) => {
+                h += isTaskOverlap(t) ? 52 : ROW_H
+            })
         }
         return sum + h
     }, 0)
@@ -560,19 +614,151 @@ export default function ProjectGanttChart({
         )
     }
 
-    /** 渲染單個工單橫列的輔助函式 */
+    /** 渲染單個工單橫列的輔助函式：完整呈現尚未開始與進行中兩階段進度條 */
     const renderTaskRow = (t: GanttTask, indentLevel: 'sub' | 'direct') => {
-        const style = GANTT_PROGRESS_STYLE[t.progress]
-        const left = range ? differenceInCalendarDays(t.anchorDate, range.start) * px : 0
         const plClass = indentLevel === 'sub' ? 'pl-12' : 'pl-7'
-        const orderDate = safeParse(t.order.work_order_date) ?? safeParse(t.order.request_date)
-        const orderDateText = orderDate ? format(orderDate, 'yyyy/MM/dd') : ''
+        const hasOverlap = isTaskOverlap(t)
+        const rowH = hasOverlap ? 52 : ROW_H
+        const currentStyle = GANTT_PROGRESS_STYLE[t.progress]
+
+        // 1. 尚未開始階段進度條（開單日 ~ 審查日期）
+        const nsPhase = t.notStartedPhase
+        const nsStyle = GANTT_PROGRESS_STYLE['not_started']
+        let nsBarElement: React.ReactNode = null
+
+        if (nsPhase && range) {
+            const nsLeft = differenceInCalendarDays(nsPhase.startDate, range.start) * px
+            const nsPosClass = hasOverlap ? 'top-1.5' : 'top-1/2 -translate-y-1/2'
+            const nsHeightClass = hasOverlap ? 'h-5' : 'h-6'
+
+            if (nsPhase.hasRange && nsPhase.endDate) {
+                const dayDiff = differenceInCalendarDays(nsPhase.endDate, nsPhase.startDate) + 1
+                const actualWidth = dayDiff * px
+                const isSameDay = nsPhase.startDate.getTime() === nsPhase.endDate.getTime()
+                const startText = format(nsPhase.startDate, 'yyyy/MM/dd')
+                const endText = format(nsPhase.endDate, 'yyyy/MM/dd')
+                const minWidth = isSameDay ? 150 : 160
+                const width = Math.max(actualWidth, minWidth)
+
+                nsBarElement = (
+                    <div
+                        className={`absolute ${nsPosClass} flex items-center z-10`}
+                        style={{ left: nsLeft }}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => onOrderClick?.(t.order.id)}
+                            onMouseEnter={(e) => setHover({ type: 'task_not_started', task: t, x: e.clientX, y: e.clientY })}
+                            onMouseMove={(e) => setHover(prev => prev && prev.type === 'task_not_started' ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
+                            onMouseLeave={() => setHover(null)}
+                            className={`${nsHeightClass} rounded-md shadow-md ring-1 ${nsStyle.bar} hover:brightness-110 hover:scale-y-105 transition-all duration-200 flex items-center justify-between px-2 overflow-hidden select-none cursor-pointer`}
+                            style={{ width }}
+                            title={`${t.order.work_order_id} 尚未開始 (${startText} ~ ${endText})`}
+                        >
+                            {/* 最左邊內側開單日 */}
+                            <span className="text-[10px] font-mono font-bold text-white shrink-0 drop-shadow-sm select-none">
+                                {startText}
+                            </span>
+
+                            {/* 中間輔助文字 */}
+                            {width >= 240 && (
+                                <span className="text-[11px] font-bold text-white truncate px-1.5 drop-shadow-sm">
+                                    尚未開始
+                                </span>
+                            )}
+
+                            {/* 最右邊內側審查日 */}
+                            <span className="text-[10px] font-mono font-bold text-white shrink-0 drop-shadow-sm select-none ml-auto">
+                                {endText}
+                            </span>
+                        </button>
+                    </div>
+                )
+            } else {
+                // 無審查日期：顯示開單日 + 狀態膠囊
+                const startText = format(nsPhase.startDate, 'yyyy/MM/dd')
+                nsBarElement = (
+                    <button
+                        type="button"
+                        onClick={() => onOrderClick?.(t.order.id)}
+                        onMouseEnter={(e) => setHover({ type: 'task_not_started', task: t, x: e.clientX, y: e.clientY })}
+                        onMouseMove={(e) => setHover(prev => prev && prev.type === 'task_not_started' ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
+                        onMouseLeave={() => setHover(null)}
+                        className={`absolute z-10 ${nsPosClass} ${nsHeightClass} px-2.5 rounded-md shadow-md ring-1 ${nsStyle.bar} hover:brightness-110 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer`}
+                        style={{ left: nsLeft }}
+                        title={`${t.order.work_order_id} (${startText}) - 尚未開始`}
+                    >
+                        <span className="text-[10px] font-mono font-bold text-white/95 drop-shadow-sm select-none">
+                            {startText}
+                        </span>
+                        <span className="text-[11px] font-bold text-white tracking-wide drop-shadow-sm">
+                            尚未開始
+                        </span>
+                    </button>
+                )
+            }
+        }
+
+        // 2. 進行中 / 施工階段進度條（施工預計開始日 ~ 施工預計結束日）
+        const ipPhase = t.inProgressPhase
+        let ipBarElement: React.ReactNode = null
+
+        if (ipPhase && range) {
+            const ipLeft = differenceInCalendarDays(ipPhase.startDate, range.start) * px
+            const ipPosClass = hasOverlap ? 'bottom-1.5' : 'top-1/2 -translate-y-1/2'
+            const ipHeightClass = hasOverlap ? 'h-5' : 'h-6'
+            const dayDiff = differenceInCalendarDays(ipPhase.endDate, ipPhase.startDate) + 1
+            const actualWidth = dayDiff * px
+            const isSameDay = ipPhase.startDate.getTime() === ipPhase.endDate.getTime()
+            const startText = format(ipPhase.startDate, 'yyyy/MM/dd')
+            const endText = format(ipPhase.endDate, 'yyyy/MM/dd')
+            const minWidth = isSameDay ? 150 : 160
+            const width = Math.max(actualWidth, minWidth)
+            const middleText = t.order.vendor_name || t.order.status
+            const progressStyle = GANTT_PROGRESS_STYLE[t.progress]
+
+            ipBarElement = (
+                <div
+                    className={`absolute ${ipPosClass} flex items-center z-10`}
+                    style={{ left: ipLeft }}
+                >
+                    <button
+                        type="button"
+                        onClick={() => onOrderClick?.(t.order.id)}
+                        onMouseEnter={(e) => setHover({ type: 'task_in_progress', task: t, x: e.clientX, y: e.clientY })}
+                        onMouseMove={(e) => setHover(prev => prev && prev.type === 'task_in_progress' ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
+                        onMouseLeave={() => setHover(null)}
+                        className={`${ipHeightClass} rounded-md shadow-md ring-1 ${progressStyle.bar} hover:brightness-110 hover:scale-y-105 transition-all duration-200 flex items-center justify-between px-2 overflow-hidden select-none cursor-pointer
+                            ${t.overdue ? 'outline outline-2 outline-offset-1 outline-amber-400' : ''}`}
+                        style={{ width }}
+                        title={`${t.order.work_order_id} 施工時程 (${startText} ~ ${endText})`}
+                    >
+                        {/* 最左邊內側施工預計開始日 */}
+                        <span className="text-[10px] font-mono font-bold text-white shrink-0 drop-shadow-sm select-none">
+                            {startText}
+                        </span>
+
+                        {/* 中間輔助文字 */}
+                        {width >= 240 && (
+                            <span className="text-[11px] font-bold text-white truncate px-1.5 drop-shadow-sm">
+                                {middleText}
+                            </span>
+                        )}
+
+                        {/* 最右邊內側施工預計結束日 */}
+                        <span className="text-[10px] font-mono font-bold text-white shrink-0 drop-shadow-sm select-none ml-auto">
+                            {endText}
+                        </span>
+                    </button>
+                </div>
+            )
+        }
 
         return (
             <div
                 key={t.order.id}
                 className="relative flex border-b border-slate-100 dark:border-slate-800/60 hover:bg-blue-50/40 dark:hover:bg-slate-800/30 transition-colors group/row"
-                style={{ height: ROW_H }}
+                style={{ height: rowH }}
             >
                 {/* 左欄：工單資訊 */}
                 <div
@@ -581,91 +767,16 @@ export default function ProjectGanttChart({
                     onClick={() => onOrderClick?.(t.order.id)}
                     title={t.order.maintain_content ?? ''}
                 >
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${currentStyle.dot}`} />
                     <span className="text-[13px] font-bold font-mono text-blue-600 dark:text-blue-400 shrink-0">{t.order.work_order_id}</span>
                     <span className="text-[13px] text-slate-600 dark:text-slate-300 truncate">{t.order.maintain_content || '-'}</span>
                     {t.overdue && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
                 </div>
 
-                {/* 右側：進度條 */}
+                {/* 右側：進度條 (同時呈現尚未開始與進行中) */}
                 <div className="relative shrink-0" style={{ width: timelineW }}>
-                    {t.hasPlanStart && t.startDate && t.endDate ? (
-                        /* 1. 有起訖時程：進度條最左邊內側顯示開始日、最右邊內側顯示結束日，兩側外部不再顯示標籤 */
-                        (() => {
-                            const dayDiff = differenceInCalendarDays(t.endDate, t.startDate) + 1
-                            const actualWidth = dayDiff * px
-                            const isSameDay = t.startDate.getTime() === t.endDate.getTime()
-                            const startText = format(t.startDate, 'yyyy/MM/dd')
-                            const endText = format(t.endDate, 'yyyy/MM/dd')
-                            // 進度條最小寬度：保證最左內側與最右內側日期清晰可見且不破版
-                            const minWidth = isSameDay ? 150 : 160
-                            const width = Math.max(actualWidth, minWidth)
-
-                            // 中間輔助文字（廠商名稱或狀態，若寬度充裕 >= 240 才顯示）
-                            const middleText = t.progress === 'not_started'
-                                ? t.order.status
-                                : (t.order.vendor_name || t.order.status)
-
-                            return (
-                                <div
-                                    className="absolute top-1/2 -translate-y-1/2 flex items-center z-10"
-                                    style={{ left }}
-                                >
-                                    {/* 進度條按鈕 (內側左右對齊日期，外部無日期標籤) */}
-                                    <button
-                                        type="button"
-                                        onClick={() => onOrderClick?.(t.order.id)}
-                                        onMouseEnter={(e) => setHover({ type: 'task', task: t, x: e.clientX, y: e.clientY })}
-                                        onMouseMove={(e) => setHover(prev => prev && prev.type === 'task' ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
-                                        onMouseLeave={() => setHover(null)}
-                                        className={`h-6 rounded-md shadow-md ring-1 ${style.bar} hover:brightness-110 hover:scale-y-105 transition-all duration-200 flex items-center justify-between px-2 overflow-hidden select-none cursor-pointer
-                                            ${t.overdue ? 'outline outline-2 outline-offset-1 outline-amber-400' : ''}`}
-                                        style={{ width }}
-                                        title={`${t.order.work_order_id} (${startText} ~ ${endText})`}
-                                    >
-                                        {/* 最左邊內側日期 */}
-                                        <span className="text-[10px] font-mono font-bold text-white shrink-0 drop-shadow-sm select-none">
-                                            {startText}
-                                        </span>
-
-                                        {/* 中間文字（若寬度夠長才顯示） */}
-                                        {width >= 240 && (
-                                            <span className="text-[11px] font-bold text-white truncate px-1.5 drop-shadow-sm">
-                                                {middleText}
-                                            </span>
-                                        )}
-
-                                        {/* 最右邊內側日期 */}
-                                        <span className="text-[10px] font-mono font-bold text-white shrink-0 drop-shadow-sm select-none ml-auto">
-                                            {endText}
-                                        </span>
-                                    </button>
-                                </div>
-                            )
-                        })()
-                    ) : (
-                        /* 2. 無起訖日期跨度（若審查日期皆無）：顯示開單日 + 維修單狀態 */
-                        <button
-                            type="button"
-                            onClick={() => onOrderClick?.(t.order.id)}
-                            onMouseEnter={(e) => setHover({ type: 'task', task: t, x: e.clientX, y: e.clientY })}
-                            onMouseMove={(e) => setHover(prev => prev && prev.type === 'task' ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
-                            onMouseLeave={() => setHover(null)}
-                            className={`absolute z-10 top-1/2 -translate-y-1/2 h-6 px-2.5 rounded-md shadow-md ring-1 ${style.bar} hover:brightness-110 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer
-                                ${t.overdue ? 'outline outline-2 outline-offset-1 outline-amber-400' : ''}`}
-                            style={{ left }}
-                            title={`${t.order.work_order_id} ${orderDateText ? `(${orderDateText}) ` : ''}- ${t.order.status}`}
-                        >
-                            {orderDateText && (
-                                <span className="text-[10px] font-mono font-bold text-white/95 drop-shadow-sm select-none">
-                                    {orderDateText}
-                                </span>
-                            )}
-                            <span className="text-[11px] font-bold text-white tracking-wide drop-shadow-sm">
-                                {t.order.status}
-                            </span>
-                        </button>
-                    )}
+                    {nsBarElement}
+                    {ipBarElement}
                 </div>
             </div>
         )
@@ -975,37 +1086,69 @@ export default function ProjectGanttChart({
 
             {/* 附註說明 */}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-slate-400">
-                <span>※ 進度條內側標示起訖日期（尚未開始為開單日與審查日；進行中為施工預計起訖日）；無審查日期者顯示開單日與維修單狀態。</span>
+                <span>※ 維修單同時呈現尚未開始（開單至審查發包）與進行中（廠商施工）之完整進度條。</span>
                 <span>※ 專案次項目進度條依其下所有維修單之狀態與時程彙整計算。</span>
                 {skipped > 0 && <span className="text-amber-500">※ {skipped} 筆工單因無任何接單或開單日期未顯示</span>}
             </div>
 
             {/* ===== 懸停 Tooltip ===== */}
-            {hover && hover.type === 'task' && (
+            {hover && hover.type === 'task_not_started' && (
                 <div
-                    className="fixed z-[100] pointer-events-none w-72 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl text-[13px] space-y-1.5 animate-in fade-in zoom-in-95 duration-150"
+                    className="fixed z-[100] pointer-events-none w-72 p-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl text-[13px] space-y-1.5 animate-in fade-in zoom-in-95 duration-150"
                     style={{
                         left: Math.min(hover.x + 14, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 300),
                         top: hover.y + 16
                     }}
                 >
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 border-b border-blue-100 dark:border-blue-900/60 pb-1.5">
+                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{hover.task.order.work_order_id}</span>
+                        <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${GANTT_PROGRESS_STYLE['not_started'].chip}`}>
+                            尚未開始
+                        </span>
+                    </div>
+                    <div className="text-slate-800 dark:text-slate-100 font-medium line-clamp-2">{hover.task.order.maintain_content || '-'}</div>
+                    <div className="grid grid-cols-[85px_1fr] gap-y-0.5 text-slate-600 dark:text-slate-300">
+                        <span className="text-slate-400">維修單狀態</span>
+                        <span>{hover.task.order.status}</span>
+                        <span className="text-slate-400">開單日</span>
+                        <span className="font-mono">{hover.task.notStartedPhase?.orderDate ? format(hover.task.notStartedPhase.orderDate, 'yyyy/MM/dd') : '無'}</span>
+                        <span className="text-slate-400">{hover.task.notStartedPhase?.reviewLabel || '審查日期'}</span>
+                        <span className="font-mono">{hover.task.notStartedPhase?.reviewDate ? format(hover.task.notStartedPhase.reviewDate, 'yyyy/MM/dd') : '無'}</span>
+                        <span className="text-slate-400">天數</span>
+                        <span className="font-semibold text-blue-600 dark:text-blue-400">
+                            {hover.task.notStartedPhase?.days !== null && hover.task.notStartedPhase?.days !== undefined ? `${hover.task.notStartedPhase.days} 天` : '尚未審查'}
+                        </span>
+                    </div>
+                </div>
+            )}
+
+            {hover && hover.type === 'task_in_progress' && (
+                <div
+                    className="fixed z-[100] pointer-events-none w-72 p-3 rounded-xl border border-red-200 dark:border-red-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl text-[13px] space-y-1.5 animate-in fade-in zoom-in-95 duration-150"
+                    style={{
+                        left: Math.min(hover.x + 14, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 300),
+                        top: hover.y + 16
+                    }}
+                >
+                    <div className="flex items-center justify-between gap-2 border-b border-red-100 dark:border-red-900/60 pb-1.5">
                         <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{hover.task.order.work_order_id}</span>
                         <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${GANTT_PROGRESS_STYLE[hover.task.progress].chip}`}>
                             {GANTT_PROGRESS_STYLE[hover.task.progress].label}
                         </span>
                     </div>
                     <div className="text-slate-800 dark:text-slate-100 font-medium line-clamp-2">{hover.task.order.maintain_content || '-'}</div>
-                    <div className="grid grid-cols-[64px_1fr] gap-y-0.5 text-slate-600 dark:text-slate-300">
+                    <div className="grid grid-cols-[85px_1fr] gap-y-0.5 text-slate-600 dark:text-slate-300">
                         <span className="text-slate-400">狀態</span><span>{hover.task.order.status}</span>
                         <span className="text-slate-400">廠商</span><span>{hover.task.order.vendor_name || '-'}</span>
                         <span className="text-slate-400">承辦人</span><span>{hover.task.order.handler_name || '-'}</span>
-                        <span className="text-slate-400">起</span>
-                        <span className="font-mono">{hover.task.startDate ? format(hover.task.startDate, 'yyyy/MM/dd') : '無'}</span>
-                        <span className="text-slate-400">迄</span>
-                        <span className="font-mono">{hover.task.endDate ? format(hover.task.endDate, 'yyyy/MM/dd') : '無'}</span>
+                        <span className="text-slate-400">施工開始日</span>
+                        <span className="font-mono">{hover.task.inProgressPhase?.startDate ? format(hover.task.inProgressPhase.startDate, 'yyyy/MM/dd') : '無'}</span>
+                        <span className="text-slate-400">施工結束日</span>
+                        <span className="font-mono">{hover.task.inProgressPhase?.endDate ? format(hover.task.inProgressPhase.endDate, 'yyyy/MM/dd') : '無'}</span>
                         <span className="text-slate-400">工期</span>
-                        <span>{hover.task.durationDays !== null ? `${hover.task.durationDays} 天` : '無'}</span>
+                        <span className="font-semibold text-rose-600 dark:text-rose-400">
+                            {hover.task.inProgressPhase?.durationDays !== undefined ? `${hover.task.inProgressPhase.durationDays} 天` : '無'}
+                        </span>
                     </div>
                     {hover.task.overdue && (
                         <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
@@ -1048,3 +1191,4 @@ export default function ProjectGanttChart({
         </div>
     )
 }
+
